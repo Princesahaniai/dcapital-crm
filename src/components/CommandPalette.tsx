@@ -24,14 +24,14 @@ export const CommandPalette = () => {
         return () => document.removeEventListener('keydown', down);
     }, []);
 
-    const filteredLeads = leads.filter(l => l.name.toLowerCase().includes(query.toLowerCase())).slice(0, 3);
-    const filteredProps = properties.filter(p => p.title.toLowerCase().includes(query.toLowerCase())).slice(0, 3);
+    const filteredLeads = leads.filter(l => (l.name || '').toLowerCase().includes((query || '').toLowerCase())).slice(0, 3);
+    const filteredProps = properties.filter(p => (p.title || '').toLowerCase().includes((query || '').toLowerCase())).slice(0, 3);
 
     const actions = [
         { label: 'Go to Dashboard', icon: LayoutDashboard, action: () => navigate('/') },
         { label: 'Go to Leads', icon: User, action: () => navigate('/leads') },
         { label: 'Go to Inventory', icon: Building2, action: () => navigate('/inventory') },
-    ].filter(a => a.label.toLowerCase().includes(query.toLowerCase()));
+    ].filter(a => (a.label || '').toLowerCase().includes((query || '').toLowerCase()));
 
     if (!open) return null;
 

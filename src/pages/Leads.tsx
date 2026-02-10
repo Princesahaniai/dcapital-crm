@@ -33,8 +33,8 @@ export const Leads = () => {
 
     // Filter Logic (now applies to accessible leads only)
     const filteredLeads = accessibleLeads.filter(lead => {
-        const matchesSearch = lead.name.toLowerCase().includes(search.toLowerCase()) ||
-            lead.email.toLowerCase().includes(search.toLowerCase()) ||
+        const matchesSearch = (lead.name || '').toLowerCase().includes((search || '').toLowerCase()) ||
+            (lead.email || '').toLowerCase().includes((search || '').toLowerCase()) ||
             (lead.phone && lead.phone.includes(search));
         const matchesStatus = statusFilter === 'All' || lead.status === statusFilter;
         return matchesSearch && matchesStatus;
