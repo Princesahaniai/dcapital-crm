@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D-CAPITAL CRM PRO</title>
+  <script>
+    // 🛡️ GLOBAL ERROR TRAP
+    window.onerror = function (message, source, lineno, colno, error) {
+      document.body.innerHTML = `
+          <div style="background: #1a0000; color: #ff3333; height: 100vh; padding: 20px; font-family: monospace; overflow: auto;">
+            <h1>⚠️ FATAL STARTUP ERROR</h1>
+            <h2 style="color: white;">${message}</h2>
+            <p>File: ${source}:${lineno}</p>
+            <pre style="background: #330000; padding: 20px; margin-top: 20px;">${error?.stack || 'No stack trace available'}</pre>
+            <p style="color: #999; margin-top: 20px;">Please screenshot this and send it to the developer.</p>
+          </div>
+        `;
+    };
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
