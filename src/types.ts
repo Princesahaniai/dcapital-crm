@@ -58,9 +58,13 @@ export class Activity {
 export interface Task {
     id: string;
     title: string;
-    completed: boolean;
+    status: 'todo' | 'in-progress' | 'done';
+    priority: 'High' | 'Medium' | 'Low';
+    category: 'Call' | 'Meeting' | 'Email' | 'Paperwork';
     dueDate?: number;
     assignedTo?: string;
+    createdAt: number;
+    completed: boolean;
 }
 
 export interface Notification {

@@ -275,8 +275,8 @@ export const useStore = create<Store>()(
                 };
             }),
             deleteProperty: (id) => set((s) => ({ properties: s.properties.filter(p => p.id !== id) })),
-            addTask: (t) => set((s) => ({ tasks: [t, ...s.tasks] })),
-            toggleTask: (id) => set((s) => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t) })),
+            addTask: (t) => set((s) => ({ tasks: [{ ...t, createdAt: Date.now(), completed: t.status === 'done' }, ...s.tasks] })),
+            toggleTask: (id) => set((s) => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'todo' : 'done', completed: !t.completed } : t) })),
             deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) })),
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
             resetSystem: () => set({ leads: [], properties: [], tasks: [], activities: [] }),

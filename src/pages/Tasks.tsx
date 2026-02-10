@@ -18,10 +18,11 @@ export const Tasks = () => {
             addTask({
                 id: Math.random().toString(),
                 title: text,
-                dueDate: new Date().toLocaleDateString(),
-                completed: false,
+                status: 'todo',
                 priority,
-                category
+                category,
+                createdAt: Date.now(),
+                completed: false
             });
             setText('');
             toast.success('Task Added');
