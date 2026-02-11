@@ -77,6 +77,7 @@ interface Store {
     resetProperties: () => void;
     addTeamMember: (member: TeamMember) => void;
     removeTeamMember: (id: string) => void;
+    addNotification: (text: string) => void;
 }
 
 export const useStore = create<Store>()(
@@ -210,6 +211,16 @@ export const useStore = create<Store>()(
             }),
             addBulkLeads: (newLeads) => set((s) => ({ leads: [...newLeads, ...s.leads] })),
 
+            // Helper to add notification
+            addNotification: (text) => set((s) => ({
+                notifications: [{
+                    id: Math.random().toString(36).substr(2, 9),
+                    text,
+                    read: false,
+                    date: new Date().toISOString()
+                }, ...s.notifications]
+            })),
+
             updateLead: (id, data) => set((s) => {
                 const oldLead = s.leads.find(l => l.id === id);
                 if (!oldLead) return s;
@@ -217,6 +228,7 @@ export const useStore = create<Store>()(
                 // Commission Logic: If status changes to 'Closed', add commission
                 let commissionUpdate = {};
                 let newTeam = s.team;
+                let newNotifications = s.notifications;
 
                 if (data.status === 'Closed' && oldLead.status !== 'Closed') {
                     // Use the new budget if provided, otherwise the old one
@@ -231,6 +243,15 @@ export const useStore = create<Store>()(
                             : m
                         );
                     }
+
+                    // Notification Logic
+                    newNotifications = [{
+                        id: Math.random().toString(36).substr(2, 9),
+                        text: `🎉 Deal Closed! ${oldLead.name} - AED ${budget.toLocaleString()}`,
+                        read: false,
+                        date: new Date().toISOString()
+                    }, ...s.notifications];
+
                 } else if (data.status && data.status !== 'Closed' && oldLead.status === 'Closed') {
                     // Reset commission if reopened
                     commissionUpdate = { commission: 0, commissionPaid: false };
@@ -238,12 +259,24 @@ export const useStore = create<Store>()(
 
                 return {
                     leads: s.leads.map(l => l.id === id ? { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() } : l),
-                    team: newTeam
+                    team: newTeam,
+                    notifications: newNotifications
                 };
             }),
 
             deleteLead: (id) => set((s) => ({ leads: s.leads.filter(l => l.id !== id) })),
-            assignLeads: (leadIds, agentId, agentName) => set((s) => ({ leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() } : l) })),
+            assignLeads: (leadIds, agentId, agentName) => set((s) => {
+                const count = leadIds.length;
+                return {
+                    leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() } : l),
+                    notifications: [{
+                        id: Math.random().toString(36).substr(2, 9),
+                        text: `📋 ${count} Leads Assigned to ${agentName}`,
+                        read: false,
+                        date: new Date().toISOString()
+                    }, ...s.notifications]
+                };
+            }),
             addQuickNote: (leadId, note) => set((s) => ({ leads: s.leads.map(l => l.id === leadId ? { ...l, notes: l.notes ? l.notes + '\n' + note : note, updatedAt: Date.now() } : l) })),
             markNotificationRead: (id) => set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) })),
             clearNotifications: () => set({ notifications: [] }),

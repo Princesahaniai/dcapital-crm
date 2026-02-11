@@ -61,9 +61,14 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
                             {notifications.length === 0 ? (
                                 <p className="p-4 text-xs text-gray-500 text-center">All caught up! 🎉</p>
                             ) : notifications.map(n => (
-                                <div key={n.id} className={`p-3 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer ${!n.read ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`} onClick={() => markNotificationRead(n.id)}>
-                                    <p className="text-xs text-gray-800 dark:text-white">{n.text}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">{new Date(n.date).toLocaleTimeString()}</p>
+                                <div key={n.id} className={`p-4 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/50 dark:bg-blue-500/10' : ''}`} onClick={() => markNotificationRead(n.id)}>
+                                    <div className="flex gap-3">
+                                        {!n.read && <div className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />}
+                                        <div className="flex-1">
+                                            <p className={`text-xs ${!n.read ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>{n.text}</p>
+                                            <p className="text-[10px] text-gray-400 mt-1">{new Date(n.date).toLocaleDateString()} • {new Date(n.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
