@@ -7,6 +7,7 @@ import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
 import { WhatsAppButton } from '../components/WhatsAppButton';
 import { EmailModal } from '../components/EmailModal';
 import { MeetingModal } from '../components/MeetingModal';
+import { Modal } from '../components/Modal';
 import type { Lead } from '../types';
 
 export const Leads = () => {
@@ -177,14 +178,14 @@ export const Leads = () => {
     };
 
     return (
-        <div className="p-4 md:p-8 pt-16 md:pt-8 bg-gray-50 dark:bg-black w-full overflow-x-hidden">
+        <div className="p-4 md:p-8 pt-16 md:pt-8 bg-gray-50 dark:bg-black w-full overflow-x-hidden max-w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
                         LEADS <span className="text-blue-500 text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 bg-blue-500/10 rounded-full">Pipeline</span>
                     </h1>
                 </motion.div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <button onClick={downloadTemplate} title="Download Template" className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors">
                         <FileDown size={20} />
                     </button>
@@ -232,8 +233,8 @@ export const Leads = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-hidden min-h-[400px] shadow-sm mt-6">
-                <table className="w-full text-left">
+            <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm mt-6">
+                <table className="w-full text-left min-w-[1000px]">
                     <thead className="bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest">
                         <tr>
                             <th className="p-6">Lead Name</th>
@@ -260,9 +261,9 @@ export const Leads = () => {
                                 </td>
                                 <td className="p-6 text-center">
                                     <span className={`px-4 py-1.5 rounded-xl text-xs font-bold inline-block border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                                            lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-                                                lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-                                                    'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
+                                        lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                            lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+                                                'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
                                         }`}>
                                         {lead.status}
                                     </span>
@@ -293,6 +294,7 @@ export const Leads = () => {
             </div>
 
             <MeetingModal
+                isOpen={isMeetingModalOpen}
                 onClose={() => setIsMeetingModalOpen(false)}
                 leadId={selectedLead?.id}
             />
@@ -303,55 +305,49 @@ export const Leads = () => {
                 lead={selectedLead || { id: '', name: '', email: '' }}
             />
 
-            <AnimatePresence>
-                {showModal && (
-                    <div className="mobile-modal-container">
-                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="mobile-modal-content max-w-2xl">
-                            <div className="p-6 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-white dark:bg-[#1C1C1E] sticky top-0 z-10">
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{isEditing ? 'Lead Protocol Update' : 'Initialize New Lead'}</h2>
-                                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white p-2" title="Close">Close</button>
-                            </div>
-                            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Full Name</label>
-                                        <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mission Target Name" title="Name" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Contact Phone</label>
-                                        <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+971..." title="Phone" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Mission Budget (AED)</label>
-                                        <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} placeholder="Target Value" title="Budget" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Pipeline State</label>
-                                        <select title="Status" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}>
-                                            {statusTabs.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1 md:col-span-2">
-                                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Assigned Agent</label>
-                                        <select title="Assignee" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
-                                            <option value={user?.id}>Me ({user?.name})</option>
-                                            {team.filter(t => t.id !== user?.id).map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Operational Intel</label>
-                                    <textarea className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500 min-h-[100px]" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Target notes and details..." title="Notes" />
-                                </div>
-                                <div className="flex gap-4 pt-4 sticky bottom-0 bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/5">
-                                    <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl transition-all">Abort</button>
-                                    <button type="submit" className="flex-1 py-4 bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all">Deploy Lead</button>
-                                </div>
-                            </form>
-                        </motion.div>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title={isEditing ? 'Lead Protocol Update' : 'Initialize New Lead'}
+            >
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Full Name</label>
+                            <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mission Target Name" title="Name" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Contact Phone</label>
+                            <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+971..." title="Phone" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Mission Budget (AED)</label>
+                            <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} placeholder="Target Value" title="Budget" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Pipeline State</label>
+                            <select title="Status" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}>
+                                {statusTabs.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Assigned Agent</label>
+                            <select title="Assignee" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
+                                <option value={user?.id}>Me ({user?.name})</option>
+                                {team.filter(t => t.id !== user?.id).map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
+                            </select>
+                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Operational Intel</label>
+                        <textarea className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500 min-h-[100px]" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Target notes and details..." title="Notes" />
+                    </div>
+                    <div className="flex gap-4 pt-4 sticky bottom-0 bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/5">
+                        <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl transition-all">Abort</button>
+                        <button type="submit" className="flex-1 py-4 bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all">Deploy Lead</button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

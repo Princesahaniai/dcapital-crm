@@ -8,6 +8,7 @@ export const Sidebar = () => {
     const location = useLocation();
     const { logout, user } = useStore();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     const NavItem = ({ to, icon: Icon, label }: any) => {
         const active = location.pathname === to;
@@ -100,21 +101,56 @@ export const Sidebar = () => {
                     </div>
                 </nav>
 
-                {/* USER PROFILE - PREMIUM CARD */}
+                {/* USER PROFILE - PREMIUM DROPDOWN */}
                 <div className="p-4">
-                    <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4 flex items-center gap-4 hover:border-amber-500/30 transition-colors group relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-black border border-white/20 flex items-center justify-center font-bold text-white shadow-lg">
-                            {user?.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user?.name}</p>
-                            <p className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">{user?.role}</p>
-                        </div>
-                        <button onClick={logout} className="p-2 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-colors" title="Sign Out">
-                            <LogOut size={16} />
+                    <div className="relative group">
+                        <button
+                            onClick={() => setShowProfileMenu(!showProfileMenu)}
+                            className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4 flex items-center gap-4 hover:border-amber-500/30 transition-all group relative overflow-hidden"
+                            title="User Menu"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-black border border-white/20 flex items-center justify-center font-bold text-white shadow-lg">
+                                {user?.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 text-left min-w-0">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user?.name}</p>
+                                <p className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">{user?.role}</p>
+                            </div>
+                            <ChevronRight size={14} className={`text-gray-400 transition-transform duration-300 ${showProfileMenu ? 'rotate-90' : ''}`} />
                         </button>
+
+                        <AnimatePresence>
+                            {showProfileMenu && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[100]"
+                                >
+                                    <div className="p-2 space-y-1">
+                                        <Link
+                                            to="/settings"
+                                            onClick={() => setShowProfileMenu(false)}
+                                            className="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors"
+                                        >
+                                            <Settings size={16} />
+                                            <span>Account Settings</span>
+                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                logout();
+                                                setShowProfileMenu(false);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                                        >
+                                            <LogOut size={16} />
+                                            <span>Sign Out Intelligence</span>
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
             </motion.div>
