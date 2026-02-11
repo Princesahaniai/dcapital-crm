@@ -55,6 +55,40 @@ Looking forward to hearing from you.
 
 Best regards,
 [Agent Name]`
+    },
+    {
+        id: 'meeting',
+        name: 'Meeting Confirmation',
+        subject: 'Meeting Confirmation - D-Capital',
+        body: `Hi [Name],
+
+Confirming our meeting to discuss luxury investment opportunities.
+
+Date: [Date]
+Time: [Time]
+Location: D-Capital HQ / Zoom
+
+Looking forward to it.
+
+Best regards,
+[Agent Name]`
+    },
+    {
+        id: 'recommendation',
+        name: 'Property Recommendation',
+        subject: 'Exclusive Recommendation: [Property]',
+        body: `Hi [Name],
+
+Based on our discussion, I believe this property matches your criteria perfectly:
+
+[Property]
+Type: [Type]
+Price: [Price]
+
+Let me know if you would like to see the floor plan or schedule a viewing.
+
+Best regards,
+[Agent Name]`
     }
 ];
 
@@ -82,6 +116,8 @@ export const EmailModal = ({ isOpen, onClose, lead }: EmailModalProps) => {
                 .replace('[Name]', lead.name)
                 .replace('[Agent Name]', user?.name || 'D-Capital Agent')
                 .replace('[Property]', 'Luxury Property')
+                .replace('[Date]', new Date(Date.now() + 86400000).toLocaleDateString()) // Default to tomorrow
+                .replace('[Time]', '10:00 AM')
             );
         }
     };
