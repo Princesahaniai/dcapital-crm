@@ -77,6 +77,7 @@ interface Store {
     resetProperties: () => void;
     addTeamMember: (member: TeamMember) => void;
     removeTeamMember: (id: string) => void;
+    addActivity: (a: Activity) => void;
     addNotification: (text: string) => void;
 }
 
@@ -315,6 +316,7 @@ export const useStore = create<Store>()(
             resetSystem: () => set({ leads: [], properties: [], tasks: [], activities: [] }),
             resetLeads: () => set({ leads: [] }),
             resetProperties: () => set({ properties: [] }),
+            addActivity: (a) => set((s) => ({ activities: [a, ...s.activities] })),
             addTeamMember: (m) => set((s) => ({ team: [...s.team, m] })),
             removeTeamMember: (id) => set((s) => ({ team: s.team.filter(t => t.id !== id) }))
         }),

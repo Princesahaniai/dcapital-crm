@@ -4,6 +4,7 @@ import { Search, Plus, Trash2, Edit, Phone, Mail, User, Download, Upload, FileDo
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
+import { WhatsAppButton } from '../components/WhatsAppButton';
 
 export const Leads = () => {
     const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user } = useStore();
@@ -286,6 +287,7 @@ export const Leads = () => {
                                 </td>
                                 <td className="p-6 text-right">
                                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
                                         <button onClick={() => openEdit(lead)} className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-lg text-gray-600 dark:text-gray-300" title="Edit"><Edit size={16} /></button>
                                         <button onClick={() => handleDelete(lead.id)} className="p-2 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg text-red-600 dark:text-red-400" title="Delete"><Trash2 size={16} /></button>
                                     </div>

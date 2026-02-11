@@ -47,7 +47,7 @@ export interface Property {
 // ✅ CLASS DEFINITION (Browser cannot ignore this)
 export class Activity {
     id: string = '';
-    type: 'call' | 'email' | 'meeting' | 'note' | 'deal' | 'system' = 'system';
+    type: 'call' | 'email' | 'meeting' | 'note' | 'deal' | 'system' | 'whatsapp' = 'system';
     description: string = '';
     timestamp: number = Date.now();
     userId: string = '';
