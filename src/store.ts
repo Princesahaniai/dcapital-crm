@@ -58,7 +58,7 @@ interface Store {
     // Data Actions
     updateProfile: (name: string, email: string) => void;
     addLead: (l: ExtendedLead) => void;
-    addBulkLeads: (leads: ExtendedLead[]) => void;
+    addBulkLeads: (leads: ExtendedLead[]) => { success: number; failed: number };
     updateLead: (id: string, data: Partial<ExtendedLead>) => void;
     deleteLead: (id: string) => void;
     assignLeads: (leadIds: string[], agentId: string, agentName: string) => void;

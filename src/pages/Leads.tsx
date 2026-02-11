@@ -90,16 +90,118 @@ export const Leads = () => {
         return agent ? agent.name : 'Unknown';
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImporting(true);
+        try {
+            // Dynamic import to avoid SSR issues if any, although this is SPA
+            const { parseCSV, validateLead } = await import('../utils/csvHelpers');
+
+            const { data, errors } = await parseCSV(file);
+
+            if (errors.length > 0) {
+                console.warn('CSV Parse Errors:', errors);
+                toast.error(`CSV Error: ${errors[0].message}`);
+            }
+
+            // Process and Validate
+            const validLeads: any[] = [];
+            let validationErrors = 0;
+
+            data.forEach((row: any) => {
+                const validation = validateLead(row);
+                if (validation.isValid) {
+                    validLeads.push({
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: row.Name,
+                        email: row.Email,
+                        phone: row.Phone,
+                        source: row.Source || 'Import',
+                        budget: parseInt(row.Budget) || 0,
+                        status: row.Status || 'New',
+                        assignedTo: user?.id || '',
+                        notes: row.Notes || '',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        lastContact: Date.now(),
+                        commission: 0,
+                        commissionPaid: false
+                    });
+                } else {
+                    validationErrors++;
+                }
+            });
+
+            if (validLeads.length > 0) {
+                const result = addBulkLeads(validLeads);
+                toast.success(`Imported ${result.success} leads successfully!`);
+                if (validationErrors > 0) {
+                    toast.error(`${validationErrors} rows failed validation`);
+                }
+            } else {
+                toast.error('No valid leads found in file');
+            }
+
+        } catch (error) {
+            console.error('Import failed:', error);
+            toast.error('Failed to import CSV');
+        } finally {
+            setImporting(false);
+            // Reset input
+            e.target.value = '';
+        }
+    };
+
+    const handleExport = async () => {
+        const { exportToCSV } = await import('../utils/csvHelpers');
+        const csv = exportToCSV(filteredLeads);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
+    const downloadTemplate = async () => {
+        const { generateTemplate } = await import('../utils/csvHelpers');
+        const csv = generateTemplate();
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'leads_template.csv';
+        link.click();
+    };
+
     return (
         <div className="p-6 md:p-10 min-h-screen pb-24 space-y-6 bg-gray-50 dark:bg-black">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Leads Management</h1>
                     <p className="text-gray-600 dark:text-gray-500">Manage your pipeline effectively</p>
                 </div>
-                <button onClick={openNew} className="bg-blue-500 dark:bg-white text-white dark:text-black px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-blue-600 dark:hover:bg-gray-200 transition-all shadow-lg">
-                    <Plus size={18} /> Add Lead
-                </button>
+                <div className="flex gap-2">
+                    <button onClick={downloadTemplate} className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors" title="Download Template">
+                        <FileDown size={20} />
+                    </button>
+                    <button onClick={handleExport} className="border border-gray-300 dark:border-white/20 text-gray-700 dark:text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
+                        <Download size={18} /> Export
+                    </button>
+                    <label className="bg-white dark:bg-[#1C1C1E] border border-gray-300 dark:border-white/20 text-gray-700 dark:text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-white/10 transition-all cursor-pointer">
+                        <Upload size={18} /> {importing ? 'Importing...' : 'Import CSV'}
+                        <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" disabled={importing} />
+                    </label>
+                    <button onClick={openNew} className="bg-blue-500 dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 dark:hover:bg-gray-200 transition-all shadow-lg">
+                        <Plus size={18} /> Add Lead
+                    </button>
+                </div>
             </div>
 
             {/* Controls */}
