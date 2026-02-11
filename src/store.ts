@@ -66,7 +66,9 @@ interface Store {
     addProperty: (p: Property) => void;
     updateProperty: (id: string, data: Partial<Property>) => void;
     deleteProperty: (id: string) => void;
-    addTask: (t: Task) => void;
+    addTask: (t: Task | any) => void;
+    updateTaskStatus: (id: string, status: Task['status'], note?: string) => void;
+    addTaskComment: (id: string, text: string) => void;
     toggleTask: (id: string) => void;
     deleteTask: (id: string) => void;
     markNotificationRead: (id: string) => void;
@@ -309,8 +311,78 @@ export const useStore = create<Store>()(
                 };
             }),
             deleteProperty: (id) => set((s) => ({ properties: s.properties.filter(p => p.id !== id) })),
-            addTask: (t) => set((s) => ({ tasks: [{ ...t, createdAt: Date.now(), completed: t.status === 'done' }, ...s.tasks] })),
-            toggleTask: (id) => set((s) => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'todo' : 'done', completed: !t.completed } : t) })),
+            addTask: (t) => set((s) => {
+                const newTask: Task = {
+                    ...t,
+                    id: t.id || Math.random().toString(36).substr(2, 9),
+                    createdAt: Date.now(),
+                    history: [{
+                        id: Math.random().toString(36).substr(2, 9),
+                        action: 'Created',
+                        userId: s.user?.id || 'system',
+                        userName: s.user?.name || 'System',
+                        timestamp: Date.now(),
+                        note: 'Task initialized'
+                    }],
+                    comments: []
+                };
+                return { tasks: [newTask, ...s.tasks] };
+            }),
+            updateTaskStatus: (id, status, note) => set((s) => ({
+                tasks: s.tasks.map(t => t.id === id ? {
+                    ...t,
+                    status,
+                    completed: status === 'Completed',
+                    updatedAt: Date.now(),
+                    history: [...(t.history || []), {
+                        id: Math.random().toString(36).substr(2, 9),
+                        action: `Status changed to ${status}`,
+                        userId: s.user?.id || 'system',
+                        userName: s.user?.name || 'System',
+                        timestamp: Date.now(),
+                        note
+                    }]
+                } : t)
+            })),
+            addTaskComment: (id, text) => set((s) => ({
+                tasks: s.tasks.map(t => t.id === id ? {
+                    ...t,
+                    comments: [...(t.comments || []), {
+                        id: Math.random().toString(36).substr(2, 9),
+                        userId: s.user?.id || 'system',
+                        userName: s.user?.name || 'System',
+                        text,
+                        timestamp: Date.now()
+                    }],
+                    history: [...(t.history || []), {
+                        id: Math.random().toString(36).substr(2, 9),
+                        action: 'Comment added',
+                        userId: s.user?.id || 'system',
+                        userName: s.user?.name || 'System',
+                        timestamp: Date.now()
+                    }]
+                } : t)
+            })),
+            toggleTask: (id) => set((s) => {
+                const task = s.tasks.find(t => t.id === id);
+                if (!task) return s;
+                const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
+                return {
+                    tasks: s.tasks.map(t => t.id === id ? {
+                        ...t,
+                        status: newStatus,
+                        completed: !t.completed,
+                        updatedAt: Date.now(),
+                        history: [...(t.history || []), {
+                            id: Math.random().toString(36).substr(2, 9),
+                            action: `Marked as ${newStatus}`,
+                            userId: s.user?.id || 'system',
+                            userName: s.user?.name || 'System',
+                            timestamp: Date.now()
+                        }]
+                    } : t)
+                };
+            }),
             deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) })),
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
             resetSystem: () => set({ leads: [], properties: [], tasks: [], activities: [] }),

@@ -1,0 +1,86 @@
+﻿src/components/CommandPalette.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/CommandPalette.tsx(4,52): error TS6133: 'Plus' is declared but its value is never read.
+src/components/CommandPalette.tsx(4,58): error TS6133: 'Command' is declared but its value is never read.
+src/components/CommandPalette.tsx(28,53): error TS2339: Property 'title' does not exist on type 'Property'.
+src/components/CommandPalette.tsx(96,82): error TS2339: Property 'title' does not exist on type 'Property'.
+src/components/DemoBanner.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/EmailModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/ForgotPassword.tsx(24,15): error TS6133: 'token' is declared but its value is never read.
+src/components/MeetingModal.tsx(2,38): error TS6133: 'AlignLeft' is declared but its value is never read.
+src/components/MeetingModal.tsx(4,10): error TS1484: 'Task' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/MeetingModal.tsx(23,12): error TS6133: 'notes' is declared but its value is never read.
+src/components/MeetingModal.tsx(56,13): error TS2322: Type '"todo"' is not assignable to type '"Pending" | "In Progress" | "Completed" | "Overdue"'.
+src/components/MeetingModal.tsx(66,13): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/MobileNav.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/PropertyDetailModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/PropertyDetailModal.tsx(5,10): error TS1484: 'Property' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/Sidebar.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/ThemeToggle.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Calendar.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Calendar.tsx(105,44): error TS2304: Cannot find name 'toast'.
+src/pages/Dashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Dashboard.tsx(3,109): error TS6133: 'User' is declared but its value is never read.
+src/pages/Dashboard.tsx(165,54): error TS2552: Cannot find name 'Clock'. Did you mean 'Lock'?
+src/pages/Dashboard.tsx(214,29): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ComponentType<{ className?: string | undefined; size?: number | undefined; }>'.
+  Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'FunctionComponent<{ className?: string | undefined; size?: number | undefined; }>'.
+    Types of property 'propTypes' are incompatible.
+      Type 'WeakValidationMap<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>> | undefined' is not assignable to type 'WeakValidationMap<{ className?: string | undefined; size?: number | undefined; }> | undefined'.
+        Type 'WeakValidationMap<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'WeakValidationMap<{ className?: string | undefined; size?: number | undefined; }>'.
+          Types of property 'size' are incompatible.
+            Type 'Validator<string | number | null | undefined> | undefined' is not assignable to type 'Validator<number | null | undefined> | undefined'.
+              Type 'Validator<string | number | null | undefined>' is not assignable to type 'Validator<number | null | undefined>'.
+                Type 'string | number | null | undefined' is not assignable to type 'number | null | undefined'.
+                  Type 'string' is not assignable to type 'number'.
+src/pages/Dashboard.tsx(256,37): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ComponentType<{ className?: string | undefined; size?: number | undefined; }>'.
+  Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'FunctionComponent<{ className?: string | undefined; size?: number | undefined; }>'.
+    Types of property 'propTypes' are incompatible.
+      Type 'WeakValidationMap<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>> | undefined' is not assignable to type 'WeakValidationMap<{ className?: string | undefined; size?: number | undefined; }> | undefined'.
+        Type 'WeakValidationMap<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'WeakValidationMap<{ className?: string | undefined; size?: number | undefined; }>'.
+          Types of property 'size' are incompatible.
+            Type 'Validator<string | number | null | undefined> | undefined' is not assignable to type 'Validator<number | null | undefined> | undefined'.
+              Type 'Validator<string | number | null | undefined>' is not assignable to type 'Validator<number | null | undefined>'.
+                Type 'string | number | null | undefined' is not assignable to type 'number | null | undefined'.
+                  Type 'string' is not assignable to type 'number'.
+src/pages/Dashboard.tsx(280,59): error TS6133: 'entry' is declared but its value is never read.
+src/pages/Dashboard.tsx(299,29): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ComponentType<{ className?: string | undefined; size?: number | undefined; }>'.
+  Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'FunctionComponent<{ className?: string | undefined; size?: number | undefined; }>'.
+    Types of property 'propTypes' are incompatible.
+      Type 'WeakValidationMap<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>> | undefined' is not assignable to type 'WeakValidationMap<{ className?: string | undefined; size?: number | undefined; }> | undefined'.
+        Type 'WeakValidationMap<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'WeakValidationMap<{ className?: string | undefined; size?: number | undefined; }>'.
+          Types of property 'size' are incompatible.
+            Type 'Validator<string | number | null | undefined> | undefined' is not assignable to type 'Validator<number | null | undefined> | undefined'.
+              Type 'Validator<string | number | null | undefined>' is not assignable to type 'Validator<number | null | undefined>'.
+                Type 'string | number | null | undefined' is not assignable to type 'number | null | undefined'.
+                  Type 'string' is not assignable to type 'number'.
+src/pages/Leads.tsx(3,37): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/Leads.tsx(6,27): error TS6133: 'canDeleteLead' is declared but its value is never read.
+src/pages/Leads.tsx(55,33): error TS2345: Argument of type '{ id: string; name: string; email: string; phone: string; budget: number; status: string; source: string; assignedTo: string; notes: string; }' is not assignable to parameter of type 'Partial<ExtendedLead>'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type '"New" | "Contacted" | "Qualified" | "Viewing" | "Negotiation" | "Closed" | "Lost" | undefined'.
+src/pages/Leads.tsx(58,21): error TS2345: Argument of type '{ id: string; createdAt: number; updatedAt: number; lastContact: number; commission: number; commissionPaid: false; name: string; email: string; phone: string; budget: number; status: string; source: string; assignedTo: string; notes: string; }' is not assignable to parameter of type 'ExtendedLead'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type '"New" | "Contacted" | "Qualified" | "Viewing" | "Negotiation" | "Closed" | "Lost"'.
+src/pages/Reports.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Reports.tsx(5,1): error TS6133: 'motion' is declared but its value is never read.
+src/pages/Reports.tsx(7,8): error TS2307: Cannot find module 'jspdf-autotable' or its corresponding type declarations.
+src/pages/Reports.tsx(415,110): error TS2322: Type '{ key: string; fill: string; cornerRadius: number; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'cornerRadius' does not exist on type 'IntrinsicAttributes & Props'.
+src/pages/Settings.tsx(431,37): error TS2322: Type '(isDailyBackup?: boolean) => void' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'isDailyBackup' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'boolean | undefined'.
+src/pages/Team.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Team.tsx(3,10): error TS6133: 'Shield' is declared but its value is never read.
+src/pages/Team.tsx(3,18): error TS6133: 'Trash2' is declared but its value is never read.
+src/pages/Team.tsx(15,21): error TS2367: This comparison appears to be unintentional because the types '"ceo" | "admin" | "manager" | "agent" | undefined' and '"CEO"' have no overlap.
+src/pages/Team.tsx(15,45): error TS2367: This comparison appears to be unintentional because the types '"ceo" | "admin" | "manager" | "agent" | undefined' and '"Admin"' have no overlap.
+src/pages/Team.tsx(46,90): error TS2367: This comparison appears to be unintentional because the types '"ceo" | "admin" | "manager" | "agent"' and '"CEO"' have no overlap.
+src/pages/Team.tsx(46,176): error TS2367: This comparison appears to be unintentional because the types '"ceo" | "admin" | "manager" | "agent"' and '"Admin"' have no overlap.
+src/pages/Team.tsx(59,37): error TS2367: This comparison appears to be unintentional because the types '"ceo" | "admin" | "manager" | "agent"' and '"CEO"' have no overlap.
+src/store.ts(148,36): error TS6133: 'email' is declared but its value is never read.
+src/store.ts(215,41): error TS2322: Type 'unknown' is not assignable to type '{ success: number; failed: number; }'.
+src/utils/csvHelpers.ts(1,18): error TS7016: Could not find a declaration file for module 'papaparse'. 'C:/Users/Princ/Downloads/DCAPITAL PRO CRM/node_modules/papaparse/papaparse.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/papaparse` if it exists or add a new declaration (.d.ts) file containing `declare module 'papaparse';`
+src/utils/csvHelpers.ts(2,1): error TS6133: 'Lead' is declared but its value is never read.
+src/utils/csvHelpers.ts(60,24): error TS7006: Parameter 'results' implicitly has an 'any' type.
+src/utils/csvHelpers.ts(66,21): error TS7006: Parameter 'error' implicitly has an 'any' type.

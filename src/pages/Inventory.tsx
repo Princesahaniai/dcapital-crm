@@ -191,15 +191,13 @@ export const Inventory = () => {
     };
 
     return (
-        <div className="p-6 md:p-10 min-h-screen pb-24 space-y-6">
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
-                        Luxury Inventory
+        <div className="p-4 md:p-8 pt-16 md:pt-8 bg-gray-50 dark:bg-black w-full overflow-x-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                    <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
+                        INVENTORY <span className="text-blue-500 text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 bg-blue-500/10 rounded-full">Properties</span>
                     </h1>
-                    <p className="text-gray-400 mt-1">Premium Real Estate Collection · {filteredProps.length} Properties</p>
-                </div>
+                </motion.div>
                 <div className="flex gap-2 flex-wrap">
                     {compareList.length > 0 && (
                         <button
@@ -248,6 +246,7 @@ export const Inventory = () => {
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <select
+                        title="Search Developer"
                         className="bg-black/50 text-white px-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-amber-500/50 transition-all font-medium"
                         value={filterDev}
                         onChange={e => setFilterDev(e.target.value)}
@@ -260,6 +259,7 @@ export const Inventory = () => {
                         <option>Other</option>
                     </select>
                     <select
+                        title="Search Property Type"
                         className="bg-black/50 text-white px-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-amber-500/50 transition-all font-medium"
                         value={filterType}
                         onChange={e => setFilterType(e.target.value)}
@@ -272,6 +272,7 @@ export const Inventory = () => {
                         <option>Townhouse</option>
                     </select>
                     <select
+                        title="Search Status"
                         className="bg-black/50 text-white px-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-amber-500/50 transition-all font-medium"
                         value={filterStatus}
                         onChange={e => setFilterStatus(e.target.value)}
@@ -282,6 +283,7 @@ export const Inventory = () => {
                         <option>Reserved</option>
                     </select>
                     <select
+                        title="Sort Properties"
                         className="bg-black/50 text-white px-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-amber-500/50 transition-all font-medium"
                         value={sortBy}
                         onChange={e => setSortBy(e.target.value as 'price' | 'date')}
@@ -339,6 +341,7 @@ export const Inventory = () => {
                                 </div>
                                 <button
                                     onClick={() => toggleCompare(p.id)}
+                                    title="Compare Property"
                                     className={`absolute bottom-4 right-4 p-2.5 rounded-full backdrop-blur-md transition-all shadow-lg ${compareList.includes(p.id)
                                         ? 'bg-amber-500 text-black scale-110'
                                         : 'bg-black/50 text-white hover:bg-white hover:text-black'
@@ -380,6 +383,7 @@ export const Inventory = () => {
                                     </button>
                                     <button
                                         onClick={() => handleDelete(p.id)}
+                                        title="Delete Property"
                                         className="px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
                                     >
                                         <Trash2 size={16} />
@@ -443,6 +447,7 @@ export const Inventory = () => {
                                             <div className="flex justify-end gap-2">
                                                 <button
                                                     onClick={() => toggleCompare(p.id)}
+                                                    title="Compare Property"
                                                     className={`p-2 rounded-lg transition-all ${compareList.includes(p.id) ? 'text-amber-500 bg-amber-500/10' : 'text-gray-500 hover:bg-white/5'
                                                         }`}
                                                 >
@@ -456,6 +461,7 @@ export const Inventory = () => {
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(p.id)}
+                                                    title="Delete Property"
                                                     className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-all"
                                                 >
                                                     <Trash2 size={16} />
@@ -473,47 +479,48 @@ export const Inventory = () => {
             {/* COMPARE MODAL */}
             <AnimatePresence>
                 {showCompare && (
-                    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-6">
+                    <div className="mobile-modal-container">
                         <motion.div
-                            initial={{ opacity: 0, y: 50 }}
+                            initial={{ opacity: 0, y: 100 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 50 }}
-                            className="w-full max-w-6xl bg-[#1C1C1E] apple-glass border border-amber-500/30 rounded-3xl overflow-hidden shadow-2xl"
+                            exit={{ opacity: 0, y: 100 }}
+                            className="mobile-modal-content max-w-6xl"
                         >
-                            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-amber-500/10 to-yellow-600/10">
-                                <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-yellow-600 bg-clip-text text-transparent">
+                            <div className="sticky top-0 bg-white dark:bg-[#1C1C1E] p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center z-20">
+                                <h2 className="text-xl font-bold bg-gradient-to-r from-amber-400 to-yellow-600 bg-clip-text text-transparent">
                                     Property Comparison
                                 </h2>
                                 <button
                                     onClick={() => setShowCompare(false)}
-                                    className="bg-white/10 p-2 rounded-full hover:bg-white hover:text-black transition-colors"
+                                    title="Close Comparison"
+                                    className="p-2 -mr-2 text-gray-500 hover:text-gray-900 dark:hover:text-white touch-target"
                                 >
                                     <X size={20} />
                                 </button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/10">
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/10">
                                 {compareList.map(pid => {
                                     const p = properties.find(i => i.id === pid);
                                     if (!p) return null;
                                     return (
-                                        <div key={p.id} className="p-6 space-y-4">
+                                        <div key={p.id} className="p-4 space-y-4">
                                             <img src={p.imageUrl} className="w-full h-48 rounded-2xl object-cover mb-4 shadow-lg" alt={p.name} />
-                                            <h3 className="text-xl font-bold text-white">{p.name}</h3>
+                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{p.name}</h3>
                                             <p className="text-amber-500 text-2xl font-mono font-bold">AED {(p.price || 0).toLocaleString()}</p>
-                                            <div className="space-y-2 text-sm text-gray-400">
-                                                <div className="flex justify-between border-b border-white/5 py-2">
+                                            <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
                                                     <span>Developer</span>
                                                     <span className={`${getDeveloperBadge(p.developer)} text-xs px-2 py-0.5 rounded-full`}>
                                                         {p.developer}
                                                     </span>
                                                 </div>
-                                                <div className="flex justify-between border-b border-white/5 py-2">
-                                                    <span>Location</span> <span className="text-white">{p.location}</span>
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
+                                                    <span>Location</span> <span className="text-gray-900 dark:text-white">{p.location}</span>
                                                 </div>
-                                                <div className="flex justify-between border-b border-white/5 py-2">
-                                                    <span>Type</span> <span className="text-white">{p.type}</span>
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
+                                                    <span>Type</span> <span className="text-gray-900 dark:text-white">{p.type}</span>
                                                 </div>
-                                                <div className="flex justify-between border-b border-white/5 py-2">
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
                                                     <span>Status</span>
                                                     <span className={
                                                         p.status === 'Available' ? 'text-green-500' :
@@ -523,14 +530,14 @@ export const Inventory = () => {
                                                         {p.status}
                                                     </span>
                                                 </div>
-                                                <div className="flex justify-between border-b border-white/5 py-2">
-                                                    <span>Bedrooms</span> <span className="text-white">{p.bedrooms}</span>
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
+                                                    <span>Bedrooms</span> <span className="text-gray-900 dark:text-white">{p.bedrooms}</span>
                                                 </div>
-                                                <div className="flex justify-between border-b border-white/5 py-2">
-                                                    <span>Bathrooms</span> <span className="text-white">{p.bathrooms}</span>
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
+                                                    <span>Bathrooms</span> <span className="text-gray-900 dark:text-white">{p.bathrooms}</span>
                                                 </div>
-                                                <div className="flex justify-between border-b border-white/5 py-2">
-                                                    <span>Area</span> <span className="text-white">{(p.sqft || 0).toLocaleString()} sqft</span>
+                                                <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
+                                                    <span>Area</span> <span className="text-gray-900 dark:text-white">{(p.sqft || 0).toLocaleString()} sqft</span>
                                                 </div>
                                                 <div className="flex justify-between py-2">
                                                     <span>Commission</span> <span className="text-amber-500 font-bold">{p.commissionRate}%</span>
@@ -548,140 +555,104 @@ export const Inventory = () => {
             {/* ADD/EDIT MODAL */}
             <AnimatePresence>
                 {showModal && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="mobile-modal-container">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-[#1C1C1E] apple-glass border border-amber-500/20 rounded-3xl w-full max-w-3xl my-8"
+                            initial={{ opacity: 0, y: 100 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 100 }}
+                            className="mobile-modal-content"
                         >
-                            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-amber-500/10 to-yellow-600/10">
-                                <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-yellow-600 bg-clip-text text-transparent">
-                                    {isEditing ? 'Edit Property' : 'Add New Property'}
-                                </h2>
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="text-gray-500 hover:text-white transition-colors"
-                                >
-                                    <X size={24} />
-                                </button>
+                            <div className="sticky top-0 bg-white dark:bg-[#1C1C1E] p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center z-20">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{isEditing ? 'Edit Property' : 'New Property'}</h2>
+                                <button onClick={() => setShowModal(false)} className="p-2 -mr-2 text-gray-500 hover:text-gray-900 dark:hover:text-white touch-target">Close</button>
                             </div>
-                            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                                {/* Property Name */}
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Property Name *</label>
-                                    <input
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                        value={form.name}
-                                        onChange={e => setForm({ ...form, name: e.target.value })}
-                                        placeholder="e.g. Damac Cavalli Tower - Luxury Suite"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Price & Commission */}
-                                <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Price (AED) *</label>
+                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Property Name</label>
                                         <input
-                                            type="number"
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                            value={form.price}
-                                            onChange={e => setForm({ ...form, price: Number(e.target.value) })}
                                             required
+                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                            value={form.name}
+                                            onChange={e => setForm({ ...form, name: e.target.value })}
+                                            placeholder="e.g. Penthouse 88"
                                         />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Commission Rate (%)</label>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                            value={form.commissionRate}
-                                            onChange={e => setForm({ ...form, commissionRate: Number(e.target.value) })}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Developer & Type */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Developer</label>
-                                        <select
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                            value={form.developer}
-                                            onChange={e => setForm({ ...form, developer: e.target.value })}
-                                        >
-                                            <option>Damac</option>
-                                            <option>Emaar</option>
-                                            <option>Binghatti</option>
-                                            <option>Sobha</option>
-                                            <option>Other</option>
-                                        </select>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Type</label>
                                         <select
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
+                                            title="Property Type"
+                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all cursor-pointer font-sans"
                                             value={form.type}
                                             onChange={e => setForm({ ...form, type: e.target.value as any })}
                                         >
-                                            <option>Studio</option>
                                             <option>Apartment</option>
                                             <option>Villa</option>
                                             <option>Penthouse</option>
                                             <option>Townhouse</option>
+                                            <option>Plot</option>
                                         </select>
                                     </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Price (AED)</label>
+                                        <input
+                                            required
+                                            title="Price in AED"
+                                            type="number"
+                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                            value={form.price}
+                                            onChange={e => setForm({ ...form, price: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 md:grid-cols-3">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-amber-500 uppercase">Beds</label>
+                                            <input
+                                                type="number"
+                                                title="Number of Bedrooms"
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                                value={form.bedrooms}
+                                                onChange={e => setForm({ ...form, bedrooms: Number(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-amber-500 uppercase">Baths</label>
+                                            <input
+                                                type="number"
+                                                title="Number of Bathrooms"
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                                value={form.bathrooms}
+                                                onChange={e => setForm({ ...form, bathrooms: Number(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-amber-500 uppercase">Sqft</label>
+                                            <input
+                                                type="number"
+                                                title="Area in Sqft"
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                                value={form.sqft}
+                                                onChange={e => setForm({ ...form, sqft: Number(e.target.value) })}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Bedrooms, Bathrooms, Sqft */}
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Bedrooms</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                            value={form.bedrooms}
-                                            onChange={e => setForm({ ...form, bedrooms: Number(e.target.value) })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Bathrooms</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                            value={form.bathrooms}
-                                            onChange={e => setForm({ ...form, bathrooms: Number(e.target.value) })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Area (Sqft)</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
-                                            value={form.sqft}
-                                            onChange={e => setForm({ ...form, sqft: Number(e.target.value) })}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Location */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Location</label>
                                     <input
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
                                         value={form.location}
                                         onChange={e => setForm({ ...form, location: e.target.value })}
                                         placeholder="e.g. Dubai Marina, Business Bay"
                                     />
                                 </div>
 
-                                {/* Status */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Status</label>
                                     <select
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
+                                        title="Property Status"
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all cursor-pointer font-sans"
                                         value={form.status}
                                         onChange={e => setForm({ ...form, status: e.target.value as any })}
                                     >
@@ -691,11 +662,10 @@ export const Inventory = () => {
                                     </select>
                                 </div>
 
-                                {/* Image URL with Preview */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Image URL</label>
                                     <input
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all"
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all font-sans"
                                         value={form.imageUrl}
                                         onChange={e => setForm({ ...form, imageUrl: e.target.value })}
                                         placeholder="https://images.unsplash.com/..."
@@ -712,29 +682,27 @@ export const Inventory = () => {
                                     )}
                                 </div>
 
-                                {/* Description */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Description</label>
                                     <textarea
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all min-h-[100px]"
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-amber-500 transition-all min-h-[100px] font-sans"
                                         value={form.description}
                                         onChange={e => setForm({ ...form, description: e.target.value })}
-                                        placeholder="Describe the property features and highlights..."
+                                        placeholder="Describe the property features..."
                                     />
                                 </div>
 
-                                {/* Action Buttons */}
-                                <div className="flex gap-4 pt-4">
+                                <div className="flex flex-col md:flex-row gap-4 pt-4 sticky bottom-0 bg-white dark:bg-[#1C1C1E] pb-2">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}
-                                        className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-white font-bold transition-all border border-white/10"
+                                        className="flex-1 py-4 bg-white/5 hover:bg-white/10 rounded-xl text-white font-bold transition-all border border-white/10 touch-target"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 text-black rounded-xl font-bold hover:from-amber-400 hover:to-yellow-500 transition-all shadow-lg"
+                                        className="flex-1 py-4 bg-gradient-to-r from-amber-500 to-yellow-600 text-black rounded-xl font-bold hover:from-amber-400 hover:to-yellow-500 transition-all shadow-lg touch-target"
                                     >
                                         {isEditing ? 'Update Property' : 'Add Property'}
                                     </button>

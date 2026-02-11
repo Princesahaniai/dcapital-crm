@@ -42,6 +42,8 @@ export interface Property {
     sqft: number;
     createdAt: number;
     updatedAt?: number;
+    gallery?: string[];
+    features?: string[];
 }
 
 // ✅ CLASS DEFINITION (Browser cannot ignore this)
@@ -55,16 +57,43 @@ export class Activity {
     metadata?: any;
 }
 
+export interface TaskHistoryItem {
+    id: string;
+    action: string;
+    userId: string;
+    userName: string;
+    timestamp: number;
+    note?: string;
+}
+
+export interface TaskComment {
+    id: string;
+    userId: string;
+    userName: string;
+    text: string;
+    timestamp: number;
+}
+
 export interface Task {
     id: string;
     title: string;
-    status: 'todo' | 'in-progress' | 'done';
+    description?: string;
+    status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
     priority: 'High' | 'Medium' | 'Low';
-    category: 'Call' | 'Meeting' | 'Email' | 'Paperwork';
-    dueDate?: number;
-    assignedTo?: string;
+    category: 'Call' | 'Meeting' | 'Follow-up' | 'Site Visit' | 'Paperwork' | 'Email';
+    dueDate: number;
+    assignedTo: string;
+    assignedBy: string;
     createdAt: number;
+    updatedAt?: number;
     completed: boolean;
+    history: TaskHistoryItem[];
+    comments: TaskComment[];
+    // Meeting specific fields
+    leadId?: string; // Link to a lead
+    location?: string;
+    meetingType?: 'in-person' | 'video' | 'call';
+    duration?: number; // in minutes
 }
 
 export interface Notification {

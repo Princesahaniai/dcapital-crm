@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,9 +33,10 @@ export const Sidebar = () => {
             {/* Mobile Hamburger Button */}
             <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="md:hidden fixed top-4 left-4 z-[100] p-3 bg-white dark:bg-[#1C1C1E] rounded-xl shadow-lg border border-gray-200 dark:border-white/10"
+                className="md:hidden fixed top-4 left-4 z-[100] p-4 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-xl border border-gray-200 dark:border-white/10 active:scale-95 touch-target"
+                aria-label="Toggle Navigation Menu"
             >
-                {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+                {mobileOpen ? <X size={24} className="text-amber-500" /> : <Menu size={24} className="text-gray-900 dark:text-white" />}
             </button>
 
             {/* Mobile Overlay */}
@@ -79,6 +80,7 @@ export const Sidebar = () => {
                             <NavItem to="/leads" icon={Users} label="Leads Engine" />
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />
                             <NavItem to="/tasks" icon={CheckSquare} label="Mission Control" />
+                            <NavItem to="/calendar" icon={Calendar} label="Calendar" />
                         </div>
                     </div>
 

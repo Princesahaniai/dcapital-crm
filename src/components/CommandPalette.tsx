@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { Search, User, Building2, LayoutDashboard, Plus, Command } from 'lucide-react';
+import { Search, Building2, LayoutDashboard, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const CommandPalette = () => {
@@ -25,7 +25,7 @@ export const CommandPalette = () => {
     }, []);
 
     const filteredLeads = leads.filter(l => (l.name || '').toLowerCase().includes((query || '').toLowerCase())).slice(0, 3);
-    const filteredProps = properties.filter(p => (p.title || '').toLowerCase().includes((query || '').toLowerCase())).slice(0, 3);
+    const filteredProps = properties.filter(p => (p.name || '').toLowerCase().includes((query || '').toLowerCase())).slice(0, 3);
 
     const actions = [
         { label: 'Go to Dashboard', icon: LayoutDashboard, action: () => navigate('/') },
@@ -53,6 +53,7 @@ export const CommandPalette = () => {
                             className="bg-transparent w-full text-lg text-white placeholder-gray-500 outline-none"
                             value={query}
                             onChange={e => setQuery(e.target.value)}
+                            title="Command search"
                         />
                         <div className="flex gap-1">
                             <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">ESC</span>
@@ -93,7 +94,7 @@ export const CommandPalette = () => {
                                 {filteredProps.map(prop => (
                                     <button key={prop.id} onClick={() => { navigate('/inventory'); setOpen(false); }} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-green-500/20 hover:text-green-500 text-gray-300 transition-colors">
                                         <Building2 size={18} />
-                                        <span className="flex-1 text-left">{prop.title}</span>
+                                        <span className="flex-1 text-left">{prop.name}</span>
                                         <span className="text-xs text-gray-500">AED {prop.price.toLocaleString()}</span>
                                     </button>
                                 ))}

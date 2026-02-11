@@ -23,25 +23,36 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  .safe-h-screen {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Improved container for mobile modals to ensure vertical centering and scrollable content */
+  .mobile-modal-container {
+    @apply fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm overflow-hidden;
+  }
+
+  .mobile-modal-content {
+    @apply w-full max-h-[90dvh] md:max-h-none md:max-w-2xl bg-white dark:bg-[#1C1C1E] rounded-t-3xl md:rounded-3xl overflow-y-auto shadow-2xl;
+  }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+/* Form refinement for mobile */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+  /* Prevent iOS zoom on focus */
 }
 
 body {

@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import type { Lead } from '../types';
+import type { ParseResult } from 'papaparse';
 
 export interface CSVLead {
     Name: string;
@@ -54,16 +54,16 @@ export const validateLead = (lead: any): { isValid: boolean; error?: string } =>
 
 export const parseCSV = (file: File): Promise<{ data: any[]; errors: any[] }> => {
     return new Promise((resolve, reject) => {
-        Papa.parse<CSVLead>(file, {
+        Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            complete: (results) => {
+            complete: (results: ParseResult<any>) => {
                 resolve({
                     data: results.data,
                     errors: results.errors
                 });
             },
-            error: (error) => {
+            error: (error: Error) => {
                 reject(error);
             }
         });
@@ -78,7 +78,7 @@ export const exportToCSV = (leads: any[]) => {
         Source: lead.source,
         Budget: lead.budget,
         Status: lead.status,
-        AssignedTo: lead.assignedName || 'Unassigned',
+        AssignedTo: lead.assignedTo || 'Unassigned',
         DateCheck: new Date(lead.createdAt).toLocaleDateString()
     }));
     return Papa.unparse(data);

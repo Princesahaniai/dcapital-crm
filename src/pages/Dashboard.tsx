@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useStore } from '../store';
-import { Wallet, Users, Building2, Trophy, PieChart as PieChartIcon, ArrowUpRight, Inbox } from 'lucide-react';
+import { Wallet, Users, Building2, Trophy, PieChart as PieChartIcon, ArrowUpRight, Inbox, Calendar, MapPin, Clock, CheckCircle2, ListTodo } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Header } from '../components/Header';
@@ -87,7 +87,7 @@ export const Dashboard = () => {
     const recentLeads = [...accessibleLeads].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
 
     return (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 p-6 md:p-10 h-screen w-full overflow-y-auto">
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 p-6 md:p-10 pt-16 md:pt-8 h-screen w-full overflow-y-auto">
             {/* HEADER */}
             <Header title="Executive Dashboard" subtitle="Real-time organization intelligence" />
 
@@ -132,7 +132,136 @@ export const Dashboard = () => {
             {/* MAIN CONTENT GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* RECENT LEADS (New Widget) */}
+                {/* TODAY'S AGENDA */}
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] apple-glass p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-3xl -mr-16 -mt-16 group-hover:bg-amber-500/10 transition-colors duration-500" />
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Calendar size={20} className="text-amber-500" /> Today's Agenda
+                        </h3>
+                        <button onClick={() => navigate('/calendar')} className="text-[10px] font-bold text-amber-500 hover:text-amber-400 uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full transition-all">
+                            Full Calendar
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {useStore.getState().tasks
+                            .filter(t => {
+                                if (t.category !== 'Meeting' || t.completed || !t.dueDate) return false;
+                                const d = new Date(t.dueDate);
+                                const today = new Date();
+                                return d.getDate() === today.getDate() &&
+                                    d.getMonth() === today.getMonth() &&
+                                    d.getFullYear() === today.getFullYear();
+                            })
+                            .sort((a, b) => (a.dueDate || 0) - (b.dueDate || 0))
+                            .map(meeting => (
+                                <div key={meeting.id} className="p-4 rounded-2xl bg-gray-50 dark:bg-black/40 border border-white/5 hover:border-amber-500/30 transition-all group/item">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex flex-col">
+                                            <h4 className="font-bold text-gray-900 dark:text-white group-hover/item:text-amber-500 transition-colors">{meeting.title}</h4>
+                                            <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase tracking-wider mt-1">
+                                                <Clock size={10} className="text-amber-500" />
+                                                {new Date(meeting.dueDate || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {meeting.duration && <span className="opacity-50">({meeting.duration}m)</span>}
+                                            </div>
+                                        </div>
+                                        <div className={`p-2 rounded-xl ${meeting.meetingType === 'video' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                            {meeting.meetingType === 'video' ? <ArrowUpRight size={16} /> : <MapPin size={16} />}
+                                        </div>
+                                    </div>
+
+                                    {meeting.leadId && (
+                                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center text-[10px] font-bold text-amber-500">
+                                                    {leads.find(l => l.id === meeting.leadId)?.name.charAt(0)}
+                                                </div>
+                                                <span className="text-xs text-gray-400">{leads.find(l => l.id === meeting.leadId)?.name}</span>
+                                            </div>
+                                            {meeting.meetingType === 'video' && (
+                                                <button className="text-[10px] font-bold text-blue-400 hover:underline uppercase tracking-widest">
+                                                    Join Call
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        }
+                        {useStore.getState().tasks.filter(t => {
+                            if (t.category !== 'Meeting' || t.completed || !t.dueDate) return false;
+                            const d = new Date(t.dueDate);
+                            const today = new Date();
+                            return d.getDate() === today.getDate() &&
+                                d.getMonth() === today.getMonth() &&
+                                d.getFullYear() === today.getFullYear();
+                        }).length === 0 && (
+                                <div className="py-10 text-center flex flex-col items-center">
+                                    <div className="p-4 rounded-full bg-amber-500/5 text-amber-500/20 mb-4">
+                                        <Inbox size={40} />
+                                    </div>
+                                    <p className="text-gray-500 text-sm italic">Clear schedule for today.</p>
+                                    <button onClick={() => navigate('/calendar')} className="mt-4 text-[10px] font-bold text-amber-500 uppercase tracking-widest hover:underline">
+                                        Schedule Something
+                                    </button>
+                                </div>
+                            )}
+                    </div>
+                </motion.div>
+
+                {/* MY TASKS QUICK VIEW */}
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] apple-glass p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-colors duration-500" />
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <ListTodo size={20} className="text-blue-500" /> My Tasks
+                        </h3>
+                        <button onClick={() => navigate('/tasks')} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest bg-blue-500/10 px-3 py-1 rounded-full transition-all">
+                            View All
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        {useStore.getState().tasks
+                            .filter(t => t.assignedTo === user?.id && !t.completed && t.category !== 'Meeting')
+                            .sort((a, b) => (a.dueDate || 0) - (b.dueDate || 0))
+                            .slice(0, 4)
+                            .map(task => (
+                                <div
+                                    key={task.id}
+                                    onClick={() => navigate('/tasks')}
+                                    className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer group/task"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-1.5 h-8 rounded-full ${task.priority === 'High' ? 'bg-red-500' :
+                                            task.priority === 'Medium' ? 'bg-amber-500' : 'bg-blue-500'
+                                            }`} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-sm text-gray-900 dark:text-white truncate group-hover/task:text-blue-500 transition-colors">
+                                                {task.title}
+                                            </p>
+                                            <p className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
+                                                <Clock size={10} /> {new Date(task.dueDate || 0).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        <CheckCircle2 size={16} className="text-gray-300 dark:text-gray-700 group-hover/task:text-blue-500 transition-colors" />
+                                    </div>
+                                </div>
+                            ))
+                        }
+                        {useStore.getState().tasks.filter(t => t.assignedTo === user?.id && !t.completed && t.category !== 'Meeting').length === 0 && (
+                            <div className="py-8 text-center flex flex-col items-center">
+                                <div className="p-3 rounded-full bg-blue-500/5 text-blue-500/20 mb-3">
+                                    <CheckCircle2 size={32} />
+                                </div>
+                                <p className="text-gray-500 text-xs italic">All caught up!</p>
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* RECENT LEADS */}
                 <motion.div variants={item} className="lg:col-span-2 bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-none">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -141,40 +270,36 @@ export const Dashboard = () => {
                     </div>
                     {recentLeads.length > 0 ? (
                         <div className="space-y-4">
-                            {recentLeads.length > 0 ? (
-                                recentLeads.map((lead) => (
-                                    <div key={lead.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border border-transparent hover:border-blue-500/30">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center font-bold text-gray-600 dark:text-white">
-                                            {lead.name.charAt(0)}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="font-bold text-gray-900 dark:text-white">{lead.name}</p>
-                                            <div className="flex gap-2 text-xs text-gray-500">
-                                                <span>{lead.source}</span> • <span>AED {lead.budget?.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${lead.status === 'New' ? 'bg-blue-500/20 text-blue-400' :
-                                                lead.status === 'Closed' ? 'bg-amber-500/20 text-amber-400' :
-                                                    'bg-gray-700 text-gray-300'
-                                                }`}>
-                                                {lead.status}
-                                            </span>
+                            {recentLeads.map((lead) => (
+                                <div key={lead.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border border-transparent hover:border-blue-500/30">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center font-bold text-gray-600 dark:text-white">
+                                        {lead.name.charAt(0)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-bold text-gray-900 dark:text-white">{lead.name}</p>
+                                        <div className="flex gap-2 text-xs text-gray-500">
+                                            <span>{lead.source}</span> • <span>AED {lead.budget?.toLocaleString()}</span>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <EmptyState
-                                    icon={Inbox}
-                                    title="No Leads Yet"
-                                    description="Start building your pipeline by adding your first lead"
-                                    actionLabel="Add Lead"
-                                    onAction={() => navigate('/leads')}
-                                />
-                            )}
+                                    <div>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${lead.status === 'New' ? 'bg-blue-500/20 text-blue-400' :
+                                            lead.status === 'Closed' ? 'bg-amber-500/20 text-amber-400' :
+                                                'bg-gray-700 text-gray-300'
+                                            }`}>
+                                            {lead.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
-                        <p className="text-gray-500 text-sm text-center py-20">No leads yet. Add your first lead to start the engine.</p>
+                        <EmptyState
+                            icon={Users}
+                            title="No Leads Yet"
+                            description="Start building your pipeline by adding your first lead"
+                            actionLabel="Add Lead"
+                            onAction={() => navigate('/leads')}
+                        />
                     )}
                 </motion.div>
 
@@ -198,17 +323,17 @@ export const Dashboard = () => {
                                 </ResponsiveContainer>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-4">
-                                {pieData.map((entry, index) => (
+                                {pieData.map((data, index) => (
                                     <div key={index} className="flex items-center gap-2">
                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                        <span className="text-xs text-gray-400">{entry.name} ({entry.value})</span>
+                                        <span className="text-xs text-gray-400">{data.name} ({data.value})</span>
                                     </div>
                                 ))}
                             </div>
                         </>
                     ) : (
                         <EmptyState
-                            icon={PieChartIcon}
+                            icon={PieChartIcon as any}
                             title="No Data Yet"
                             description="Lead sources will appear here once you start adding leads"
                             actionLabel="Add First Lead"

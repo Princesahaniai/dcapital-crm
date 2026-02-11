@@ -12,7 +12,7 @@ export const Team = () => {
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState({ name: '', email: '', role: 'Agent', password: '', designation: '', phone: '' });
 
-    const isAdmin = user?.role === 'CEO' || user?.role === 'Admin';
+    const isAdmin = user?.role === 'ceo' || user?.role === 'admin';
 
     const handleAdd = () => {
         if (!form.name || !form.email || !form.password) return toast.error('All fields required');
@@ -43,8 +43,8 @@ export const Team = () => {
                             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-700 to-black flex items-center justify-center font-bold text-xl shadow-lg">
                                 {member.name.charAt(0)}
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${member.role === 'CEO' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : member.role === 'Admin' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-gray-700 text-gray-300'}`}>
-                                {member.role}
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${member.role === 'ceo' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : member.role === 'admin' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-gray-700 text-gray-300'}`}>
+                                {member.role.toUpperCase()}
                             </span>
                         </div>
                         <h3 className="text-xl font-semibold text-white">{member.name}</h3>
@@ -56,7 +56,7 @@ export const Team = () => {
                             <p className="flex items-center gap-2"><Phone size={12} /> {member.phone || 'N/A'}</p>
                             <p className="flex items-center gap-2 text-[10px]"><Key size={10} /> Joined {member.joinedDate}</p>
                         </div>
-                        {isAdmin && member.role !== 'CEO' && (
+                        {isAdmin && member.role !== 'ceo' && (
                             <button
                                 onClick={() => {
                                     if (confirm(`Revoke access for ${member.name}?`)) {
@@ -96,9 +96,10 @@ export const Team = () => {
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500 uppercase block mb-1">Role</label>
-                                <select className="w-full apple-input p-3 rounded-lg" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-                                    <option>Agent</option>
-                                    <option>Admin</option>
+                                <select className="w-full apple-input p-3 rounded-lg" value={form.role} onChange={e => setForm({ ...form, role: e.target.value.toLowerCase() })}>
+                                    <option value="agent">Agent</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="manager">Manager</option>
                                 </select>
                             </div>
                             <div>
