@@ -10,6 +10,7 @@ import { Tasks } from './pages/Tasks';
 import { Settings } from './pages/Settings';
 import { Team } from './pages/Team';
 import { Login } from './pages/Login';
+import { Reports } from './pages/Reports';
 import { useStore } from './store';
 import { Toaster } from 'react-hot-toast';
 
@@ -41,6 +42,8 @@ export default function App() {
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
+                <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

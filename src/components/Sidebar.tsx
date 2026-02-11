@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3 } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -87,6 +87,9 @@ export const Sidebar = () => {
                         <div className="space-y-1" onClick={() => setMobileOpen(false)}>
                             {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && (
                                 <NavItem to="/team" icon={Shield} label="Access Control" />
+                            )}
+                            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                <NavItem to="/reports" icon={BarChart3} label="Reports & Analytics" />
                             )}
                             {(user?.role === 'ceo' || user?.role === 'admin') && (
                                 <NavItem to="/settings" icon={Settings} label="System Settings" />
