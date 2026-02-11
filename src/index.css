@@ -48,12 +48,30 @@
 }
 
 /* Form refinement for mobile */
+/* Forced visibility for form elements */
 input,
 select,
 textarea {
-  @apply text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 !important;
+  color: #000000 !important;
+  /* Force black text in light mode */
+  background-color: #ffffff !important;
+  /* Force white background in light mode */
   font-size: 16px !important;
-  /* Prevent iOS zoom on focus */
+  @apply placeholder:text-gray-400 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color: #ffffff !important;
+  /* Force white text in dark mode */
+  background-color: #1f2937 !important;
+  /* Force dark background in dark mode */
+  @apply placeholder:text-gray-500 !important;
+}
+
+::placeholder {
+  color: #9ca3af !important;
 }
 
 body {

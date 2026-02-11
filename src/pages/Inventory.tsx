@@ -226,7 +226,7 @@ export const Inventory = () => {
                         <input
                             type="text"
                             placeholder="Search by property name or location..."
-                            className="w-full bg-black/50 text-white pl-12 pr-4 py-3 rounded-xl border border-white/10 focus:border-amber-500/50 outline-none transition-all"
+                            className="w-full pl-12 pr-4 py-3 rounded-xl border border-white/10 focus:border-amber-500/50 outline-none transition-all"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
@@ -286,7 +286,7 @@ export const Inventory = () => {
                     </select>
                     <select
                         title="Sort Properties"
-                        className="bg-black/50 text-white px-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-amber-500/50 transition-all font-medium"
+                        className="text-white px-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-amber-500/50 transition-all font-medium"
                         value={sortBy}
                         onChange={e => setSortBy(e.target.value as 'price' | 'date')}
                     >
@@ -546,7 +546,7 @@ export const Inventory = () => {
                             <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Property Name</label>
                             <input
                                 required
-                                className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                className="w-full border border-gray-200 dark:border-white/10 rounded-xl p-4 outline-none focus:border-amber-500 transition-all font-sans"
                                 value={form.name}
                                 onChange={e => setForm({ ...form, name: e.target.value })}
                                 placeholder="e.g. Penthouse 88"

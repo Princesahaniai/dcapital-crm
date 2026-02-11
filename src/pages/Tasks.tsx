@@ -129,7 +129,7 @@ export const Tasks = () => {
                                 <input
                                     placeholder="Mission Title (e.g., Follow up with Mr. Khalil)"
                                     title="Task Title"
-                                    className="w-full bg-gray-50 dark:bg-transparent border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl p-4 outline-none focus:border-blue-500"
                                     value={text}
                                     onChange={e => setText(e.target.value)}
                                 />
@@ -146,7 +146,7 @@ export const Tasks = () => {
                                     <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Assignee</p>
                                     <select
                                         title="Assignee"
-                                        className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm"
+                                        className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm"
                                         value={assignedTo}
                                         onChange={e => setAssignedTo(e.target.value)}
                                     >
@@ -158,13 +158,13 @@ export const Tasks = () => {
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Category</p>
-                                    <select title="Category" className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={category} onChange={e => setCategory(e.target.value as any)}>
+                                    <select title="Category" className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={category} onChange={e => setCategory(e.target.value as any)}>
                                         <option>Call</option><option>Meeting</option><option>Email</option><option>Paperwork</option><option>Follow-up</option><option>Site Visit</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Due Date</p>
-                                    <input type="date" title="Due Date" className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                                    <input type="date" title="Due Date" className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Time</p>
@@ -177,7 +177,7 @@ export const Tasks = () => {
                                             <button
                                                 key={p}
                                                 onClick={() => setPriority(p)}
-                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all border ${priority === p ? 'bg-blue-500 border-blue-500 text-white' : 'bg-gray-50 dark:bg-transparent border-gray-200 dark:border-white/10 text-gray-500'}`}
+                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all border ${priority === p ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-200 dark:border-white/10 text-gray-500'}`}
                                             >
                                                 {p}
                                             </button>

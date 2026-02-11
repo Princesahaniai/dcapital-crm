@@ -321,7 +321,7 @@ export const Settings = () => {
                     <div className="space-y-2">
                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Name</label>
                         <input
-                            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 p-3 rounded-lg focus:border-blue-500 dark:focus:border-blue-500 outline-none transition-colors"
+                            className="w-full border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg focus:border-blue-500 dark:focus:border-blue-500 outline-none transition-colors"
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder="Your name"
@@ -330,7 +330,7 @@ export const Settings = () => {
                     <div className="space-y-2">
                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Email</label>
                         <input
-                            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 p-3 rounded-lg focus:border-blue-500 dark:focus:border-blue-500 outline-none transition-colors"
+                            className="w-full border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg focus:border-blue-500 dark:focus:border-blue-500 outline-none transition-colors"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             placeholder="your@email.com"
@@ -357,7 +357,7 @@ export const Settings = () => {
                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Current Password</label>
                         <input
                             type="password"
-                            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:border-amber-500 dark:focus:border-amber-500 outline-none transition-colors"
+                            className="w-full border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg focus:border-amber-500 dark:focus:border-amber-500 outline-none transition-colors"
                             value={currentPassword}
                             onChange={e => setCurrentPassword(e.target.value)}
                             placeholder="Enter current password"
@@ -367,7 +367,7 @@ export const Settings = () => {
                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">New Password</label>
                         <input
                             type="password"
-                            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:border-amber-500 dark:focus:border-amber-500 outline-none transition-colors"
+                            className="w-full border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg focus:border-amber-500 dark:focus:border-amber-500 outline-none transition-colors"
                             value={newPassword}
                             onChange={e => setNewPassword(e.target.value)}
                             placeholder="Enter new password (min 6 chars)"
@@ -378,7 +378,7 @@ export const Settings = () => {
                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Confirm New Password</label>
                         <input
                             type="password"
-                            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:border-amber-500 dark:focus:border-amber-500 outline-none transition-colors"
+                            className="w-full border-2 border-gray-300 dark:border-gray-600 p-3 rounded-lg focus:border-amber-500 dark:focus:border-amber-500 outline-none transition-colors"
                             value={confirmPassword}
                             onChange={e => setConfirmPassword(e.target.value)}
                             placeholder="Confirm new password"
@@ -428,7 +428,7 @@ export const Settings = () => {
                             <p className="text-sm text-gray-500 mt-1">Export your data safely before making changes.</p>
                         </div>
                         <div className="flex gap-4">
-                            <button onClick={handleExport} className="bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-white font-medium px-6 py-3 rounded-full flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-white/20 transition-all shadow-sm">
+                            <button onClick={() => handleExport()} className="bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-white font-medium px-6 py-3 rounded-full flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-white/20 transition-all shadow-sm">
                                 <Download size={18} /> Export
                             </button>
                             <button onClick={() => fileInput.current?.click()} className="bg-blue-500 text-white font-medium px-6 py-3 rounded-full flex items-center gap-2 hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20">
