@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
-import { Search, Plus, Trash2, Edit, Phone, Mail, User } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, Phone, Mail, User, Download, Upload, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
 
 export const Leads = () => {
-    const { leads, team, addLead, updateLead, deleteLead, user } = useStore();
+    const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
@@ -25,6 +25,7 @@ export const Leads = () => {
     const [form, setForm] = useState(initialForm);
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [importing, setImporting] = useState(false);
 
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Closed'];
 
