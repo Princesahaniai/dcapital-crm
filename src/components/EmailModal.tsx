@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Send, Mail } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Modal } from './Modal';
+import { Send, Mail as MailIcon } from 'lucide-react';
 import { useStore } from '../store';
 import toast from 'react-hot-toast';
 
@@ -40,55 +41,6 @@ Let me know if you have any questions or if you'd like to schedule a viewing.
 
 Best regards,
 [Agent Name]`
-    },
-    {
-        id: 'proposal',
-        name: 'Property Proposal',
-        subject: 'Exclusive Proposal for [Property]',
-        body: `Hi [Name],
-
-Please find attached the details for the [Property] we discussed.
-
-This project offers exceptional ROI and capital appreciation potential. Units are selling fast, so please let me know if you'd like to proceed with a reservation.
-
-Looking forward to hearing from you.
-
-Best regards,
-[Agent Name]`
-    },
-    {
-        id: 'meeting',
-        name: 'Meeting Confirmation',
-        subject: 'Meeting Confirmation - D-Capital',
-        body: `Hi [Name],
-
-Confirming our meeting to discuss luxury investment opportunities.
-
-Date: [Date]
-Time: [Time]
-Location: D-Capital HQ / Zoom
-
-Looking forward to it.
-
-Best regards,
-[Agent Name]`
-    },
-    {
-        id: 'recommendation',
-        name: 'Property Recommendation',
-        subject: 'Exclusive Recommendation: [Property]',
-        body: `Hi [Name],
-
-Based on our discussion, I believe this property matches your criteria perfectly:
-
-[Property]
-Type: [Type]
-Price: [Price]
-
-Let me know if you would like to see the floor plan or schedule a viewing.
-
-Best regards,
-[Agent Name]`
     }
 ];
 
@@ -98,7 +50,6 @@ export const EmailModal = ({ isOpen, onClose, lead }: EmailModalProps) => {
     const [body, setBody] = useState('');
     const [selectedTemplate, setSelectedTemplate] = useState('');
 
-    // Reset when modal opens with new lead
     useEffect(() => {
         if (isOpen) {
             setSubject('');
@@ -116,7 +67,7 @@ export const EmailModal = ({ isOpen, onClose, lead }: EmailModalProps) => {
                 .replace('[Name]', lead.name)
                 .replace('[Agent Name]', user?.name || 'D-Capital Agent')
                 .replace('[Property]', 'Luxury Property')
-                .replace('[Date]', new Date(Date.now() + 86400000).toLocaleDateString()) // Default to tomorrow
+                .replace('[Date]', new Date(Date.now() + 86400000).toLocaleDateString())
                 .replace('[Time]', '10:00 AM')
             );
         }
@@ -128,11 +79,9 @@ export const EmailModal = ({ isOpen, onClose, lead }: EmailModalProps) => {
             return;
         }
 
-        // Simulate sending via mailto for now
         const mailtoLink = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         window.open(mailtoLink, '_blank');
 
-        // Log activity
         addActivity({
             id: crypto.randomUUID(),
             type: 'email',
@@ -147,79 +96,65 @@ export const EmailModal = ({ isOpen, onClose, lead }: EmailModalProps) => {
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl w-full max-w-2xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
-                {/* Header */}
-                <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center bg-gray-50 dark:bg-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
-                            <Mail size={20} />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Compose Email</h2>
-                            <p className="text-sm text-gray-500">To: {lead.name} ({lead.email})</p>
-                        </div>
+        <Modal isOpen={isOpen} onClose={onClose} title="Compose Protocol Message" maxWidth="max-w-2xl">
+            <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3 mb-4 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                    <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
+                        <MailIcon size={20} />
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full text-gray-500 transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                {/* Body */}
-                <div className="p-6 space-y-4">
-                    {/* Template Selector */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Load Template</label>
-                        <select
-                            value={selectedTemplate}
-                            onChange={(e) => handleTemplateChange(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                            <option value="">Select a template...</option>
-                            {EMAIL_TEMPLATES.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Subject */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
-                        <input
-                            type="text"
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                            placeholder="Email subject..."
-                        />
-                    </div>
-
-                    {/* Body */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
-                        <textarea
-                            value={body}
-                            onChange={(e) => setBody(e.target.value)}
-                            rows={10}
-                            className="w-full bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm leading-relaxed"
-                            placeholder="Write your message here..."
-                        />
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">Target: {lead.name}</p>
+                        <p className="text-xs text-gray-500">{lead.email}</p>
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 border-t border-gray-200 dark:border-white/10 flex justify-end gap-3 bg-gray-50 dark:bg-white/5">
-                    <button onClick={onClose} className="px-6 py-2 rounded-xl text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-                        Cancel
-                    </button>
-                    <button onClick={handleSend} className="px-6 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20">
-                        <Send size={18} /> Send Email
+                <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 px-1">Template Selection</label>
+                    <select
+                        title="Template"
+                        value={selectedTemplate}
+                        onChange={(e) => handleTemplateChange(e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500"
+                    >
+                        <option value="">Select a template...</option>
+                        {EMAIL_TEMPLATES.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 px-1">Subject Header</label>
+                    <input
+                        type="text"
+                        title="Subject"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white font-bold outline-none focus:border-blue-500"
+                        placeholder="Communication subject..."
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 px-1">Transmission Message</label>
+                    <textarea
+                        title="Message"
+                        value={body}
+                        onChange={(e) => setBody(e.target.value)}
+                        rows={8}
+                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-blue-500 resize-none font-sans leading-relaxed"
+                        placeholder="Enter mission brief..."
+                    />
+                </div>
+
+                <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                    <button onClick={onClose} className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 font-bold rounded-xl transition-all">Abort</button>
+                    <button onClick={handleSend} className="flex-1 py-4 bg-blue-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                        <Send size={18} /> transmit
                     </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
