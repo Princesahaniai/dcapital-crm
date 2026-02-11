@@ -55,7 +55,7 @@ export const Sidebar = () => {
             <motion.div
                 initial={false}
                 animate={{ x: mobileOpen ? 0 : '-100%' }}
-                className={`fixed md:relative md:translate-x-0 w-72 sidebar-glass flex-col h-screen transition-all duration-300 z-[95] ${mobileOpen ? 'flex' : 'hidden md:flex'}`}
+                className={`fixed md:relative md:!translate-x-0 w-72 sidebar-glass flex-col h-screen transition-all duration-300 z-[95] ${mobileOpen ? 'flex' : 'hidden md:flex'}`}
             >
                 {/* LOGO AREA */}
                 <div className="p-8 pb-10">
