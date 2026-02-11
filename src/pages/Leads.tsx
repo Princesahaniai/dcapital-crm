@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
-import { Search, Plus, Trash2, Edit, Phone, Mail, User, Download, Upload, FileDown } from 'lucide-react';
+import { Phone, User, Plus, Search, Filter, Trash2, Edit, FileDown, Upload, Download, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
 import { WhatsAppButton } from '../components/WhatsAppButton';
+import { EmailModal } from '../components/EmailModal';
 
 export const Leads = () => {
     const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user } = useStore();
@@ -24,8 +25,10 @@ export const Leads = () => {
         notes: ''
     };
     const [form, setForm] = useState(initialForm);
-    const [showModal, setShowModal] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
+    const [showModal, setShowModal] = useState(false); // This is likely the 'edit' modal
+    const [isEditing, setIsEditing] = useState(false); // This relates to the 'edit' modal
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [selectedLead, setSelectedLead] = useState<any>(null); // For email modal
     const [importing, setImporting] = useState(false);
 
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Closed'];
@@ -105,7 +108,7 @@ export const Leads = () => {
 
             if (errors.length > 0) {
                 console.warn('CSV Parse Errors:', errors);
-                toast.error(`CSV Error: ${errors[0].message}`);
+                toast.error(`CSV Error: ${errors[0].message} `);
             }
 
             // Process and Validate
@@ -228,10 +231,10 @@ export const Leads = () => {
                         <button
                             key={tab}
                             onClick={() => setStatusFilter(tab)}
-                            className={`px-6 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${statusFilter === tab
+                            className={`px - 6 py - 2 rounded - full text - sm font - bold whitespace - nowrap transition - all ${statusFilter === tab
                                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
                                 : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700'
-                                }`}
+                                } `}
                         >
                             {tab}
                         </button>
@@ -267,11 +270,11 @@ export const Leads = () => {
                                     </div>
                                 </td>
                                 <td className="p-6">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${lead.status === 'New' ? 'bg-blue-500/20 text-blue-400' :
+                                    <span className={`px - 3 py - 1 rounded - full text - xs font - bold ${lead.status === 'New' ? 'bg-blue-500/20 text-blue-400' :
                                         lead.status === 'Closed' ? 'bg-amber-500/20 text-amber-400' :
                                             lead.status === 'Lost' ? 'bg-red-500/20 text-red-400' :
                                                 'bg-gray-700 text-gray-300'
-                                        }`}>
+                                        } `}>
                                         {lead.status}
                                     </span>
                                 </td>
@@ -288,6 +291,7 @@ export const Leads = () => {
                                 <td className="p-6 text-right">
                                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
+                                        <button onClick={() => openEmail(lead)} className="p-2 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400" title="Email"><Mail size={16} /></button>
                                         <button onClick={() => openEdit(lead)} className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-lg text-gray-600 dark:text-gray-300" title="Edit"><Edit size={16} /></button>
                                         <button onClick={() => handleDelete(lead.id)} className="p-2 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg text-red-600 dark:text-red-400" title="Delete"><Trash2 size={16} /></button>
                                     </div>
