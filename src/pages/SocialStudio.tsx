@@ -1,282 +1,292 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Instagram, Facebook, Linkedin, Youtube, Twitter, Video, Check, Copy, Wand2, Mic } from 'lucide-react';
+import { Sparkles, Instagram, Facebook, Linkedin, Video, Wand2, Mic, Copy, Send, RefreshCw, LayoutTemplate, Clock, BarChart2 } from 'lucide-react';
 import { generateSocialContent } from '../services/socialAI';
 import { Header } from '../components/Header';
+import { PlatformPreview } from '../components/social/PlatformPreview';
+import { ContentCalendar } from '../components/social/ContentCalendar';
+import { PostHistory } from '../components/social/PostHistory';
+import { TrendingInsights } from '../components/social/TrendingInsights';
+import { TemplateLibrary } from '../components/social/TemplateLibrary';
 
-interface Platform {
-    id: 'instagram' | 'tiktok' | 'facebook' | 'linkedin' | 'twitter' | 'youtube';
-    name: string;
-    icon: any;
-    color: string;
+interface ContentResult {
+    hook: string;
+    caption: string;
+    hashtags: string;
+    cta: string;
+    bestTime: string;
+    visualDirection: string;
 }
 
-const platforms: Platform[] = [
-    { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' },
-    { id: 'tiktok', name: 'TikTok', icon: Video, color: 'bg-black' },
-    { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'bg-blue-600' },
-    { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'bg-blue-700' },
-    { id: 'twitter', name: 'Twitter', icon: Twitter, color: 'bg-sky-500' },
-    { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'bg-red-600' },
+const platforms = [
+    { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600' },
+    { id: 'tiktok', name: 'TikTok', icon: Video, color: 'text-black dark:text-white' },
+    { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600' },
+    { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700' },
 ];
 
 export const SocialStudio = () => {
-    const [step, setStep] = useState(1);
+    const [activeTab, setActiveTab] = useState<'create' | 'calendar' | 'history'>('create');
     const [topic, setTopic] = useState('');
     const [bullets, setBullets] = useState('');
-    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['instagram', 'tiktok', 'facebook']);
+    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['instagram']);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [results, setResults] = useState<any>({});
-    const [activeResultTab, setActiveResultTab] = useState<string>('');
+    const [results, setResults] = useState<Record<string, ContentResult>>({});
+    const [activePreview, setActivePreview] = useState<string>('instagram');
+    const [error, setError] = useState<string | null>(null);
 
     const handleGenerate = async () => {
         if (!topic) return;
         setIsGenerating(true);
-        setStep(3);
+        setError(null);
         setResults({});
 
         try {
             const newResults: any = {};
-            // Generate for each platform sequentially (to avoid rate limits or UI freeze)
-            // In a production app, could be parallelized with Promise.all
-            for (const platformId of selectedPlatforms) {
+            for (const pid of selectedPlatforms) {
                 const content = await generateSocialContent({
                     topic,
                     bullets,
-                    platform: platformId as any
+                    platform: pid as any
                 });
-                newResults[platformId] = content;
+                newResults[pid] = content;
             }
             setResults(newResults);
-            setActiveResultTab(selectedPlatforms[0]);
-        } catch (error) {
-            console.error(error);
-            // Handle error (maybe show a toast)
+            setActivePreview(selectedPlatforms[0]);
+        } catch (err: any) {
+            setError(err.message || 'Generation failed');
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        // Toast logic here if we had a toast component
+    const handleFillExample = () => {
+        setTopic("Luxury Penthouse in Downtown Dubai");
+        setBullets("• Panoramic Burj Khalifa Views\n• 4 Bedrooms + Maid's Room\n• Private Pool\n• AED 15M Asking Price");
+    };
+
+    const handlePost = (platform: string) => {
+        const content = results[platform];
+        if (!content) return;
+
+        const textToCopy = `${content.caption}\n\n${content.hashtags}`;
+        navigator.clipboard.writeText(textToCopy);
+        alert(`Content copied for ${platform}! Opening app...`);
+
+        // Mock opening app
+        if (platform === 'instagram') window.open('https://instagram.com');
+        if (platform === 'tiktok') window.open('https://tiktok.com');
+        if (platform === 'facebook') window.open('https://facebook.com');
+        if (platform === 'linkedin') window.open('https://linkedin.com');
     };
 
     return (
-        <div className="p-4 md:p-10 min-h-screen space-y-8 pb-32">
+        <div className="p-4 md:p-8 min-h-screen space-y-8 pb-32">
             <Header title="Social Command Center" subtitle="AI-Powered Content Engine" />
 
-            {/* PROGRESS STEPS */}
-            <div className="flex justify-center mb-8">
-                <div className="flex items-center gap-4 bg-white dark:bg-[#1C1C1E] p-2 rounded-full border border-gray-100 dark:border-white/5 shadow-sm">
-                    {[1, 2, 3].map((s) => (
-                        <div key={s} className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${step === s ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : step > s ? 'bg-green-500/10 text-green-500' : 'text-gray-400'}`}>
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === s ? 'bg-white/20' : step > s ? 'bg-green-500' : 'bg-gray-200 dark:bg-white/10 text-gray-500'}`}>
-                                {step > s ? <Check size={14} className="text-white" /> : s}
-                            </span>
-                            <span className="text-sm font-bold hidden md:inline">
-                                {s === 1 ? 'Input' : s === 2 ? 'Platforms' : 'Results'}
-                            </span>
-                        </div>
-                    ))}
-                </div>
+            {/* TAB NAVIGATION */}
+            <div className="flex gap-4 border-b border-gray-200 dark:border-white/10 pb-1">
+                {[
+                    { id: 'create', label: 'Create', icon: Wand2 },
+                    { id: 'calendar', label: 'Calendar', icon: Clock },
+                    { id: 'history', label: 'History', icon: BarChart2 }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === tab.id
+                                ? 'border-blue-500 text-blue-500'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                    >
+                        <tab.icon size={16} /> {tab.label}
+                    </button>
+                ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-                {/* LEFT COLUMN: INPUTS */}
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="space-y-6"
-                >
-                    {/* STEP 1: CONTENT INPUT */}
-                    <div className={`bg-white dark:bg-[#1C1C1E] p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm transition-all ${step === 1 ? 'ring-2 ring-blue-500 ring-offset-4 dark:ring-offset-[#121212]' : 'opacity-60 grayscale'}`}>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm font-black">1</span>
-                                Topic & Details
-                            </h2>
-                            <button className="text-xs font-bold text-blue-500 uppercase tracking-widest bg-blue-500/10 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors flex items-center gap-2">
-                                <Mic size={14} /> Voice Input
-                            </button>
+            {activeTab === 'create' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* LEFT COLUMN: INPUTS */}
+                    <div className="lg:col-span-5 space-y-6">
+                        {/* TEMPLATES */}
+                        <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <LayoutTemplate size={14} /> Quick Start Templates
+                            </h3>
+                            <TemplateLibrary onSelect={(t) => {
+                                setTopic(t.topic);
+                                setBullets(t.bullets);
+                            }} />
                         </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">What are we posting about?</label>
-                                <input
-                                    type="text"
-                                    value={topic}
-                                    onChange={(e) => setTopic(e.target.value)}
-                                    placeholder="e.g. New 6-Bed Villa Launch on Palm Jumeirah"
-                                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-bold"
-                                    onClick={() => setStep(1)}
-                                />
+                        {/* INPUT FORM */}
+                        <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm space-y-4">
+                            <div className="flex justify-between items-center">
+                                <h2 className="font-bold text-lg">Content Details</h2>
+                                <button onClick={handleFillExample} className="text-xs font-bold text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 py-1 rounded transition-colors">
+                                    Try Example
+                                </button>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Key Selling Points / Bullets</label>
+                            <input
+                                type="text"
+                                value={topic}
+                                onChange={(e) => setTopic(e.target.value)}
+                                placeholder="What are we posting about?"
+                                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+
+                            <div className="relative">
                                 <textarea
                                     value={bullets}
                                     onChange={(e) => setBullets(e.target.value)}
-                                    placeholder="• AED 45 Million&#10;• Private Beach Access&#10;• Handover Q4 2024"
-                                    className="w-full h-32 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none"
-                                    onClick={() => setStep(1)}
+                                    placeholder="Key details (one per line)..."
+                                    className="w-full h-32 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                                 />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* STEP 2: PLATFORMS */}
-                    <div className={`bg-white dark:bg-[#1C1C1E] p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm transition-all ${step === 2 ? 'ring-2 ring-blue-500 ring-offset-4 dark:ring-offset-[#121212]' : step === 1 ? 'opacity-60' : ''}`}>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-6">
-                            <span className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-sm font-black">2</span>
-                            Select Platforms
-                        </h2>
-
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {platforms.map(platform => (
-                                <button
-                                    key={platform.id}
-                                    onClick={() => {
-                                        setStep(2);
-                                        setSelectedPlatforms(prev =>
-                                            prev.includes(platform.id)
-                                                ? prev.filter(p => p !== platform.id)
-                                                : [...prev, platform.id]
-                                        );
-                                    }}
-                                    className={`relative p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 ${selectedPlatforms.includes(platform.id)
-                                            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent shadow-lg transform scale-105'
-                                            : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 hover:border-blue-500/50 text-gray-500'
-                                        }`}
-                                >
-                                    <div className={`p-2 rounded-full ${selectedPlatforms.includes(platform.id) ? 'bg-white/20' : platform.color + '/10 ' + platform.color.replace('bg-', 'text-')}`}>
-                                        <platform.icon size={20} />
-                                    </div>
-                                    <span className="text-xs font-bold">{platform.name}</span>
-                                    {selectedPlatforms.includes(platform.id) && (
-                                        <div className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
-                                            <Check size={8} className="text-white" />
-                                        </div>
-                                    )}
+                                <button className="absolute bottom-3 right-3 text-gray-400 hover:text-blue-500">
+                                    <Mic size={18} />
                                 </button>
-                            ))}
-                        </div>
+                            </div>
 
-                        <button
-                            disabled={!topic || selectedPlatforms.length === 0}
-                            onClick={handleGenerate}
-                            className="w-full mt-6 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Wand2 className="animate-spin" /> Generating Magic...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="fill-white" /> Generate Content
-                                </>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase">Select Platforms</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {platforms.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => setSelectedPlatforms(prev =>
+                                                prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
+                                            )}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold border transition-all ${selectedPlatforms.includes(p.id)
+                                                    ? 'bg-gray-900 text-white border-transparent'
+                                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            <p.icon size={14} /> {p.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm font-bold">
+                                    {error}
+                                </div>
                             )}
-                        </button>
-                    </div>
-                </motion.div>
 
-                {/* RIGHT COLUMN: RESULTS */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="relative"
-                >
-                    {step === 3 ? (
-                        <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl border border-gray-100 dark:border-white/5 shadow-2xl overflow-hidden min-h-[600px] flex flex-col">
-                            {/* Platform Tabs */}
-                            <div className="flex overflow-x-auto p-4 gap-2 border-b border-gray-100 dark:border-white/5">
+                            <button
+                                onClick={handleGenerate}
+                                disabled={isGenerating || !topic || selectedPlatforms.length === 0}
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                {isGenerating ? <RefreshCw className="animate-spin" /> : <Sparkles className="fill-white" />}
+                                {isGenerating ? 'Generating...' : 'Generate Content'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: PREVIEW & EDIT */}
+                    <div className="lg:col-span-7 space-y-6">
+                        {/* TRENDING INSIGHTS */}
+                        <TrendingInsights />
+
+                        {/* RESULTS AREA */}
+                        <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row">
+                            {/* PREVIEW SIDEBAR */}
+                            <div className="w-full md:w-20 bg-gray-50 dark:bg-black/20 border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 p-2 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible">
                                 {selectedPlatforms.map(pid => {
-                                    const p = platforms.find(pl => pl.id === pid);
+                                    const p = platforms.find(x => x.id === pid);
+                                    if (!p) return null;
                                     return (
                                         <button
                                             key={pid}
-                                            onClick={() => setActiveResultTab(pid)}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeResultTab === pid
-                                                    ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white'
-                                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                                            onClick={() => setActivePreview(pid)}
+                                            className={`p-3 rounded-xl flex items-center justify-center transition-all ${activePreview === pid
+                                                    ? 'bg-white shadow-md text-blue-500'
+                                                    : 'text-gray-400 hover:bg-white/50'
                                                 }`}
+                                            title={p.name}
                                         >
-                                            {p?.icon && <p.icon size={16} />} {p?.name}
+                                            <p.icon size={20} />
                                         </button>
                                     );
                                 })}
                             </div>
 
-                            {/* Content Display */}
-                            <div className="flex-1 p-6 md:p-8 bg-gray-50/50 dark:bg-black/20">
-                                {isGenerating && !results[activeResultTab] ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-4">
-                                        <div className="w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
-                                        <p className="animate-pulse font-medium">Crafting viral content for {platforms.find(p => p.id === activeResultTab)?.name}...</p>
-                                    </div>
-                                ) : results[activeResultTab] ? (
-                                    <div className="space-y-6">
-                                        {/* Result Card: HOOK */}
-                                        <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Viral Hook</h3>
-                                                <button onClick={() => copyToClipboard(results[activeResultTab].hook)} className="text-gray-400 hover:text-blue-500"><Copy size={14} /></button>
+                            {/* MAIN PREVIEW AREA */}
+                            <div className="flex-1 p-6 md:p-8 bg-gray-50/50 dark:bg-black/40">
+                                {Object.keys(results).length > 0 ? (
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+                                        {/* EDITOR */}
+                                        <div className="space-y-4">
+                                            <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
+                                                <div className="flex justify-between mb-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Hook</label>
+                                                    <span className="text-xs text-blue-500 cursor-pointer">Regenerate</span>
+                                                </div>
+                                                <textarea
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-lg resize-none"
+                                                    rows={2}
+                                                    value={results[activePreview]?.hook || ''}
+                                                    onChange={(e) => setResults({
+                                                        ...results,
+                                                        [activePreview]: { ...results[activePreview], hook: e.target.value }
+                                                    })}
+                                                />
                                             </div>
-                                            <p className="text-lg font-black text-gray-900 dark:text-white leading-tight">
-                                                "{results[activeResultTab].hook}"
-                                            </p>
+
+                                            <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
+                                                <div className="flex justify-between mb-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Caption</label>
+                                                    <span className="text-xs text-gray-400">{results[activePreview]?.caption.length || 0} chars</span>
+                                                </div>
+                                                <textarea
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm leading-relaxed resize-none h-48"
+                                                    value={results[activePreview]?.caption || ''}
+                                                    onChange={(e) => setResults({
+                                                        ...results,
+                                                        [activePreview]: { ...results[activePreview], caption: e.target.value }
+                                                    })}
+                                                />
+                                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                                                    <input
+                                                        className="w-full bg-transparent border-none text-blue-500 text-sm font-medium"
+                                                        value={results[activePreview]?.hashtags || ''}
+                                                        onChange={(e) => setResults({
+                                                            ...results,
+                                                            [activePreview]: { ...results[activePreview], hashtags: e.target.value }
+                                                        })}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => handlePost(activePreview)}
+                                                className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Send size={16} /> Post to {platforms.find(p => p.id === activePreview)?.name}
+                                            </button>
                                         </div>
 
-                                        {/* Result Card: CAPTION */}
-                                        <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="text-xs font-bold text-purple-500 uppercase tracking-widest">Caption / Script</h3>
-                                                <button onClick={() => copyToClipboard(results[activeResultTab].caption)} className="text-gray-400 hover:text-blue-500"><Copy size={14} /></button>
-                                            </div>
-                                            <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                                {results[activeResultTab].caption}
-                                            </p>
-                                            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5">
-                                                <p className="text-blue-500 font-medium text-sm">{results[activeResultTab].hashtags}</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Strategy Grid */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-2xl border border-gray-100 dark:border-white/5">
-                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Visual Direction</h4>
-                                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{results[activeResultTab].visualDirection}</p>
-                                            </div>
-                                            <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-2xl border border-gray-100 dark:border-white/5">
-                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Best Time to Post</h4>
-                                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{results[activeResultTab].bestTime}</p>
-                                            </div>
+                                        {/* PREVIEW */}
+                                        <div className="flex items-center justify-center bg-gray-200 dark:bg-black/20 rounded-2xl p-4 border border-dashed border-gray-300 dark:border-white/10">
+                                            <PlatformPreview platform={activePreview} content={results[activePreview]} />
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
-                                        <Sparkles size={48} className="mb-4" />
-                                        <p>Select a platform to view results</p>
+                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-4 opacity-60">
+                                        <Wand2 size={48} />
+                                        <p className="text-sm font-bold">Generated content will appear here</p>
                                     </div>
                                 )}
                             </div>
                         </div>
-                    ) : (
-                        // Placeholder State interactions
-                        <div className="h-full flex items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 dark:border-white/10 p-10 text-center opacity-50">
-                            <div>
-                                <div className="w-20 h-20 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <Wand2 size={32} className="text-gray-400" />
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Ready to Create?</h3>
-                                <p className="text-gray-500 max-w-xs mx-auto">Fill in the topic and select platforms to let the AI magic happen.</p>
-                            </div>
-                        </div>
-                    )}
-                </motion.div>
-            </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'calendar' && <ContentCalendar />}
+            {activeTab === 'history' && <PostHistory />}
         </div>
     );
 };

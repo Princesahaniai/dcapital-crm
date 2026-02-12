@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Use environment variable or fallback to provided key (for demo purposes)
-// In production, always use environment variables and consider a backend proxy if strict security is needed.
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDElpqgjedde0IbEshvKqcERVW6_aE7pKU';
+// CRITICAL: Hardcoding Key as per user request for immediate working demo.
+// In a real production environment, this should be moved to a backend proxy.
+const API_KEY = 'AIzaSyDElpqgjedde0IbEshvKqcERVW6_aE7pKU';
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -16,7 +16,7 @@ interface GenerateOptions {
 export const generateSocialContent = async ({ topic, bullets, tone, platform }: GenerateOptions) => {
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-pro',
+            model: 'gemini-1.5-flash', // Using Flash for speed
             generationConfig: {
                 temperature: 0.8,
                 maxOutputTokens: 2048,
@@ -71,7 +71,6 @@ RULES: Luxury tone, FOMO, scarcity, social proof, exclusive feel. No generic "co
             return JSON.parse(cleanText);
         } catch (e) {
             console.error("JSON Parse Error", e);
-            // Fallback parsing or return raw text structure
             return {
                 hook: "Could not parse AI response",
                 caption: cleanText,
@@ -84,8 +83,8 @@ RULES: Luxury tone, FOMO, scarcity, social proof, exclusive feel. No generic "co
             };
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Gemini Error:', error);
-        throw error;
+        throw new Error(error.message || "Failed to generate content");
     }
 };
