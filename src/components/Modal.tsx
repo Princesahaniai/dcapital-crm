@@ -29,7 +29,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="mobile-modal-container">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -44,7 +44,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className={`relative w-full ${maxWidth} bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10`}
+                        className={`mobile-modal-content ${maxWidth} relative`}
                     >
                         {/* Header */}
                         <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center sticky top-0 bg-white dark:bg-[#1C1C1E] z-10">

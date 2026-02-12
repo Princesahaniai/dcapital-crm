@@ -202,13 +202,13 @@ export const Leads = () => {
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#1C1C1E] p-4 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm">
+            <div className="space-y-4 sticky top-0 z-30 bg-gray-50 dark:bg-black pt-2 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:relative md:top-auto md:bg-transparent md:py-0">
+                <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#1C1C1E] p-3 md:p-4 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm">
                     <div className="relative flex-1">
                         <Search className="absolute left-4 top-3.5 text-gray-400 dark:text-gray-500" size={20} />
                         <input
                             type="text"
-                            placeholder="Search by name, email, phone..."
+                            placeholder="Search leads..."
                             className="w-full bg-gray-50 dark:bg-black/50 text-gray-900 dark:text-white pl-12 p-3 rounded-xl border border-gray-300 dark:border-white/10 focus:border-blue-500 dark:focus:border-white/30 outline-none"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -222,7 +222,7 @@ export const Leads = () => {
                         <button
                             key={tab}
                             onClick={() => setStatusFilter(tab)}
-                            className={`px-6 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${statusFilter === tab
+                            className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all ${statusFilter === tab
                                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
                                 : 'bg-white dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
                                 } `}
@@ -233,7 +233,57 @@ export const Leads = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm mt-6">
+            {/* MOBILE LIST VIEW (Visible only on small screens) */}
+            <div className="md:hidden space-y-4 pb-20">
+                {filteredLeads.map(lead => (
+                    <motion.div
+                        key={lead.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
+                        onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                    >
+                        <div className="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
+                                <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
+                                lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                    lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+                                        'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
+                                }`}>
+                                {lead.status}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+                                        {getAgentName(lead.assignedTo).charAt(0)}
+                                    </div>
+                                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
+                            <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
+                            <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                                <Phone size={16} /> Call
+                            </a>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+
+            <div className="hidden md:block bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm mt-6">
                 <table className="w-full text-left min-w-[1000px]">
                     <thead className="bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest">
                         <tr>
@@ -348,6 +398,15 @@ export const Leads = () => {
                     </div>
                 </form>
             </Modal>
-        </div>
+
+            {/* FLOATING ACTION BUTTON (MOBILE) */}
+            <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={openNew}
+                className="md:hidden fixed bottom-24 right-4 bg-blue-500 text-white p-4 rounded-full shadow-2xl z-40 flex items-center justify-center"
+            >
+                <Plus size={28} />
+            </motion.button>
+        </div >
     );
 };

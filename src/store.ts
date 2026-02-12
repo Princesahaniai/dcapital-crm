@@ -98,14 +98,18 @@ export const useStore = create<Store>()(
             notifications: [], // Production: Empty state
 
             login: async (email, password, rememberMe = false) => {
+                const normalizedEmail = email.toLowerCase().trim();
+                console.log(`[AUTH] Attempting login for: ${normalizedEmail}`);
+
                 // 🛡️ DEV BYPASS
-                if (password === 'admin' && (email === 'admin@dcapitalrealestate.com' || email === 'ajay@dcapitalrealestate.com')) {
-                    const role = email.startsWith('ajay') ? 'ceo' : 'admin';
-                    const name = email.startsWith('ajay') ? 'Ajay' : 'Admin User';
+                if (password === 'admin' && (normalizedEmail === 'admin@dcapitalrealestate.com' || normalizedEmail === 'ajay@dcapitalrealestate.com')) {
+                    const role = normalizedEmail.startsWith('ajay') ? 'ceo' : 'admin';
+                    const name = normalizedEmail.startsWith('ajay') ? 'Ajay' : 'Admin User';
+                    console.log('[AUTH] Dev Bypass Success');
                     set({
                         user: {
                             id: 'dev-bypass-' + role,
-                            email,
+                            email: normalizedEmail,
                             name,
                             role: role as any
                         },
@@ -115,17 +119,60 @@ export const useStore = create<Store>()(
                     return true;
                 }
 
+                const state = get();
+
+                // 1️⃣ CHECK LOCAL TEAM (Store-based Auth)
+                // This allows team members created in the CRM to login without Firebase Auth
+                const teamMember = state.team.find(m => m.email.toLowerCase() === normalizedEmail);
+
+                if (teamMember) {
+                    console.log('[AUTH] Found in Local Team Registry:', teamMember.name);
+
+                    if (teamMember.status === 'Inactive') {
+                        console.warn('[AUTH] Login Blocked: User Inactive');
+                        return false;
+                        // Note: Caller will show generic error. Could improve to return specific error string.
+                    }
+
+                    if (teamMember.password === password) {
+                        console.log('[AUTH] Local Password Match. Logging in...');
+                        set({
+                            user: {
+                                id: teamMember.id,
+                                email: teamMember.email,
+                                name: teamMember.name,
+                                role: 'agent' // Defaulting to agent, or map designation if needed
+                            },
+                            loginTimestamp: Date.now(),
+                            rememberMe
+                        });
+                        return true;
+                    } else {
+                        console.warn('[AUTH] Local Password Mismatch');
+                        // Continue to Firebase? No, if email exists locally, we assume it's a team member.
+                        // But maybe they are also a Firebase user? unlikely for now.
+                        return false;
+                    }
+                }
+
+                // 2️⃣ FIREBASE AUTH (CEO / Master Admin)
                 try {
-                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log('[AUTH] Attempting Firebase Auth...');
+                    const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
                     const user = userCredential.user;
+                    console.log('[AUTH] Firebase Auth Success:', user.uid);
+
+                    // Fetch real role from Firestore 'users' collection ideally, but for now default to CEO
+                    // Todo: fetch user doc
+
                     set({
                         user: { id: user.uid, email: user.email || '', name: user.displayName || 'Admin', role: 'ceo' } as any,
                         loginTimestamp: Date.now(),
                         rememberMe
                     });
                     return true;
-                } catch (error) {
-                    // Login failed - error handled by caller
+                } catch (error: any) {
+                    console.error('[AUTH] Firebase Login Failed:', error.code, error.message);
                     return false;
                 }
             },

@@ -87,7 +87,7 @@ export const Dashboard = () => {
     const recentLeads = [...accessibleLeads].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
 
     return (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 p-6 md:p-10 pt-16 md:pt-8 h-screen w-full overflow-y-auto">
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 md:space-y-6 p-4 md:p-10 pt-4 md:pt-8 h-screen w-full overflow-y-auto scrollbar-hide">
             {/* HEADER */}
             <Header title="Executive Dashboard" subtitle="Real-time organization intelligence" />
 
@@ -95,42 +95,42 @@ export const Dashboard = () => {
 
             {/* METRICS ROW */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500"><Wallet size={24} /></div>
-                        <span className="text-xs font-bold text-green-500 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full"><ArrowUpRight size={12} /> Live</span>
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-5 md:p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
+                    <div className="flex justify-between items-start mb-3 md:mb-4">
+                        <div className="p-2 md:p-3 rounded-2xl bg-amber-500/10 text-amber-500"><Wallet size={20} className="md:w-6 md:h-6" /></div>
+                        <span className="text-[10px] md:text-xs font-bold text-green-500 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full"><ArrowUpRight size={10} className="md:w-3 md:h-3" /> Live</span>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">AED {(pipeline / 1000000).toFixed(1)}M</h3>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Total Pipeline</p>
+                    <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">AED {(pipeline / 1000000).toFixed(1)}M</h3>
+                    <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">Total Pipeline</p>
                 </motion.div>
 
-                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500"><Users size={24} /></div>
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-5 md:p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
+                    <div className="flex justify-between items-start mb-3 md:mb-4">
+                        <div className="p-2 md:p-3 rounded-2xl bg-blue-500/10 text-blue-500"><Users size={20} className="md:w-6 md:h-6" /></div>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{accessibleLeads.length}</h3>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Total Leads</p>
+                    <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{accessibleLeads.length}</h3>
+                    <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">Total Leads</p>
                 </motion.div>
 
-                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-6 rounded-3xl relative overflow-hidden border border-amber-500/20">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg"><Trophy size={24} /></div>
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-5 md:p-6 rounded-3xl relative overflow-hidden border border-amber-500/20">
+                    <div className="flex justify-between items-start mb-3 md:mb-4">
+                        <div className="p-2 md:p-3 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg"><Trophy size={20} className="md:w-6 md:h-6" /></div>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">AED {unpaidCommission.toLocaleString()}</h3>
-                    <p className="text-amber-500 text-xs font-bold uppercase tracking-widest">{isCEO ? 'Company Commission' : 'My Commission'}</p>
+                    <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">AED {unpaidCommission.toLocaleString()}</h3>
+                    <p className="text-amber-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">{isCEO ? 'Company Commission' : 'My Commission'}</p>
                 </motion.div>
 
-                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-500"><Building2 size={24} /></div>
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-5 md:p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
+                    <div className="flex justify-between items-start mb-3 md:mb-4">
+                        <div className="p-2 md:p-3 rounded-2xl bg-purple-500/10 text-purple-500"><Building2 size={20} className="md:w-6 md:h-6" /></div>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{properties.filter(p => p.status === 'Available').length}</h3>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Active Listings</p>
+                    <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{properties.filter(p => p.status === 'Available').length}</h3>
+                    <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">Active Listings</p>
                 </motion.div>
             </div>
 
             {/* MAIN CONTENT GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-20 md:pb-0">
 
                 {/* TODAY'S AGENDA */}
                 <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] apple-glass p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl relative overflow-hidden group">

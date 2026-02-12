@@ -50,9 +50,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return (
         <div className="flex safe-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white overflow-hidden transition-colors duration-300">
             <Sidebar />
-            <div className="flex-1 relative h-full flex flex-col overflow-hidden">
+            <div className="flex-1 relative h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-black">
                 <CommandPalette />
-                <main className="flex-1 overflow-y-auto pb-24 md:pb-6 relative">
+                <main className="flex-1 overflow-y-auto pb-32 md:pb-6 relative scrollbar-hide">
                     {children}
                 </main>
                 <MobileNav />
