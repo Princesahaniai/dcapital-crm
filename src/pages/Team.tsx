@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
-import { Plus, Search, Mail, Phone, Edit2, CheckCircle, XCircle, UserPlus, Key, Briefcase } from 'lucide-react';
+import { Plus, Search, Mail, Phone, Edit2, CheckCircle, XCircle, UserPlus, Key, Briefcase, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
@@ -37,40 +37,51 @@ export const Team = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {team.map(member => (
-                    <motion.div variants={item} key={member.id} className="apple-glass p-6 rounded-2xl border border-gray-800 hover:border-gray-700 transition-colors">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-700 to-black flex items-center justify-center font-bold text-xl shadow-lg">
-                                {member.name.charAt(0)}
+                {(!team || team.length === 0) ? (
+                    <div className="col-span-full flex flex-col items-center justify-center p-12 text-center border border-dashed border-gray-700 rounded-3xl">
+                        <Users className="w-16 h-16 text-gray-600 mb-4" />
+                        <h3 className="text-xl font-bold text-white mb-2">No Team Members Found</h3>
+                        <p className="text-gray-400 mb-6">Get started by adding your first team member.</p>
+                        <button onClick={() => setShowModal(true)} className="bg-white text-black px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors">
+                            <UserPlus size={18} /> Onboard Member
+                        </button>
+                    </div>
+                ) : (
+                    team.map(member => (
+                        <motion.div variants={item} key={member.id} className="apple-glass p-6 rounded-2xl border border-gray-800 hover:border-gray-700 transition-colors">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-700 to-black flex items-center justify-center font-bold text-xl shadow-lg">
+                                    {member.name.charAt(0)}
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${member.role === 'ceo' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : member.role === 'admin' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-gray-700 text-gray-300'}`}>
+                                    {member.role.toUpperCase()}
+                                </span>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${member.role === 'ceo' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : member.role === 'admin' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-gray-700 text-gray-300'}`}>
-                                {member.role.toUpperCase()}
-                            </span>
-                        </div>
-                        <h3 className="text-xl font-semibold text-white">{member.name}</h3>
-                        <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
-                            <Briefcase size={12} /> {member.designation || 'Real Estate Agent'}
-                        </p>
-                        <div className="mt-4 space-y-2 text-xs text-gray-400">
-                            <p className="flex items-center gap-2"><Mail size={12} /> {member.email}</p>
-                            <p className="flex items-center gap-2"><Phone size={12} /> {member.phone || 'N/A'}</p>
-                            <p className="flex items-center gap-2 text-[10px]"><Key size={10} /> Joined {member.joinedDate}</p>
-                        </div>
-                        {isAdmin && member.role !== 'ceo' && (
-                            <button
-                                onClick={() => {
-                                    if (confirm(`Revoke access for ${member.name}?`)) {
-                                        removeTeamMember(member.id);
-                                        toast.success('Access Revoked');
-                                    }
-                                }}
-                                className="w-full mt-6 py-2 bg-red-500/10 text-red-500 rounded-lg text-sm font-semibold hover:bg-red-500 hover:text-white transition-colors"
-                            >
-                                Revoke Access
-                            </button>
-                        )}
-                    </motion.div>
-                ))}
+                            <h3 className="text-xl font-semibold text-white">{member.name}</h3>
+                            <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
+                                <Briefcase size={12} /> {member.designation || 'Real Estate Agent'}
+                            </p>
+                            <div className="mt-4 space-y-2 text-xs text-gray-400">
+                                <p className="flex items-center gap-2"><Mail size={12} /> {member.email}</p>
+                                <p className="flex items-center gap-2"><Phone size={12} /> {member.phone || 'N/A'}</p>
+                                <p className="flex items-center gap-2 text-[10px]"><Key size={10} /> Joined {member.joinedDate}</p>
+                            </div>
+                            {isAdmin && member.role !== 'ceo' && (
+                                <button
+                                    onClick={() => {
+                                        if (confirm(`Revoke access for ${member.name}?`)) {
+                                            removeTeamMember(member.id);
+                                            toast.success('Access Revoked');
+                                        }
+                                    }}
+                                    className="w-full mt-6 py-2 bg-red-500/10 text-red-500 rounded-lg text-sm font-semibold hover:bg-red-500 hover:text-white transition-colors"
+                                >
+                                    Revoke Access
+                                </button>
+                            )}
+                        </motion.div>
+                    ))
+                )}
             </div>
 
             {showModal && (
