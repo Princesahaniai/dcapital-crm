@@ -8,6 +8,8 @@ import { WhatsAppButton } from '../components/WhatsAppButton';
 import { EmailModal } from '../components/EmailModal';
 import { MeetingModal } from '../components/MeetingModal';
 import { Modal } from '../components/Modal';
+import { LeadCard } from '../components/leads/LeadCard';
+import { LeadProfile } from '../components/leads/LeadProfile';
 import type { Lead } from '../types';
 
 export const Leads = () => {
@@ -233,115 +235,84 @@ export const Leads = () => {
                 </div>
             </div>
 
-            {/* MOBILE LIST VIEW (Visible only on small screens) */}
-            <div className="md:hidden space-y-4 pb-20">
-                {filteredLeads.map(lead => (
-                    <motion.div
-                        key={lead.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
-                        onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                    >
-                        <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
-                                <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
-                            </div>
-                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                                lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-                                    lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-                                        'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
-                                }`}>
-                                {lead.status}
-                            </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
-                                <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
-                                        {getAgentName(lead.assignedTo).charAt(0)}
-                                    </div>
-                                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
-                            <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
-                            <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                                <Phone size={16} /> Call
-                            </a>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            <div className="hidden md:block bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm mt-6">
-                <table className="w-full text-left min-w-[1000px]">
-                    <thead className="bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest">
-                        <tr>
-                            <th className="p-6">Lead Name</th>
-                            <th className="p-6">Contact Details</th>
-                            <th className="p-6 text-center">Pipeline State</th>
-                            <th className="p-6">Source</th>
-                            <th className="p-6">Budget</th>
-                            <th className="p-6">Assigned To</th>
-                            <th className="p-6 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                        {filteredLeads.map(lead => (
-                            <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
-                                <td className="p-6">
-                                    <p className="font-bold text-gray-900 dark:text-white">{lead.name}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">ID: {lead.id.slice(0, 8)}</p>
-                                </td>
-                                <td className="p-6">
-                                    <div className="flex flex-col gap-1 text-sm text-gray-500">
-                                        <span className="flex items-center gap-2"><Phone size={12} className="text-blue-500" /> {lead.phone}</span>
-                                        <span className="flex items-center gap-2"><Mail size={12} className="text-amber-500" /> {lead.email}</span>
-                                    </div>
-                                </td>
-                                <td className="p-6 text-center">
-                                    <span className={`px-4 py-1.5 rounded-xl text-xs font-bold inline-block border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                                        lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-                                            lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-                                                'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
-                                        }`}>
-                                        {lead.status}
-                                    </span>
-                                </td>
-                                <td className="p-6 text-gray-500 text-sm font-medium">{lead.source}</td>
-                                <td className="p-6 text-gray-900 dark:text-white font-mono font-bold">AED {lead.budget?.toLocaleString()}</td>
-                                <td className="p-6">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xs border border-blue-500/20">
-                                            {getAgentName(lead.assignedTo).charAt(0)}
+            {/* RESPONSIVE GRID VIEW (Mission Control) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                <AnimatePresence>
+                    {filteredLeads.map(lead => (
+                        <div key={lead.id}>
+                            {/* Mobile Optimized View */}
+                            <div className="md:hidden">
+                                <motion.div
+                                    key={lead.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
+                                    onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
                                         </div>
-                                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{getAgentName(lead.assignedTo)}</span>
+                                        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
+                                            lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                                lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+                                                    'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
+                                            }`}>
+                                            {lead.status}
+                                        </span>
                                     </div>
-                                </td>
-                                <td className="p-6 text-right">
-                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+                                                    {getAgentName(lead.assignedTo).charAt(0)}
+                                                </div>
+                                                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
                                         <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
-                                        <button onClick={() => { setSelectedLead(lead); setIsMeetingModalOpen(true); }} className="p-2 hover:bg-amber-500/10 rounded-xl text-amber-500 transition-colors" title="Schedule Meeting"><Calendar size={18} /></button>
-                                        <button onClick={() => { setSelectedLead(lead); setIsEmailModalOpen(true); }} className="p-2 hover:bg-blue-500/10 rounded-xl text-blue-500 transition-colors" title="Send Email"><Mail size={18} /></button>
-                                        <button onClick={() => openEdit(lead)} className="p-2 hover:bg-green-500/10 rounded-xl text-green-500 transition-colors" title="Edit Lead"><Edit size={18} /></button>
-                                        <button onClick={() => handleDelete(lead.id)} className="p-2 hover:bg-red-500/10 rounded-xl text-red-500 transition-colors" title="Delete Lead"><Trash2 size={18} /></button>
+                                        <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                                            <Phone size={16} /> Call
+                                        </a>
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                </motion.div>
+                            </div>
+
+                            {/* Desktop Card View */}
+                            <div className="hidden md:block">
+                                <LeadCard
+                                    lead={lead}
+                                    onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                    onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
+                                    onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
+                                    agentName={getAgentName(lead.assignedTo)}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </AnimatePresence>
             </div>
+
+            {/* LEAD PROFILE MODAL */}
+            <AnimatePresence>
+                {selectedLead && !isEditing && !isMeetingModalOpen && !isEmailModalOpen && (
+                    <LeadProfile
+                        lead={selectedLead}
+                        onClose={() => setSelectedLead(null)}
+                        onEdit={() => { setIsEditing(true); setShowModal(true); }} // Assumes LeadProfile is closed or handled by logic
+                    />
+                )}
+            </AnimatePresence>
 
             <MeetingModal
                 isOpen={isMeetingModalOpen}

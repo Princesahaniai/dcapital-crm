@@ -1,30 +1,25 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
 import { useStore } from '../store';
-import { Activity } from '../types';
+import { logWhatsApp } from '../services/activityLog';
 
 interface WhatsAppButtonProps {
     phone: string;
     name: string;
     leadId: string;
+    compact?: boolean;
 }
 
-export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phone, name, leadId }) => {
-    const { addActivity, user } = useStore();
+export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phone, name, leadId, compact = false }) => {
+    const { user } = useStore();
 
-    const handleSend = () => {
+    const handleSend = (e: React.MouseEvent) => {
+        e.stopPropagation();
+
         const message = `Hi ${name}, this is ${user?.name || 'an agent'} from D-Capital Real Estate. I received your enquiry and would love to assist you.`;
 
         // Log activity
-        const newActivity: Activity = {
-            id: Math.random().toString(36).substr(2, 9),
-            type: 'whatsapp',
-            description: `Sent WhatsApp: "${message.substring(0, 30)}..."`,
-            timestamp: Date.now(),
-            userId: user?.id || 'unknown',
-            leadId: leadId
-        };
-        addActivity(newActivity);
+        logWhatsApp(leadId, user?.id || 'unknown', user?.name || 'Unknown');
 
         // Open WhatsApp
         // Remove special chars from phone for the link
@@ -38,6 +33,18 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phone, name, lea
         const encodedMessage = encodeURIComponent(message);
         window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
     };
+
+    if (compact) {
+        return (
+            <button
+                onClick={handleSend}
+                className="p-2.5 rounded-xl bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors"
+                title="WhatsApp"
+            >
+                <MessageCircle size={16} />
+            </button>
+        );
+    }
 
     return (
         <button

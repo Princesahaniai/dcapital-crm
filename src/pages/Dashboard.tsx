@@ -8,6 +8,8 @@ import { DemoBanner } from '../components/DemoBanner';
 import { EmptyState } from '../components/EmptyState';
 import { getVisibleLeads } from '../utils/permissions';
 import { useNavigate } from 'react-router-dom';
+import { PipelineWidget } from '../components/dashboard/PipelineWidget';
+import { RecentActivityWidget } from '../components/dashboard/RecentActivityWidget';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -127,6 +129,16 @@ export const Dashboard = () => {
                     <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{properties.filter(p => p.status === 'Available').length}</h3>
                     <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">Active Listings</p>
                 </motion.div>
+            </div>
+
+            {/* MISSION CONTROL GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div className="lg:col-span-2">
+                    <PipelineWidget />
+                </div>
+                <div>
+                    <RecentActivityWidget />
+                </div>
             </div>
 
             {/* MAIN CONTENT GRID */}

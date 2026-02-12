@@ -47,12 +47,13 @@ export interface Property {
 }
 
 // ✅ CLASS DEFINITION (Browser cannot ignore this)
-export class Activity {
-    id: string = '';
-    type: 'call' | 'email' | 'meeting' | 'note' | 'deal' | 'system' | 'whatsapp' = 'system';
-    description: string = '';
-    timestamp: number = Date.now();
-    userId: string = '';
+export interface Activity {
+    id: string;
+    type: string; // Flexible type
+    description: string;
+    timestamp: number;
+    userId: string;
+    userName?: string; // Added field
     leadId?: string;
     metadata?: any;
 }
