@@ -12,6 +12,7 @@ import { Team } from './pages/Team';
 import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
+import { SocialStudio } from './pages/SocialStudio';
 import { useStore } from './store';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -73,7 +74,8 @@ export default function App() {
                 <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} /> {/* Added Calendar Route */}
+                <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+                <Route path="/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

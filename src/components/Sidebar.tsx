@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -88,6 +88,7 @@ export const Sidebar = () => {
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />
                             <NavItem to="/tasks" icon={CheckSquare} label="Mission Control" />
                             <NavItem to="/calendar" icon={Calendar} label="Calendar" />
+                            <NavItem to="/social-studio" icon={Sparkles} label="Social Studio" />
                         </div>
                     </div>
 
