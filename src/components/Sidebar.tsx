@@ -59,14 +59,11 @@ export const Sidebar = () => {
                 initial={false}
                 animate={{ x: mobileOpen ? 0 : '-100%' }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className={`fixed md:relative top-0 bottom-0 left-0 w-72 sidebar-glass flex flex-col h-screen z-[95] md:translate-x-0 ${mobileOpen ? 'shadow-2xl' : ''} md:flex`}
-                style={{
-                    position: 'fixed',
-                    // On desktop (md), we want it relative essentially, but the class md:relative handles it.
-                    // However, to ensure mobile animation works, we can't use 'hidden' on mobile when closed.
-                    // But we also don't want it blocking clicks when closed on mobile.
-                    // transform: x is handled by motion.
-                }}
+                // HOTFIX: Override transform on desktop to ensure it's always visible
+                style={{ x: undefined }}
+                className={`fixed md:relative top-0 bottom-0 left-0 w-72 sidebar-glass flex flex-col h-screen z-[95] 
+                    ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} 
+                    md:!translate-x-0 md:flex md:shadow-none transition-transform duration-300 md:transition-none`}
             >
                 {/* LOGO AREA */}
                 <div className="p-8 pb-10">
@@ -162,7 +159,7 @@ export const Sidebar = () => {
                         </AnimatePresence>
                     </div>
                 </div>
-            </motion.div>
+            </motion.div >
         </>
     );
 };
