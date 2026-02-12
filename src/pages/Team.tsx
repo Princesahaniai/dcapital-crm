@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
-import { Plus, Search, Mail, Phone, Edit2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, Mail, Phone, Edit2, CheckCircle, XCircle, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
