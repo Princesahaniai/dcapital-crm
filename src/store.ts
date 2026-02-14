@@ -61,6 +61,8 @@ interface Store {
     addBulkLeads: (leads: ExtendedLead[]) => { success: number; failed: number };
     updateLead: (id: string, data: Partial<ExtendedLead>) => void;
     deleteLead: (id: string) => void;
+    restoreLead: (id: string) => void;
+    permanentDeleteLead: (id: string) => void;
     assignLeads: (leadIds: string[], agentId: string, agentName: string) => void;
     addQuickNote: (leadId: string, note: string) => void;
     addProperty: (p: Property) => void;
@@ -314,7 +316,15 @@ export const useStore = create<Store>()(
                 };
             }),
 
-            deleteLead: (id) => set((s) => ({ leads: s.leads.filter(l => l.id !== id) })),
+            deleteLead: (id) => set((state) => ({
+                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash' } : l)
+            })),
+            restoreLead: (id) => set((state) => ({
+                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New' } : l)
+            })),
+            permanentDeleteLead: (id) => set((state) => ({
+                leads: state.leads.filter((l) => l.id !== id)
+            })),
             assignLeads: (leadIds, agentId, agentName) => set((s) => {
                 const count = leadIds.length;
                 return {

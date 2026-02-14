@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, MoreHorizontal, User } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, User, Trash2 } from 'lucide-react';
 import { StageIndicator } from './StageIndicator';
 import { WhatsAppButton } from '../WhatsAppButton';
 import type { Lead } from '../../types';
@@ -101,6 +101,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                     className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <Mail size={16} />
+                </button>
+
+                <div className="flex-1" />
+
+                <button
+                    onClick={onDelete}
+                    className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                >
+                    <Trash2 size={16} />
                 </button>
                 <div className="flex-1"></div>
                 <button

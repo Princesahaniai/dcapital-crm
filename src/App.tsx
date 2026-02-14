@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
-import { MobileNav } from './components/MobileNav';
+import { BottomNav } from './components/BottomNav';
 import { CommandPalette } from './components/CommandPalette';
 import { Dashboard } from './pages/Dashboard';
 import { Leads } from './pages/Leads';
@@ -12,9 +12,10 @@ import { Team } from './pages/Team';
 import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
-import { SocialStudio } from './pages/SocialStudio';
+import SocialStudioV2 from './pages/SocialStudioV2';
 import { useStore } from './store';
 import toast, { Toaster } from 'react-hot-toast';
+import PWAInstall from './components/PWAInstall';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const user = useStore((state) => state.user);
@@ -56,7 +57,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
                 <main className="flex-1 overflow-y-auto pb-32 md:pb-6 relative scrollbar-hide">
                     {children}
                 </main>
-                <MobileNav />
+                <BottomNav />
             </div>
         </div>
     );
@@ -75,7 +76,9 @@ export default function App() {
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-                <Route path="/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
+                <Route path="/social-studio" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
+                <Route path="/admin/social-studio" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
+                <Route path="/social-studio-v2" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

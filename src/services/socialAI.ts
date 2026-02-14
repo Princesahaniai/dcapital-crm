@@ -1,9 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 // CRITICAL: Hardcoding Key as per user request for immediate working demo.
+// NOTE: Verify this key is enabled for Gemini API in Google Cloud Console.
 const API_KEY = 'AIzaSyDElpqgjedde0IbEshvKqcERVW6_aE7pKU';
-
-const genAI = new GoogleGenerativeAI(API_KEY);
 
 interface GenerateOptions {
     topic: string;
@@ -13,29 +10,25 @@ interface GenerateOptions {
 }
 
 export const generateSocialContent = async ({ topic, bullets, tone, platform }: GenerateOptions) => {
-    try {
-        // FIXED: Use correct model name or fallback
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-pro',
-            generationConfig: {
-                temperature: 0.8,
-                maxOutputTokens: 2048,
-            }
-        });
+    // DIRECT FETCH WITHOUT SDK - NO FALLBACKS
+    const platformSpecs = {
+        instagram: { style: "Visual, emojis, short paragraphs", length: "125-150 words" },
+        tiktok: { style: "Hook in 3 seconds, trending, casual", length: "50-80 words" },
+        facebook: { style: "Conversational, detailed", length: "150-200 words" },
+        linkedin: { style: "Professional, data-driven", length: "200-300 words" },
+        twitter: { style: "Punchy, thread format", length: "280 chars" },
+        youtube: { style: "SEO-optimized, educational", length: "100-150 words" }
+    };
 
-        const platformSpecs = {
-            instagram: { style: "Visual, emojis, short paragraphs", length: "125-150 words", cta: "Link in bio" },
-            tiktok: { style: "Hook in 3 seconds, trending, casual", length: "50-80 words", cta: "Follow for more" },
-            facebook: { style: "Conversational, detailed", length: "150-200 words", cta: "Share with friends" },
-            linkedin: { style: "Professional, data-driven", length: "200-300 words", cta: "Connect with us" },
-            twitter: { style: "Punchy, thread format", length: "280 chars x 5-7 tweets", cta: "Retweet" },
-            youtube: { style: "SEO-optimized, educational", length: "100-150 words", cta: "Subscribe" }
-        };
+    const specs = platformSpecs[platform] || platformSpecs.instagram;
 
-        const specs = platformSpecs[platform];
+    // Use direct model URL
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`;
 
-        const prompt = `You are CMO of D-Capital luxury Dubai real estate. Create viral ${platform} content.
-
+    const prompt = {
+        contents: [{
+            parts: [{
+                text: `You are CMO of D-Capital luxury Dubai real estate. Create viral ${platform} content.
 TOPIC: ${topic}
 POINTS: ${bullets || 'N/A'}
 TONE: ${tone || 'luxury'}
@@ -52,35 +45,46 @@ OUTPUT STRICT JSON:
   "visualDirection": "Image/video description",
   "engagementPrediction": "Why this works",
   "followUpIdea": "Next post suggestion"
-}`;
+}`
+            }]
+        }]
+    };
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(prompt)
+        });
+
+        const data = await response.json();
+
+        // CHECK FOR API ERROR
+        if (!response.ok || data.error) {
+            console.error('Gemini API Error:', data);
+            throw new Error(data.error?.message || `API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+            throw new Error("No content generated");
+        }
+
         const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
 
         try {
             return JSON.parse(cleanText);
         } catch (e) {
-            // Try to extract JSON if it's wrapped in text
             const match = cleanText.match(/\{[\s\S]*\}/);
             if (match) return JSON.parse(match[0]);
-            throw new Error('Invalid JSON response');
+            throw new Error('Invalid JSON response from AI');
         }
 
     } catch (error: any) {
-        console.error('Gemini Error:', error);
-
-        // FALLBACK: Return template content so UI never breaks
-        return {
-            hook: "🏡 Discover Luxury Living in Dubai",
-            caption: `Experience the extraordinary at ${topic}. ${bullets || 'Exclusive property details available.'}\n\nLimited availability. Exclusive viewing by appointment only.`,
-            hashtags: "#DubaiRealEstate #LuxuryLiving #DCapital #Investment",
-            cta: "DM 'VIP' for private tour",
-            bestTime: "Tuesday 6:00 PM GST",
-            visualDirection: "Modern architecture, golden hour lighting, luxury interior",
-            engagementPrediction: "High engagement expected - luxury properties perform 3x better",
-            followUpIdea: "Post client testimonial from previous buyer",
-            _fallback: true
-        };
+        console.error('Gemini Request Failed:', error);
+        // CRITICAL: THROW ERROR TO UI - DO NOT FALLBACK
+        throw error;
     }
 };

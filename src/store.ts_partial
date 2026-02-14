@@ -1,0 +1,9 @@
+            deleteLead: (id) => set((state) => ({
+                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash', deletedAt: new Date().toISOString() } : l)
+            })),
+            restoreLead: (id) => set((state) => ({
+                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New', deletedAt: undefined } : l)
+            })),
+            permanentDeleteLead: (id) => set((state) => ({
+                leads: state.leads.filter((l) => l.id !== id)
+            })),

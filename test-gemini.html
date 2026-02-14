@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Gemini API Test</title>
+</head>
+
+<body>
+    <h1>Testing Gemini API Key...</h1>
+    <div id="status">Check Console</div>
+    <script>
+        const API_KEY = 'AIzaSyDElpqgjedde0IbEshvKqcERVW6_aE7pKU';
+
+        console.log('Testing Key:', API_KEY);
+
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: 'Say hello' }] }]
+            })
+        })
+            .then(r => {
+                console.log('Status:', r.status);
+                return r.json();
+            })
+            .then(data => {
+                console.log('WORKS:', data);
+                document.body.innerHTML += '<h2 style="color:green">WORKS! Check console for response.</h2>';
+                if (data.error) {
+                    console.log('API RESPONSE ERROR:', data.error);
+                    document.body.innerHTML += `<h2 style="color:red">API Error: ${data.error.message}</h2>`;
+                }
+            })
+            .catch(e => {
+                console.log('FAILED:', e);
+                document.body.innerHTML += `<h2 style="color:red">FAILED: ${e.message}</h2>`;
+            });
+    </script>
+</body>
+
+</html>
