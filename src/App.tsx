@@ -66,6 +66,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
     return (
         <>
+            <PWAInstall />
             <Toaster position="top-center" toastOptions={{ style: { background: '#1C1C1E', color: '#fff', border: '1px solid #333' } }} />
             <Routes>
                 <Route path="/login" element={<Login />} />
@@ -79,6 +80,7 @@ export default function App() {
                 <Route path="/social-studio" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
                 <Route path="/admin/social-studio" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
                 <Route path="/social-studio-v2" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
+                <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
