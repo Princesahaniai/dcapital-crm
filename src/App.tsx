@@ -13,6 +13,7 @@ import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
 import SocialStudioV2 from './pages/SocialStudioV2';
+import { Trash } from './pages/Trash';
 import { useStore } from './store';
 import toast, { Toaster } from 'react-hot-toast';
 import PWAInstall from './components/PWAInstall';
