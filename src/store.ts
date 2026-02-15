@@ -317,10 +317,10 @@ export const useStore = create<Store>()(
             }),
 
             deleteLead: (id) => set((state) => ({
-                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash' } : l)
+                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash', deletedAt: Date.now() } : l)
             })),
             restoreLead: (id) => set((state) => ({
-                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New' } : l)
+                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New', deletedAt: undefined } : l)
             })),
             permanentDeleteLead: (id) => set((state) => ({
                 leads: state.leads.filter((l) => l.id !== id)

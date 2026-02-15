@@ -14,7 +14,7 @@ export interface Lead {
     phone?: string;
     budget?: number;
     source?: string;
-    status: 'New' | 'Contacted' | 'Qualified' | 'Viewing' | 'Negotiation' | 'Closed' | 'Lost';
+    status: 'New' | 'Contacted' | 'Qualified' | 'Viewing' | 'Negotiation' | 'Closed' | 'Lost' | 'Trash';
     notes?: string;
     assignedTo?: string;
     createdAt: number;
@@ -23,6 +23,7 @@ export interface Lead {
     propertyId?: string;
     commission?: number;
     commissionPaid?: boolean;
+    deletedAt?: number;
 }
 
 export interface Property {

@@ -6,6 +6,8 @@ import { WhatsAppButton } from '../WhatsAppButton';
 import type { Lead } from '../../types';
 import { logCall, logEmail } from '../../services/activityLog';
 import { useStore } from '../../store';
+import { calculateLeadScore } from '../../utils/leadScoring';
+import { FollowUpAlert } from './FollowUpAlert';
 
 interface LeadCardProps {
     lead: Lead;
@@ -17,6 +19,7 @@ interface LeadCardProps {
 
 export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDelete, agentName = 'Unassigned' }) => {
     const { user } = useStore();
+    const scoreData = calculateLeadScore(lead);
 
     const stopProp = (e: React.MouseEvent, action: () => void) => {
         e.stopPropagation();
@@ -45,21 +48,24 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
             {/* Top Row: User Info & Badge */}
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20 relative">
                         {lead.name.charAt(0)}
+                        <FollowUpAlert lead={lead} compact />
                     </div>
                     <div className="max-w-[120px]">
                         <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg">{lead.name}</h3>
-                        <p className="text-xs text-gray-400 uppercase tracking-widest font-medium flex items-center gap-1">
-                            {lead.source}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${scoreData.color} font-bold`}>
+                                {scoreData.label} {scoreData.score}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${lead.status === 'New' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                     lead.status === 'Closed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
                         lead.status === 'Lost' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                             'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10'}`}>
-                    {lead.status}
+                    {lead.status === 'Trash' ? 'DELETED' : lead.status}
                 </div>
             </div>
 
@@ -81,8 +87,9 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
             </div>
 
             {/* Pipeline Indicator */}
-            <div className="mb-6">
+            <div className="mb-4">
                 <StageIndicator currentStage={lead.status} compact />
+                <FollowUpAlert lead={lead} />
             </div>
 
             {/* Bottom: Quick Actions */}
@@ -105,12 +112,22 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 <div className="flex-1" />
 
-                <button
-                    onClick={onDelete}
-                    className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
-                >
-                    <Trash2 size={16} />
-                </button>
+                {lead.status === 'Trash' ? (
+                    <button
+                        onClick={onDelete} // This will trigger restore if parent handles it, or updated logic in Leads.tsx
+                        className="p-2.5 rounded-xl bg-green-50 dark:bg-green-900/10 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors"
+                        title="Restore Lead"
+                    >
+                        <Trash2 size={16} className="rotate-180" />
+                    </button>
+                ) : (
+                    <button
+                        onClick={onDelete}
+                        className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                )}
                 <div className="flex-1"></div>
                 <button
                     onClick={onEdit}

@@ -38,9 +38,17 @@ export const Leads = () => {
 
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Viewing', 'Negotiation', 'Closed', 'Lost'];
 
+    const [showTrash, setShowTrash] = useState(false);
+
     const accessibleLeads = useMemo(() => getVisibleLeads(user, leads, team), [user, leads, team]);
 
     const filteredLeads = accessibleLeads.filter(lead => {
+        // Trash Logic
+        if (showTrash) {
+            return lead.status === 'Trash';
+        }
+        if (lead.status === 'Trash') return false; // Hide trash by default
+
         const matchesSearch = (lead.name || '').toLowerCase().includes((search || '').toLowerCase()) ||
             (lead.email || '').toLowerCase().includes((search || '').toLowerCase()) ||
             (lead.phone && lead.phone.includes(search));
@@ -190,6 +198,13 @@ export const Leads = () => {
                 <div className="flex gap-2 flex-wrap">
                     <button onClick={downloadTemplate} title="Download Template" className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors">
                         <FileDown size={20} />
+                    </button>
+                    <button
+                        onClick={() => setShowTrash(!showTrash)}
+                        className={`p-3 rounded-xl transition-colors ${showTrash ? 'bg-red-50 text-red-500 dark:bg-red-900/20' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white'}`}
+                        title={showTrash ? "Show Active Leads" : "Show Trash"}
+                    >
+                        <Trash2 size={20} />
                     </button>
                     <button onClick={handleExport} className="border border-gray-300 dark:border-white/20 text-gray-700 dark:text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
                         <Download size={18} /> Export
