@@ -14,10 +14,17 @@ const firebaseConfig = {
     measurementId: "G-2JNHHM6477"
 };
 
+// Debug logging for production troubleshooting
+console.log('🔥 Firebase Initializing...');
+console.log('   Project ID:', firebaseConfig.projectId);
+console.log('   Auth Domain:', firebaseConfig.authDomain);
+console.log('   API Key:', firebaseConfig.apiKey ? '✅ Present' : '❌ Missing');
+
 // Initialize Firebase Services
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
-// Firebase initialized successfully
+console.log('✅ Firebase initialized successfully');
+console.log('   Current URL:', window.location.origin);
