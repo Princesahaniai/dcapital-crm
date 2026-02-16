@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Lead, Activity } from '../types';
+import type { Lead } from '../types';
 import { useStore } from '../store';
 
 export const useLeadScore = (lead: Lead) => {
@@ -7,7 +7,6 @@ export const useLeadScore = (lead: Lead) => {
 
     const score = useMemo(() => {
         let points = 0;
-        const maxPoints = 100;
 
         // 1. Status Weight (Max 30)
         switch (lead.status) {

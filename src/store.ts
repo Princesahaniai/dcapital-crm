@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Lead, Property, Task, Activity, User } from './types';
+import type { Lead, Property, Task, Activity, User, Notification } from './types';
 import { auth, db } from './firebaseConfig';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 
 interface TeamMember extends User {
     id: string;
-    status: 'Active' | 'Inactive';
+    status: 'Active' | 'Inactive' | 'Pending' | 'Suspended';
     joinedDate: string;
     password: string;
     designation: string;
@@ -54,6 +55,15 @@ interface Store {
     changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
     resetUserPassword: (userId: string, newPassword: string) => boolean;
     checkSessionExpiry: () => void;
+    subscribeToAuthChanges: () => () => void;
+
+    // Enterprise Actions
+    auditLogs: any[]; // Using any to avoid import issues for now, or use ActivityLog
+    fetchAuditLogs: () => Promise<void>;
+    logAudit: (action: string, targetUserId?: string, details?: any) => Promise<void>;
+    suspendTeamMember: (id: string) => Promise<void>;
+    activateTeamMember: (id: string) => Promise<void>;
+    generateTempPassword: (id: string) => Promise<string>;
 
     // Data Actions
     updateProfile: (name: string, email: string) => void;
@@ -79,8 +89,9 @@ interface Store {
     resetSystem: () => void;
     resetLeads: () => void;
     resetProperties: () => void;
-    addTeamMember: (member: TeamMember) => void;
-    removeTeamMember: (id: string) => void;
+    addTeamMember: (member: TeamMember) => Promise<string>; // Returns invite link or ID
+    removeTeamMember: (id: string) => Promise<void>;
+    fetchTeam: () => Promise<void>; // New action to sync team
     addActivity: (a: Activity) => void;
     addNotification: (text: string) => void;
 }
@@ -98,6 +109,7 @@ export const useStore = create<Store>()(
             activities: [], // Production: Empty state
             team: [], // Production: Empty state - Only CEO and Admin via login
             notifications: [], // Production: Empty state
+            auditLogs: [],
 
             login: async (email, password, rememberMe = false) => {
                 const normalizedEmail = email.toLowerCase().trim();
@@ -121,60 +133,84 @@ export const useStore = create<Store>()(
                     return true;
                 }
 
-                const state = get();
+                try {
+                    console.log('[AUTH] Setting Persistence to LOCAL');
+                    await setPersistence(auth, browserLocalPersistence);
 
-                // 1️⃣ CHECK LOCAL TEAM (Store-based Auth)
-                // This allows team members created in the CRM to login without Firebase Auth
-                const teamMember = state.team.find(m => m.email.toLowerCase() === normalizedEmail);
+                    console.log('[AUTH] Attempting Firebase Auth...', normalizedEmail);
+                    const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+                    const user = userCredential.user;
+                    console.log('[AUTH] Firebase Auth Success:', user.uid);
 
-                if (teamMember) {
-                    console.log('[AUTH] Found in Local Team Registry:', teamMember.name);
+                    // Fetch User Profile from Firestore to Check Status & Role
+                    const userDocRef = doc(db, 'users', userCredential.user.uid);
+                    let userProfile = null;
 
-                    if (teamMember.status === 'Inactive') {
-                        console.warn('[AUTH] Login Blocked: User Inactive');
-                        return false;
-                        // Note: Caller will show generic error. Could improve to return specific error string.
+                    try {
+                        const docSnap = await getDoc(userDocRef);
+                        if (docSnap.exists()) {
+                            userProfile = docSnap.data();
+                        } else {
+                            // Fallback: Query by email if UID doc missing
+                            console.log('[AUTH] User doc not found by UID, trying email query...');
+                            const q = query(collection(db, 'users'), where('email', '==', normalizedEmail));
+                            const querySnapshot = await getDocs(q);
+                            if (!querySnapshot.empty) {
+                                userProfile = querySnapshot.docs[0].data();
+                                console.log('[AUTH] Found profile via email query');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[AUTH] Firestore Profile Fetch Error:', err);
                     }
 
-                    if (teamMember.password === password) {
-                        console.log('[AUTH] Local Password Match. Logging in...');
+                    if (userProfile) {
+                        if (userProfile.status === 'Suspended' || userProfile.status === 'Inactive') {
+                            await signOut(auth);
+                            toast.error('Access Suspended. Contact Admin.');
+                            return false;
+                        }
+
                         set({
                             user: {
-                                id: teamMember.id,
-                                email: teamMember.email,
-                                name: teamMember.name,
-                                role: 'agent' // Defaulting to agent, or map designation if needed
-                            },
+                                id: user.uid,
+                                email: user.email || '',
+                                name: userProfile.name || user.displayName || 'User',
+                                role: userProfile.role || 'agent'
+                            } as any,
                             loginTimestamp: Date.now(),
                             rememberMe
                         });
                         return true;
                     } else {
-                        console.warn('[AUTH] Local Password Mismatch');
-                        // Continue to Firebase? No, if email exists locally, we assume it's a team member.
-                        // But maybe they are also a Firebase user? unlikely for now.
+                        // Master Admin Fallback
+                        if (normalizedEmail === 'princesahani.work@gmail.com' || normalizedEmail === 'ajay@dcapitalrealestate.com') {
+                            console.log('[AUTH] Master Admin Fallback Triggered');
+                            set({
+                                user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
+                                loginTimestamp: Date.now(),
+                                rememberMe
+                            });
+                            return true;
+                        }
+
+                        console.warn('[AUTH] No user profile found in Firestore for:', normalizedEmail);
+                        // Do NOT sign out immediately if it's a valid auth but missing profile - maybe show a warning?
+                        // But for security, better to deny if strict. 
+                        // For now, let's allow basic access if Auth succeeded but Profile failed, 
+                        // OR enforce profile. The existing code enforces profile.
+                        await signOut(auth);
+                        toast.error('User profile not linked. Contact IT.');
                         return false;
                     }
-                }
 
-                // 2️⃣ FIREBASE AUTH (CEO / Master Admin)
-                try {
-                    console.log('[AUTH] Attempting Firebase Auth...');
-                    const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
-                    const user = userCredential.user;
-                    console.log('[AUTH] Firebase Auth Success:', user.uid);
-
-                    // Fetch real role from Firestore 'users' collection ideally, but for now default to CEO
-                    // Todo: fetch user doc
-
-                    set({
-                        user: { id: user.uid, email: user.email || '', name: user.displayName || 'Admin', role: 'ceo' } as any,
-                        loginTimestamp: Date.now(),
-                        rememberMe
-                    });
-                    return true;
                 } catch (error: any) {
-                    console.error('[AUTH] Firebase Login Failed:', error.code, error.message);
+                    console.error('[AUTH] Login Failed:', error.code, error.message);
+                    if (error.code === 'auth/invalid-credential') {
+                        toast.error('Invalid email or password');
+                    } else {
+                        toast.error('Login failed: ' + error.message);
+                    }
                     return false;
                 }
             },
@@ -247,31 +283,263 @@ export const useStore = create<Store>()(
                 const state = get();
                 if (!state.user || !state.loginTimestamp) return;
 
-                const now = Date.now();
-                const twentyFourHours = 24 * 60 * 60 * 1000;
-
-                // If not "Remember Me" and session expired, logout
-                if (!state.rememberMe && (now - state.loginTimestamp) > twentyFourHours) {
-                    get().logout();
+                // 24 hour expiry
+                if (Date.now() - state.loginTimestamp > 24 * 60 * 60 * 1000) {
+                    if (!state.rememberMe) {
+                        get().logout();
+                    }
                 }
             },
 
+            subscribeToAuthChanges: () => {
+                return onAuthStateChanged(auth, async (user) => {
+                    const state = get();
+                    if (user) {
+                        console.log('[AUTH] User detected:', user.uid);
+                        // If already logged in with same ID, skip
+                        if (state.user?.id === user.uid) return;
+
+                        // Fetch Profile
+                        const userDocRef = doc(db, 'users', user.uid);
+                        const docSnap = await getDoc(userDocRef);
+
+                        if (docSnap.exists()) {
+                            const userProfile = docSnap.data();
+                            if (userProfile.status === 'Suspended' || userProfile.status === 'Inactive') {
+                                await signOut(auth);
+                                set({ user: null });
+                                toast.error('Access Suspended');
+                                return;
+                            }
+
+                            set({
+                                user: {
+                                    id: user.uid,
+                                    email: user.email || '',
+                                    name: userProfile.name || user.displayName || 'User',
+                                    role: userProfile.role || 'agent'
+                                } as any,
+                                loginTimestamp: Date.now(),
+                                rememberMe: true // Persist session
+                            });
+                        } else {
+                            // Handle edge case: User in Auth but not Firestore
+                            // Allow Master Admins specifically
+                            if (user.email === 'princesahani.work@gmail.com' || user.email === 'ajay@dcapitalrealestate.com') {
+                                set({
+                                    user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
+                                    loginTimestamp: Date.now(),
+                                    rememberMe: true
+                                });
+                            }
+                        }
+                    } else {
+                        // Only clear if we thought we were logged in
+                        if (state.user) {
+                            console.log('[AUTH] No user. Clearing session.');
+                            set({ user: null, loginTimestamp: null });
+                        }
+                    }
+                });
+            },
+
+            // Data Actions
             updateProfile: (name, email) => set((s) => ({ user: s.user ? { ...s.user, name, email } : null })),
+
             addLead: (l) => set((s) => {
-                if (s.leads.some(existing => existing.id === l.id)) return s;
+                if (s.leads.some(existing => existing.id === l.id)) return {};
                 return { leads: [l, ...s.leads] };
             }),
+
             addBulkLeads: (newLeads) => set((s) => ({ leads: [...newLeads, ...s.leads] })),
 
-            // Helper to add notification
-            addNotification: (text) => set((s) => ({
-                notifications: [{
-                    id: Math.random().toString(36).substr(2, 9),
+            fetchTeam: async () => {
+                try {
+                    const querySnapshot = await getDocs(collection(db, 'users'));
+                    const team = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
+                    set({ team });
+                } catch (error) {
+                    console.error('Error fetching team:', error);
+                }
+            },
+
+            // Enterprise Implementations
+            fetchAuditLogs: async () => {
+                try {
+                    const q = query(collection(db, 'audit_logs'), where('timestamp', '>', Date.now() - 30 * 24 * 60 * 60 * 1000));
+                    const querySnapshot = await getDocs(q);
+                    const logs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).sort((a, b) => b.timestamp - a.timestamp);
+                    set({ auditLogs: logs });
+                } catch (error) {
+                    console.error('Error fetching audit logs:', error);
+                }
+            },
+
+            logAudit: async (action, targetUserId, details) => {
+                try {
+                    const currentUser = get().user;
+                    const logEntry = {
+                        action,
+                        performedBy: currentUser?.id || 'system',
+                        performedByName: currentUser?.name || 'System',
+                        targetUserId,
+                        details,
+                        timestamp: Date.now()
+                    };
+                    await setDoc(doc(collection(db, 'audit_logs')), logEntry);
+                    set(s => ({ auditLogs: [logEntry, ...s.auditLogs] }));
+                } catch (error) {
+                    console.error('Failed to log audit:', error);
+                }
+            },
+
+            suspendTeamMember: async (id) => {
+                await setDoc(doc(db, 'users', id), { status: 'Suspended' }, { merge: true });
+                set(s => ({ team: s.team.map(m => m.id === id ? { ...m, status: 'Suspended' } : m) }));
+                get().logAudit('SUSPEND_USER', id);
+                toast.success('User Suspended');
+            },
+
+            activateTeamMember: async (id) => {
+                await setDoc(doc(db, 'users', id), { status: 'Active' }, { merge: true });
+                set(s => ({ team: s.team.map(m => m.id === id ? { ...m, status: 'Active' } : m) }));
+                get().logAudit('ACTIVATE_USER', id);
+                toast.success('User Activated');
+            },
+
+            generateTempPassword: async (id) => {
+                const tempPass = Math.random().toString(36).slice(-8).toUpperCase();
+                await setDoc(doc(db, 'users', id), {
+                    tempPassword: tempPass,
+                    mustChangePassword: true
+                }, { merge: true });
+
+                get().logAudit('RESET_PASSWORD', id);
+                return tempPass;
+            },
+
+
+            addTeamMember: async (member) => {
+                console.log('[INVITE] Starting invitation process for:', member.email);
+
+                try {
+                    // Generate secure temporary password
+                    const generateTempPassword = () => {
+                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$';
+                        let password = '';
+                        for (let i = 0; i < 12; i++) {
+                            password += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+                        return password;
+                    };
+
+                    const tempPassword = generateTempPassword();
+                    const normalizedEmail = member.email.toLowerCase().trim();
+
+                    console.log('[INVITE] Creating Firebase Auth account...');
+
+                    // ⭐ CRITICAL: Create Firebase Auth account
+                    const userCredential = await createUserWithEmailAndPassword(
+                        auth,
+                        normalizedEmail,
+                        tempPassword
+                    );
+
+                    const uid = userCredential.user.uid;
+                    console.log('[INVITE] Firebase Auth account created with UID:', uid);
+
+                    // Create Firestore profile with UID as document ID
+                    const newMember = {
+                        uid: uid,
+                        email: normalizedEmail,
+                        name: member.name,
+                        role: member.role || 'agent',
+                        designation: member.designation || '',
+                        phone: member.phone || '',
+                        department: member.department || '',
+                        status: 'Active', // Active immediately - they can login right away
+                        tempPassword: tempPassword, // Store for reference
+                        createdAt: new Date().toISOString(),
+                        joinedDate: new Date().toISOString().split('T')[0],
+                        invitedBy: get().user?.email || 'system',
+                        loginCount: 0,
+                        totalSales: 0,
+                        commissionEarned: 0
+                    };
+
+                    await setDoc(doc(db, 'users', uid), newMember);
+                    console.log('[INVITE] Firestore profile created');
+
+                    // Log audit trail
+                    try {
+                        await addDoc(collection(db, 'audit_logs'), {
+                            action: 'USER_INVITED',
+                            performedBy: get().user?.email || 'system',
+                            performedByUid: get().user?.uid || 'system',
+                            targetUserEmail: normalizedEmail,
+                            targetUserUid: uid,
+                            details: { role: member.role, department: member.department },
+                            timestamp: new Date().toISOString()
+                        });
+                    } catch (auditError) {
+                        console.warn('[INVITE] Failed to create audit log:', auditError);
+                    }
+
+                    // Update local state
+                    set((state) => ({
+                        team: [...state.team, newMember as TeamMember]
+                    }));
+
+                    console.log('[INVITE] ✅ Success! User can login immediately');
+                    console.log('[INVITE] Email:', normalizedEmail);
+                    console.log('[INVITE] Temp Password:', tempPassword);
+
+                    // Return credentials for admin to share
+                    return {
+                        success: true,
+                        email: normalizedEmail,
+                        tempPassword: tempPassword,
+                        uid: uid,
+                        message: `User created successfully! Share these credentials:\n\nEmail: ${normalizedEmail}\nPassword: ${tempPassword}\n\nThey can login immediately at ${window.location.origin}/login`
+                    };
+
+                } catch (error: any) {
+                    console.error('[INVITE] Failed:', error);
+
+                    // Handle specific Firebase errors
+                    if (error.code === 'auth/email-already-in-use') {
+                        throw new Error('This email is already registered. User may already have an account.');
+                    } else if (error.code === 'auth/invalid-email') {
+                        throw new Error('Invalid email format. Please check and try again.');
+                    } else if (error.code === 'auth/weak-password') {
+                        throw new Error('Generated password is too weak. Please try again.');
+                    } else {
+                        throw new Error(error.message || 'Failed to create user account. Please try again.');
+                    }
+                }
+            },
+
+
+            removeTeamMember: async (id) => {
+                await deleteDoc(doc(db, 'users', id));
+                set((state) => ({
+                    team: state.team.filter((m) => m.id !== id)
+                }));
+            },
+
+            addActivity: (activity) => set((state) => ({
+                activities: [activity, ...state.activities]
+            })),
+
+            addNotification: (text) => set((state) => {
+                const newNotif: Notification = {
+                    id: Math.random().toString(),
                     text,
                     read: false,
                     date: new Date().toISOString()
-                }, ...s.notifications]
-            })),
+                };
+                return { notifications: [newNotif, ...state.notifications] };
+            }),
 
             updateLead: (id, data) => set((s) => {
                 const oldLead = s.leads.find(l => l.id === id);
@@ -319,12 +587,15 @@ export const useStore = create<Store>()(
             deleteLead: (id) => set((state) => ({
                 leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash', deletedAt: Date.now() } : l)
             })),
+
             restoreLead: (id) => set((state) => ({
                 leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New', deletedAt: undefined } : l)
             })),
+
             permanentDeleteLead: (id) => set((state) => ({
                 leads: state.leads.filter((l) => l.id !== id)
             })),
+
             assignLeads: (leadIds, agentId, agentName) => set((s) => {
                 const count = leadIds.length;
                 return {
@@ -337,10 +608,15 @@ export const useStore = create<Store>()(
                     }, ...s.notifications]
                 };
             }),
+
             addQuickNote: (leadId, note) => set((s) => ({ leads: s.leads.map(l => l.id === leadId ? { ...l, notes: l.notes ? l.notes + '\n' + note : note, updatedAt: Date.now() } : l) })),
+
             markNotificationRead: (id) => set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) })),
+
             clearNotifications: () => set({ notifications: [] }),
+
             addProperty: (p) => set((s) => ({ properties: [p, ...s.properties] })),
+
             updateProperty: (id, data) => set((s) => {
                 const oldProp = s.properties.find(p => p.id === id);
                 if (!oldProp) return s;
@@ -367,7 +643,9 @@ export const useStore = create<Store>()(
                     team: newTeam
                 };
             }),
+
             deleteProperty: (id) => set((s) => ({ properties: s.properties.filter(p => p.id !== id) })),
+
             addTask: (t) => set((s) => {
                 const newTask: Task = {
                     ...t,
@@ -385,6 +663,7 @@ export const useStore = create<Store>()(
                 };
                 return { tasks: [newTask, ...s.tasks] };
             }),
+
             updateTaskStatus: (id, status, note) => set((s) => ({
                 tasks: s.tasks.map(t => t.id === id ? {
                     ...t,
@@ -401,6 +680,7 @@ export const useStore = create<Store>()(
                     }]
                 } : t)
             })),
+
             addTaskComment: (id, text) => set((s) => ({
                 tasks: s.tasks.map(t => t.id === id ? {
                     ...t,
@@ -420,6 +700,7 @@ export const useStore = create<Store>()(
                     }]
                 } : t)
             })),
+
             toggleTask: (id) => set((s) => {
                 const task = s.tasks.find(t => t.id === id);
                 if (!task) return s;
@@ -440,14 +721,16 @@ export const useStore = create<Store>()(
                     } : t)
                 };
             }),
+
             deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) })),
+
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
+
             resetSystem: () => set({ leads: [], properties: [], tasks: [], activities: [] }),
+
             resetLeads: () => set({ leads: [] }),
-            resetProperties: () => set({ properties: [] }),
-            addActivity: (a) => set((s) => ({ activities: [a, ...s.activities] })),
-            addTeamMember: (m) => set((s) => ({ team: [...s.team, m] })),
-            removeTeamMember: (id) => set((s) => ({ team: s.team.filter(t => t.id !== id) }))
+
+            resetProperties: () => set({ properties: [] })
         }),
         { name: 'dcapital-ultimate-db', storage: createJSONStorage(() => localStorage) }
     )

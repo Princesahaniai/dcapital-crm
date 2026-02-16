@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, Phone } from 'lucide-react';
-import { Lead } from '../../types';
+import type { Lead } from '../../types';
 
 interface FollowUpAlertProps {
     lead: Lead;

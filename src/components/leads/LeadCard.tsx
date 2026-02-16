@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, MoreHorizontal, User, Trash2 } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, Trash2 } from 'lucide-react';
 import { StageIndicator } from './StageIndicator';
 import { WhatsAppButton } from '../WhatsAppButton';
 import type { Lead } from '../../types';
@@ -98,6 +98,8 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 <button
                     onClick={(e) => stopProp(e, handleCall)}
+                    title="Call Lead"
+                    aria-label="Call Lead"
                     className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <Phone size={16} />
@@ -105,6 +107,8 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 <button
                     onClick={(e) => stopProp(e, handleEmail)}
+                    title="Email Lead"
+                    aria-label="Email Lead"
                     className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <Mail size={16} />
@@ -117,12 +121,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                         onClick={onDelete} // This will trigger restore if parent handles it, or updated logic in Leads.tsx
                         className="p-2.5 rounded-xl bg-green-50 dark:bg-green-900/10 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors"
                         title="Restore Lead"
+                        aria-label="Restore Lead"
                     >
                         <Trash2 size={16} className="rotate-180" />
                     </button>
                 ) : (
                     <button
                         onClick={onDelete}
+                        title="Delete Lead"
+                        aria-label="Delete Lead"
                         className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
                     >
                         <Trash2 size={16} />
@@ -131,6 +138,8 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 <div className="flex-1"></div>
                 <button
                     onClick={onEdit}
+                    title="More Options"
+                    aria-label="More Options"
                     className="p-2.5 rounded-xl text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <MoreHorizontal size={18} />

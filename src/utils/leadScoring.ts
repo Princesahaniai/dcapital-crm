@@ -1,4 +1,4 @@
-import { Lead } from '../types';
+import type { Lead } from '../types';
 
 export const calculateLeadScore = (lead: Lead): { score: number; label: string; color: string } => {
     let score = 0;

@@ -44,48 +44,33 @@ export default function SocialStudioV2() {
     };
 
     return (
-        <div style={{ padding: 40, color: 'white', background: '#000', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-            <h1 style={{ color: '#D4AF37', marginBottom: 20 }}>Social Studio V2 - EMERGENCY FIX</h1>
+        <div className="min-h-screen bg-black text-white p-10 font-sans">
+            <h1 className="text-[#D4AF37] text-4xl font-bold mb-5">Social Studio V2 - EMERGENCY FIX</h1>
 
-            <div style={{ marginBottom: 20 }}>
+            <div className="mb-5">
                 <input
                     value={topic}
                     onChange={e => setTopic(e.target.value)}
                     placeholder="Enter topic (e.g., Dubai Penthouse for Sale)"
-                    style={{
-                        padding: 15,
-                        width: '100%',
-                        maxWidth: '500px',
-                        marginBottom: 10,
-                        background: '#111',
-                        border: '1px solid #333',
-                        color: 'white',
-                        borderRadius: 8
-                    }}
+                    className="w-full max-w-[500px] p-4 bg-[#111] border border-[#333] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
                 />
             </div>
 
             <button
                 onClick={generate}
                 disabled={loading}
-                style={{
-                    padding: '15px 30px',
-                    background: loading ? '#333' : '#D4AF37',
-                    color: loading ? '#888' : 'black',
-                    border: 'none',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontWeight: 'bold',
-                    borderRadius: 8,
-                    fontSize: '16px'
-                }}
+                className={`px-8 py-4 rounded-lg font-bold text-lg transition-colors ${loading
+                        ? 'bg-[#333] text-[#888] cursor-not-allowed'
+                        : 'bg-[#D4AF37] text-black hover:bg-[#B8962F]'
+                    }`}
             >
                 {loading ? 'Generating...' : 'GENERATE POST'}
             </button>
 
             {result && (
-                <div style={{ marginTop: 30, padding: 25, background: '#111', borderLeft: '4px solid #D4AF37', maxWidth: '600px' }}>
-                    <h3 style={{ marginTop: 0, color: '#888' }}>Result:</h3>
-                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.6 }}>{result}</pre>
+                <div className="mt-8 p-6 bg-[#111] border-l-4 border-[#D4AF37] max-w-2xl rounded-r-lg">
+                    <h3 className="text-gray-400 mb-2 font-bold">Result:</h3>
+                    <pre className="whitespace-pre-wrap font-sans leading-relaxed text-gray-200">{result}</pre>
                 </div>
             )}
         </div>

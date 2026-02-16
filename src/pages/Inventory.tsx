@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, X, Building2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/Modal';
 import type { Property } from '../types';
@@ -234,12 +234,14 @@ export const Inventory = () => {
                     <div className="flex gap-2 bg-black/50 p-1 rounded-xl border border-white/10">
                         <button
                             onClick={() => setViewMode('grid')}
+                            title="Grid View"
                             className={`p-2 px-4 rounded-lg transition-all font-bold ${viewMode === 'grid' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
                         >
                             <LayoutGrid size={20} />
                         </button>
                         <button
                             onClick={() => setViewMode('table')}
+                            title="Table View"
                             className={`p-2 px-4 rounded-lg transition-all font-bold ${viewMode === 'table' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
                         >
                             <List size={20} />

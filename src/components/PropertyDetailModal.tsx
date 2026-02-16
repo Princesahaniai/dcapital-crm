@@ -67,6 +67,7 @@ export const PropertyDetailModal = ({ property, onClose }: PropertyDetailModalPr
             >
                 <button
                     onClick={onClose}
+                    title="Close Modal"
                     className="absolute top-4 right-4 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-white hover:text-black transition-colors"
                 >
                     <X size={24} />
@@ -82,10 +83,10 @@ export const PropertyDetailModal = ({ property, onClose }: PropertyDetailModalPr
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
 
                     {/* Navigation */}
-                    <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all">
+                    <button onClick={prevImage} title="Previous Image" className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all">
                         <ChevronLeft size={24} />
                     </button>
-                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all">
+                    <button onClick={nextImage} title="Next Image" className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all">
                         <ChevronRight size={24} />
                     </button>
 
@@ -94,6 +95,7 @@ export const PropertyDetailModal = ({ property, onClose }: PropertyDetailModalPr
                         {images.map((_, idx) => (
                             <button
                                 key={idx}
+                                title={`View image ${idx + 1}`}
                                 onClick={() => setActiveImage(idx)}
                                 className={`w-2 h-2 rounded-full transition-all ${idx === activeImage ? 'bg-white w-6' : 'bg-white/50'}`}
                             />
@@ -161,8 +163,9 @@ export const PropertyDetailModal = ({ property, onClose }: PropertyDetailModalPr
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="text-xs text-gray-400 block mb-1">Selling Price</label>
+                                <label htmlFor="sellingPrice" className="text-xs text-gray-400 block mb-1">Selling Price</label>
                                 <input
+                                    id="sellingPrice"
                                     type="number"
                                     value={sellingPrice}
                                     onChange={(e) => setSellingPrice(Number(e.target.value))}
@@ -170,8 +173,9 @@ export const PropertyDetailModal = ({ property, onClose }: PropertyDetailModalPr
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 block mb-1">Commission %</label>
+                                <label htmlFor="commissionRate" className="text-xs text-gray-400 block mb-1">Commission %</label>
                                 <input
+                                    id="commissionRate"
                                     type="number"
                                     value={commissionRate}
                                     onChange={(e) => setCommissionRate(Number(e.target.value))}

@@ -2,9 +2,29 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    role: 'ceo' | 'admin' | 'manager' | 'agent';
+    role: 'ceo' | 'admin' | 'manager' | 'agent' | 'viewer'; // Added viewer
     avatar?: string;
-    managerId?: string; // For agents/managers - who manages them
+    managerId?: string;
+    status?: 'Pending' | 'Active' | 'Suspended' | 'Inactive' | 'Revoked'; // Added Revoked
+    invitationToken?: string;
+    invitationExpires?: number;
+    // Enterprise Tracking
+    lastLoginAt?: number;
+    loginCount?: number;
+    department?: string;
+    phone?: string;
+    tempPassword?: string;
+    mustChangePassword?: boolean;
+}
+
+export interface ActivityLog {
+    id: string;
+    action: string; // LOGIN, INVITE, SUSPEND, etc.
+    performedBy: string; // User ID or 'System'
+    performedByName?: string;
+    targetUserId?: string;
+    details?: any;
+    timestamp: number;
 }
 
 export interface Lead {
@@ -17,6 +37,7 @@ export interface Lead {
     status: 'New' | 'Contacted' | 'Qualified' | 'Viewing' | 'Negotiation' | 'Closed' | 'Lost' | 'Trash';
     notes?: string;
     assignedTo?: string;
+    assignedName?: string;
     createdAt: number;
     updatedAt?: number;
     lastContact?: number;
@@ -24,18 +45,24 @@ export interface Lead {
     commission?: number;
     commissionPaid?: boolean;
     deletedAt?: number;
+    // Enterprise Extensions
+    history?: any[];
+    meetingsDone?: number;
+    meetingsTarget?: number;
+    nextMeeting?: string;
+    potentialCommission?: number;
 }
 
 export interface Property {
     id: string;
-    name: string; // Property name
-    developer: string; // 'Damac', 'Emaar', 'Binghatti', 'Sobha', etc.
+    name: string;
+    developer: string;
     type: 'Studio' | 'Apartment' | 'Villa' | 'Penthouse' | 'Townhouse';
     price: number;
     status: 'Available' | 'Sold' | 'Reserved';
-    commissionRate: number; // percentage, e.g., 2
+    commissionRate: number;
     location: string;
-    imageUrl: string; // Main property image
+    imageUrl: string;
     description?: string;
     agentId?: string;
     bedrooms: number;
@@ -47,14 +74,13 @@ export interface Property {
     features?: string[];
 }
 
-// ✅ CLASS DEFINITION (Browser cannot ignore this)
 export interface Activity {
     id: string;
-    type: string; // Flexible type
+    type: string;
     description: string;
     timestamp: number;
     userId: string;
-    userName?: string; // Added field
+    userName?: string;
     leadId?: string;
     metadata?: any;
 }
@@ -100,8 +126,8 @@ export interface Task {
 
 export interface Notification {
     id: string;
-    type: string;
-    message: string;
+    text: string;
     read: boolean;
-    timestamp: number;
+    date: string;
+    type?: string;
 }
