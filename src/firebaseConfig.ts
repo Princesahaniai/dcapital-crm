@@ -3,9 +3,9 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// ✅ NEW API KEY - No restrictions
+// ✅ ORIGINAL API KEY - dcapital-crm project
 const firebaseConfig = {
-    apiKey: "AIzaSyCxMcOSkbPfK-RL4q99HmHT79UfOai9H4U",
+    apiKey: "AIzaSyDWzGTOLsUuNi6ayarLMKPm2DcQ_bNl1OU",
     authDomain: "dcapital-crm.firebaseapp.com",
     projectId: "dcapital-crm",
     storageBucket: "dcapital-crm.firebasestorage.app",
