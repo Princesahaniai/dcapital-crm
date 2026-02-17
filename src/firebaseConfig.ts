@@ -3,11 +3,11 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// ✅ NEW UNRESTRICTED API KEY
+// ✅ NEW UNRESTRICTED API KEY - Project 384306402297
 const firebaseConfig = {
     apiKey: "AIzaSyCxMcOSkbPfK-RL4q99HmHT79UfOai9H4U",
     authDomain: "dcapital-crm.firebaseapp.com",
-    projectId: "dcapital-crm",
+    projectId: "dcapital-crm-487615",
     storageBucket: "dcapital-crm.appspot.com",
     messagingSenderId: "1056099466561",
     appId: "1:1056099466561:web:7bed7009d614832ae975c0",
