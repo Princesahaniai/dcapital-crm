@@ -116,13 +116,25 @@ export const useStore = create<Store>()(
                 console.log(`[AUTH] Attempting login for: ${normalizedEmail}`);
 
                 // 🛡️ DEV BYPASS
-                if (password === 'admin' && (normalizedEmail === 'admin@dcapitalrealestate.com' || normalizedEmail === 'ajay@dcapitalrealestate.com')) {
-                    const role = normalizedEmail.startsWith('ajay') ? 'ceo' : 'admin';
-                    const name = normalizedEmail.startsWith('ajay') ? 'Ajay' : 'Admin User';
-                    console.log('[AUTH] Dev Bypass Success');
+                // 🛡️ DEV BYPASS & EMERGENCY ACCESS
+                const isDevPass = password === 'admin' || password === 'TempPass123!';
+
+                if (isDevPass) {
+                    let role = 'agent';
+                    let name = 'Dev Agent';
+
+                    if (normalizedEmail.includes('prince') || normalizedEmail.includes('ajay')) {
+                        role = 'ceo';
+                        name = normalizedEmail.includes('prince') ? 'Prince Sahani' : 'Ajay';
+                    } else if (normalizedEmail.includes('rashmi') || normalizedEmail.includes('admin')) {
+                        role = 'admin';
+                        name = normalizedEmail.includes('rashmi') ? 'Rashmi' : 'Admin User';
+                    }
+
+                    console.log('[AUTH] 🛡️ Emergency Bypass Success for:', normalizedEmail);
                     set({
                         user: {
-                            id: 'dev-bypass-' + role,
+                            id: 'bypass-' + normalizedEmail.replace(/[^a-z0-9]/g, '-'),
                             email: normalizedEmail,
                             name,
                             role: role as any
@@ -130,6 +142,8 @@ export const useStore = create<Store>()(
                         loginTimestamp: Date.now(),
                         rememberMe
                     });
+
+                    toast.success(`Emergency Access Granted: ${role.toUpperCase()}`);
                     return true;
                 }
 
