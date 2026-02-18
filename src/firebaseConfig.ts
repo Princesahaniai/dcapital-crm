@@ -5,13 +5,13 @@ import { getStorage } from 'firebase/storage';
 
 // ✅ NEW UNRESTRICTED API KEY - Using Project Number
 const firebaseConfig = {
-    apiKey: "AIzaSyCxMcOSkbPfK-RL4q99HmHT79UfOai9H4U",
-    authDomain: "dcapital-crm.firebaseapp.com",
-    projectId: "384306402297",
-    storageBucket: "dcapital-crm.appspot.com",
-    messagingSenderId: "1056099466561",
-    appId: "1:1056099466561:web:7bed7009d614832ae975c0",
-    measurementId: "G-2JNHHM6477"
+    apiKey: "AIzaSyBwHEULX6o5VjIQrz_Ud-HBT5QIZD0Bamps",
+    authDomain: "dcapital-crm-prod.firebaseapp.com",
+    projectId: "dcapital-crm-prod",
+    storageBucket: "dcapital-crm-prod.firebasestorage.app",
+    messagingSenderId: "1076500161530",
+    appId: "1:1076500161530:web:1df2319d7f1ee7d5437a43",
+    measurementId: "G-9HKRJBQYSG"
 };
 
 // Debug logging for production troubleshooting
