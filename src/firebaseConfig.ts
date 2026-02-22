@@ -3,15 +3,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// ✅ NEW UNRESTRICTED API KEY - Using Project Number
+// ✅ Firebase config from environment variables (set in Vercel dashboard with VITE_ prefix)
 const firebaseConfig = {
-    apiKey: "AIzaSyBwHEULX6o5VjIQrz_Ud-HBT5QIZD0Bamps",
-    authDomain: "dcapital-crm-prod.firebaseapp.com",
-    projectId: "dcapital-crm-prod",
-    storageBucket: "dcapital-crm-prod.firebasestorage.app",
-    messagingSenderId: "1076500161530",
-    appId: "1:1076500161530:web:1df2319d7f1ee7d5437a43",
-    measurementId: "G-9HKRJBQYSG"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Debug logging for production troubleshooting
@@ -27,4 +26,3 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 
 console.log('✅ Firebase initialized successfully');
-console.log('   Current URL:', window.location.origin);
