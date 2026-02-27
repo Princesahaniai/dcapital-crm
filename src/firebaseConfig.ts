@@ -3,14 +3,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// ✅ Firebase config from environment variables (set in Vercel dashboard with VITE_ prefix)
+// ✅ Firebase config with unbreakable fallbacks — env vars first, hardcoded backup second
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBwHEULX6o5VjIQrz_Ud-HBT5QIZD0Bamps',
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'dcapital-crm-prod.firebaseapp.com',
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'dcapital-crm-prod',
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'dcapital-crm-prod.firebasestorage.app',
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1076500161530',
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1076500161530:web:1df2319d7f1ee7d5437a43',
 };
 
 // Debug logging for production troubleshooting
