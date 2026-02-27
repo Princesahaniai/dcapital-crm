@@ -3,14 +3,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// ✅ Firebase config with unbreakable fallbacks — env vars first, hardcoded backup second
+// 🔥 NUCLEAR FIX — Raw hardcoded Firebase config, zero env var dependencies
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBwHEULX6o5VjIQrz_Ud-HBT5QIZD0Bamps',
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'dcapital-crm-prod.firebaseapp.com',
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'dcapital-crm-prod',
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'dcapital-crm-prod.firebasestorage.app',
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1076500161530',
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1076500161530:web:1df2319d7f1ee7d5437a43',
+    apiKey: 'AIzaSyBwHEULX6o5VjIQrz_Ud-HBT5QIZD0Bamps',
+    authDomain: 'dcapital-crm-prod.firebaseapp.com',
+    projectId: 'dcapital-crm-prod',
+    storageBucket: 'dcapital-crm-prod.firebasestorage.app',
+    messagingSenderId: '1076500161530',
+    appId: '1:1076500161530:web:1df2319d7f1ee7d5437a43',
 };
 
 // Debug logging for production troubleshooting
