@@ -109,7 +109,7 @@ export const Tasks = () => {
                     <button
                         key={s}
                         onClick={() => setFilterStatus(s)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === s ? 'bg-white dark:bg-blue-500 text-black dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-white'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap touch-target ${filterStatus === s ? 'bg-white dark:bg-blue-500 text-black dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-white'}`}
                     >
                         {s}
                     </button>
@@ -194,80 +194,82 @@ export const Tasks = () => {
                 )}
             </AnimatePresence>
 
-            <div className="space-y-4">
-                {visibleTasks.map(task => (
-                    <motion.div
-                        variants={item}
-                        key={task.id}
-                        onClick={() => setSelectedTask(task)}
-                        className={`group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 p-5 rounded-3xl flex items-center gap-5 transition-all hover:bg-gray-50 dark:hover:bg-[#2C2C2E] hover:border-blue-500/30 cursor-pointer shadow-sm ${task.status === 'Completed' ? 'opacity-60' : ''}`}
-                    >
-                        <div className="relative">
-                            {getStatusIcon(task.status)}
-                            {task.priority === 'High' && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-                        </div>
+            <div className="w-full overflow-x-auto">
+                <div className="space-y-4 min-w-[320px]">
+                    {visibleTasks.map(task => (
+                        <motion.div
+                            variants={item}
+                            key={task.id}
+                            onClick={() => setSelectedTask(task)}
+                            className={`group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 p-5 rounded-3xl flex items-center gap-5 transition-all hover:bg-gray-50 dark:hover:bg-[#2C2C2E] hover:border-blue-500/30 cursor-pointer shadow-sm ${task.status === 'Completed' ? 'opacity-60' : ''}`}
+                        >
+                            <div className="relative">
+                                {getStatusIcon(task.status)}
+                                {task.priority === 'High' && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                            </div>
 
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className={`text-lg font-bold truncate ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-                                    {task.title}
-                                </h3>
-                                <div className="flex gap-2">
-                                    <span className="text-[10px] flex items-center gap-1 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded font-bold">
-                                        {getCategoryIcon(task.category)} {task.category}
-                                    </span>
-                                    {task.assignedTo !== user?.id && (
-                                        <span className="text-[10px] flex items-center gap-1 bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold">
-                                            <User size={10} /> {team.find(m => m.id === task.assignedTo)?.name || 'Agent'}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className={`text-lg font-bold truncate ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
+                                        {task.title}
+                                    </h3>
+                                    <div className="flex gap-2">
+                                        <span className="text-[10px] flex items-center gap-1 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded font-bold">
+                                            {getCategoryIcon(task.category)} {task.category}
                                         </span>
+                                        {task.assignedTo !== user?.id && (
+                                            <span className="text-[10px] flex items-center gap-1 bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold">
+                                                <User size={10} /> {team.find(m => m.id === task.assignedTo)?.name || 'Agent'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 mt-1">
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                        <Clock size={12} />
+                                        <span>Due {new Date(task.dueDate).toLocaleDateString()} at {new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    {task.comments?.length > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold">
+                                            <Mail size={10} /> {task.comments.length} updates
+                                        </div>
                                     )}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 mt-1">
-                                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                    <Clock size={12} />
-                                    <span>Due {new Date(task.dueDate).toLocaleDateString()} at {new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                {task.comments?.length > 0 && (
-                                    <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold">
-                                        <Mail size={10} /> {task.comments.length} updates
-                                    </div>
-                                )}
+
+                            <div className="flex items-center gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
+                                    title="View details"
+                                    className="p-2 text-gray-400 hover:text-blue-500 transition-colors touch-target"
+                                >
+                                    <Eye size={18} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); deleteTask(task.id); toast.success('Mission Aborted'); }}
+                                    title="Delete mission"
+                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors touch-target"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
-                        </div>
+                        </motion.div>
+                    ))}
 
-                        <div className="flex items-center gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                    {visibleTasks.length === 0 && (
+                        <div className="text-center py-24 bg-white dark:bg-[#1C1C1E] rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
+                            <CheckCircle className="mx-auto text-gray-200 dark:text-gray-800 mb-4" size={64} />
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">All Clear</h3>
+                            <p className="text-gray-500 mt-2">No active missions for the current filter.</p>
                             <button
-                                onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                                title="View details"
-                                className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                                onClick={() => { setFilterStatus('All'); setShowAddForm(true); }}
+                                className="mt-6 text-blue-500 font-bold hover:underline"
                             >
-                                <Eye size={18} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); deleteTask(task.id); toast.success('Mission Aborted'); }}
-                                title="Delete mission"
-                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                                <Trash2 size={18} />
+                                Assign a new task
                             </button>
                         </div>
-                    </motion.div>
-                ))}
-
-                {visibleTasks.length === 0 && (
-                    <div className="text-center py-24 bg-white dark:bg-[#1C1C1E] rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
-                        <CheckCircle className="mx-auto text-gray-200 dark:text-gray-800 mb-4" size={64} />
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">All Clear</h3>
-                        <p className="text-gray-500 mt-2">No active missions for the current filter.</p>
-                        <button
-                            onClick={() => { setFilterStatus('All'); setShowAddForm(true); }}
-                            className="mt-6 text-blue-500 font-bold hover:underline"
-                        >
-                            Assign a new task
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             <AnimatePresence>

@@ -663,18 +663,24 @@ export const useStore = create<Store>()(
                 deleteDoc(doc(db, 'leads', id)).catch(err => console.error('[SYNC] Lead permanent delete failed:', err));
             },
 
-            assignLeads: (leadIds, agentId, agentName) => set((s) => {
-                const count = leadIds.length;
-                return {
-                    leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() } : l),
-                    notifications: [{
-                        id: Math.random().toString(36).substr(2, 9),
-                        text: `📋 ${count} Leads Assigned to ${agentName}`,
-                        read: false,
-                        date: new Date().toISOString()
-                    }, ...s.notifications]
-                };
-            }),
+            assignLeads: (leadIds, agentId, agentName) => {
+                set((s) => {
+                    const count = leadIds.length;
+                    return {
+                        leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() } : l),
+                        notifications: [{
+                            id: Math.random().toString(36).substr(2, 9),
+                            text: `📋 ${count} Leads Assigned to ${agentName}`,
+                            read: false,
+                            date: new Date().toISOString()
+                        }, ...s.notifications]
+                    };
+                });
+                // Sync each assigned lead to Firestore so the agent's onSnapshot query picks them up
+                leadIds.forEach(leadId => {
+                    updateDoc(doc(db, 'leads', leadId), { assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() }).catch(err => console.error('[SYNC] Lead assign failed:', err));
+                });
+            },
 
             addQuickNote: (leadId, note) => set((s) => ({ leads: s.leads.map(l => l.id === leadId ? { ...l, notes: l.notes ? l.notes + '\n' + note : note, updatedAt: Date.now() } : l) })),
 
