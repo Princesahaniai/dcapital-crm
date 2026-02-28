@@ -698,6 +698,7 @@ export const useStore = create<Store>()(
                 // Firestore write-through
                 const updatedData = { ...data, updatedAt: Date.now() };
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
+                get().logAudit('UPDATE_LEAD', undefined, { leadId: id, updates: data });
             },
 
             deleteLead: (id) => {
@@ -812,6 +813,7 @@ export const useStore = create<Store>()(
                 if (newTask.assignedTo && newTask.assignedTo !== s.user?.id) {
                     get().addFirestoreNotification(newTask.assignedTo, `📌 New Task Assigned: ${newTask.title}`);
                 }
+                get().logAudit('CREATE_TASK', undefined, { taskId: newTask.id, title: newTask.title });
             },
 
             updateTaskStatus: (id, status, note) => {
@@ -834,6 +836,7 @@ export const useStore = create<Store>()(
                 const updatedTask = updatedTasks.find(t => t.id === id);
                 if (updatedTask) {
                     setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task status update failed:', err));
+                    get().logAudit(`UPDATE_TASK_${status.toUpperCase().replace(' ', '_')}`, undefined, { taskId: id, note });
                 }
             },
 
@@ -860,6 +863,7 @@ export const useStore = create<Store>()(
                 const updatedTask = updatedTasks.find(t => t.id === id);
                 if (updatedTask) {
                     setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task comment write failed:', err));
+                    get().logAudit('ADD_TASK_COMMENT', undefined, { taskId: id, text });
                 }
             },
 
@@ -885,6 +889,7 @@ export const useStore = create<Store>()(
                 const updatedTask = updatedTasks.find(t => t.id === id);
                 if (updatedTask) {
                     setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task toggle failed:', err));
+                    get().logAudit(`TOGGLE_TASK_${newStatus.toUpperCase()}`, undefined, { taskId: id });
                 }
             },
 
@@ -893,6 +898,7 @@ export const useStore = create<Store>()(
                 const updatedTasks = s.tasks.filter(t => t.id !== id);
                 set({ tasks: updatedTasks });
                 deleteDoc(doc(db, 'tasks', id)).catch(err => console.error('[SYNC] Task delete failed:', err));
+                get().logAudit('DELETE_TASK', undefined, { taskId: id });
             },
 
             // COMMS HUB

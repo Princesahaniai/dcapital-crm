@@ -1,6 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@tailwind utilities;
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
 
 @layer utilities {
   .apple-glass {

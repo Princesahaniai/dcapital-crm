@@ -321,22 +321,20 @@ export const Team = () => {
                                 <div className="text-zinc-500 text-center py-10">No logs found</div>
                             ) : (
                                 auditLogs.map((log: any) => (
-                                    <div key={log.id} className="bg-black/40 border border-white/5 p-4 rounded-xl flex items-start justify-between">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-[#D4AF37] font-bold text-xs uppercase tracking-wider">{log.action}</span>
-                                                <span className="text-zinc-500 text-[10px]">{new Date(log.timestamp).toLocaleString()}</span>
-                                            </div>
-                                            <p className="text-zinc-300 text-sm">
-                                                Performed by <span className="text-white font-medium">{log.performedByName}</span>
-                                                {log.targetUserId && <span className="text-zinc-500"> on user {log.targetUserId}</span>}
-                                            </p>
-                                            {log.details && (
-                                                <pre className="mt-2 text-[10px] text-zinc-500 bg-black/50 p-2 rounded overflow-x-auto">
-                                                    {JSON.stringify(log.details, null, 2)}
-                                                </pre>
-                                            )}
+                                    <div key={log.id} className="bg-black/40 border border-white/5 p-4 rounded-xl">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[#D4AF37] font-bold text-xs uppercase tracking-wider">{log.action}</span>
+                                            <span className="text-zinc-500 text-[10px]">{new Date(log.timestamp).toLocaleString()}</span>
                                         </div>
+                                        <p className="text-zinc-300 text-sm">
+                                            Performed by <span className="text-white font-medium">{log.performedByName}</span>
+                                            {log.targetUserId && <span className="text-zinc-500"> on user {log.targetUserId}</span>}
+                                        </p>
+                                        {log.details && (
+                                            <pre className="mt-2 text-[10px] text-zinc-500 bg-black/50 p-2 rounded overflow-x-auto whitespace-pre-wrap word-wrap-break-word max-w-full">
+                                                {JSON.stringify(log.details, null, 2)}
+                                            </pre>
+                                        )}
                                     </div>
                                 ))
                             )}
