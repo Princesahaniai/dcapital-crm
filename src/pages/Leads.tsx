@@ -68,7 +68,12 @@ export const Leads = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.name || !form.phone) return toast.error('Name and Phone are required');
+
+        // Strict Validation
+        if (!form.name?.trim()) return toast.error('Lead Name is strictly required');
+        if (!form.phone?.trim() || form.phone.length < 8) return toast.error('A strictly valid Contact Phone is required');
+        if (!form.budget || form.budget <= 0) return toast.error('Mission Budget must be greater than 0');
+        if (!form.status) return toast.error('Pipeline State is required');
 
         if (isEditing && form.id) {
             updateLead(form.id, form);

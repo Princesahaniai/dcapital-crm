@@ -39,12 +39,13 @@ export const Tasks = () => {
     }, [tasks, user, filterStatus]);
 
     const handleAdd = () => {
-        if (!text.trim()) {
-            toast.error('Task title is required');
-            return;
-        }
+        if (!text.trim()) return toast.error('Mission Title is strictly required');
+        if (!dueDate || !dueTime) return toast.error('A precise Due Date and Time are strictly required');
 
         const combinedDueDate = new Date(`${dueDate}T${dueTime}`).getTime();
+        if (isNaN(combinedDueDate)) return toast.error('Invalid Date or Time format');
+
+        if (!assignedTo && !user?.id) return toast.error('Task must be assigned to an active Agent');
 
         addTask({
             id: Math.random().toString(36).substr(2, 9),
