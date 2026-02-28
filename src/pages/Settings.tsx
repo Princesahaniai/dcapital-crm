@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../store';
-import { Save, Upload, Download, Trash2, UserCircle, ShieldCheck, Lock, AlertTriangle, HardDrive } from 'lucide-react';
+import { Save, Upload, Download, Trash2, UserCircle, ShieldCheck, Lock, AlertTriangle, HardDrive, Webhook, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
@@ -392,6 +392,42 @@ export const Settings = () => {
                     </button>
                 </div>
             </motion.div>
+
+            {/* MARKETING INTEGRATIONS - ADMIN ONLY */}
+            {(user?.role === 'ceo' || user?.role === 'admin' || user?.email?.includes('admin')) && (
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass border-2 border-amber-500/20 p-8 rounded-2xl shadow-lg dark:shadow-none mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-semibold flex items-center gap-3 text-gray-900 dark:text-white">
+                            <Webhook className="text-amber-500" size={22} /> Marketing Integrations
+                        </h2>
+                    </div>
+                    <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-6">
+                        <h3 className="font-bold text-amber-900 dark:text-amber-500">Facebook/Meta Lead Webhook</h3>
+                        <p className="text-sm text-amber-700 dark:text-amber-400 mt-1 mb-4">
+                            Connect this URL directly to your Facebook Lead Ads or Zapier to automatically funnel new leads into the CRM.
+                        </p>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="text"
+                                readOnly
+                                title="Webhook URL"
+                                value="https://dcapital-crm.vercel.app/api/lead-webhook"
+                                className="flex-1 bg-white dark:bg-black border border-amber-200 dark:border-amber-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none"
+                            />
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/lead-webhook');
+                                    toast.success('Webhook URL Copied!');
+                                }}
+                                className="bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-center transition-colors shrink-0"
+                                title="Copy Webhook URL"
+                            >
+                                <Copy size={20} />
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
 
             {/* DATA MANAGEMENT - ADMIN ONLY */}
             {(user?.role === 'ceo' || user?.role === 'admin' || user?.email?.includes('admin')) && (
