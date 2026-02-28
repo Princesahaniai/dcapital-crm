@@ -17,6 +17,7 @@ import { Trash } from './pages/Trash';
 import { SetPassword } from './pages/SetPassword';
 import { AuthDiagnostic } from './pages/AuthDiagnostic';
 import { useStore } from './store';
+import { useRealtimeSync } from './hooks/useRealtimeSync';
 import toast, { Toaster } from 'react-hot-toast';
 import PWAInstall from './components/PWAInstall';
 
@@ -92,6 +93,9 @@ export default function App() {
         const unsubscribe = useStore.getState().subscribeToAuthChanges();
         return () => unsubscribe();
     }, []);
+
+    // Real-Time Sync (onSnapshot for leads, tasks, team)
+    useRealtimeSync();
 
     return (
         <>

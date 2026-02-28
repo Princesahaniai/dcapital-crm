@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Lead, Property, Task, Activity, User, Notification } from './types';
 import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 interface TeamMember extends User {
@@ -65,6 +65,11 @@ interface Store {
     suspendTeamMember: (id: string) => Promise<void>;
     activateTeamMember: (id: string) => Promise<void>;
     generateTempPassword: (id: string) => Promise<string>;
+
+    // Real-Time Sync Setters (called by onSnapshot listeners)
+    setLeads: (leads: ExtendedLead[]) => void;
+    setTasks: (tasks: Task[]) => void;
+    setTeamFromSnapshot: (team: TeamMember[]) => void;
 
     // Data Actions
     updateProfile: (name: string, email: string) => void;
@@ -375,15 +380,31 @@ export const useStore = create<Store>()(
                 });
             },
 
+            // Real-Time Sync Setters
+            setLeads: (leads) => set({ leads }),
+            setTasks: (tasks) => set({ tasks }),
+            setTeamFromSnapshot: (team) => set({ team }),
+
             // Data Actions
             updateProfile: (name, email) => set((s) => ({ user: s.user ? { ...s.user, name, email } : null })),
 
-            addLead: (l) => set((s) => {
-                if (s.leads.some(existing => existing.id === l.id)) return {};
-                return { leads: [l, ...s.leads] };
-            }),
+            addLead: (l) => {
+                set((s) => {
+                    if (s.leads.some(existing => existing.id === l.id)) return {};
+                    return { leads: [l, ...s.leads] };
+                });
+                // Fire-and-forget Firestore write
+                setDoc(doc(db, 'leads', l.id), { ...l }, { merge: true }).catch(err => console.error('[SYNC] Lead write failed:', err));
+            },
 
-            addBulkLeads: (newLeads) => set((s) => ({ leads: [...newLeads, ...s.leads] })),
+            addBulkLeads: (newLeads) => {
+                set((s) => ({ leads: [...newLeads, ...s.leads] }));
+                // Batch write to Firestore
+                newLeads.forEach(l => {
+                    setDoc(doc(db, 'leads', l.id), { ...l }, { merge: true }).catch(err => console.error('[SYNC] Bulk lead write failed:', err));
+                });
+                return { success: newLeads.length, failed: 0 };
+            },
 
             fetchTeam: async () => {
                 try {
@@ -577,60 +598,70 @@ export const useStore = create<Store>()(
                 return { notifications: [newNotif, ...state.notifications] };
             }),
 
-            updateLead: (id, data) => set((s) => {
-                const oldLead = s.leads.find(l => l.id === id);
-                if (!oldLead) return s;
+            updateLead: (id, data) => {
+                set((s) => {
+                    const oldLead = s.leads.find(l => l.id === id);
+                    if (!oldLead) return s;
 
-                // Commission Logic: If status changes to 'Closed', add commission
-                let commissionUpdate = {};
-                let newTeam = s.team;
-                let newNotifications = s.notifications;
+                    // Commission Logic: If status changes to 'Closed', add commission
+                    let commissionUpdate = {};
+                    let newTeam = s.team;
+                    let newNotifications = s.notifications;
 
-                if (data.status === 'Closed' && oldLead.status !== 'Closed') {
-                    // Use the new budget if provided, otherwise the old one
-                    const budget = data.budget ?? oldLead.budget ?? 0;
-                    const commission = budget * 0.02;
-                    commissionUpdate = { commission, commissionPaid: false };
+                    if (data.status === 'Closed' && oldLead.status !== 'Closed') {
+                        const budget = data.budget ?? oldLead.budget ?? 0;
+                        const commission = budget * 0.02;
+                        commissionUpdate = { commission, commissionPaid: false };
 
-                    // Update Agent Stats (Leaderboard)
-                    if (oldLead.assignedTo) {
-                        newTeam = s.team.map(m => m.id === oldLead.assignedTo
-                            ? { ...m, totalSales: (m.totalSales || 0) + budget, commissionEarned: (m.commissionEarned || 0) + commission }
-                            : m
-                        );
+                        if (oldLead.assignedTo) {
+                            newTeam = s.team.map(m => m.id === oldLead.assignedTo
+                                ? { ...m, totalSales: (m.totalSales || 0) + budget, commissionEarned: (m.commissionEarned || 0) + commission }
+                                : m
+                            );
+                        }
+
+                        newNotifications = [{
+                            id: Math.random().toString(36).substr(2, 9),
+                            text: `🎉 Deal Closed! ${oldLead.name} - AED ${budget.toLocaleString()}`,
+                            read: false,
+                            date: new Date().toISOString()
+                        }, ...s.notifications];
+
+                    } else if (data.status && data.status !== 'Closed' && oldLead.status === 'Closed') {
+                        commissionUpdate = { commission: 0, commissionPaid: false };
                     }
 
-                    // Notification Logic
-                    newNotifications = [{
-                        id: Math.random().toString(36).substr(2, 9),
-                        text: `🎉 Deal Closed! ${oldLead.name} - AED ${budget.toLocaleString()}`,
-                        read: false,
-                        date: new Date().toISOString()
-                    }, ...s.notifications];
+                    return {
+                        leads: s.leads.map(l => l.id === id ? { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() } : l),
+                        team: newTeam,
+                        notifications: newNotifications
+                    };
+                });
+                // Firestore write-through
+                const updatedData = { ...data, updatedAt: Date.now() };
+                updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
+            },
 
-                } else if (data.status && data.status !== 'Closed' && oldLead.status === 'Closed') {
-                    // Reset commission if reopened
-                    commissionUpdate = { commission: 0, commissionPaid: false };
-                }
+            deleteLead: (id) => {
+                set((state) => ({
+                    leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash', deletedAt: Date.now() } : l)
+                }));
+                updateDoc(doc(db, 'leads', id), { status: 'Trash', deletedAt: Date.now() }).catch(err => console.error('[SYNC] Lead trash failed:', err));
+            },
 
-                return {
-                    leads: s.leads.map(l => l.id === id ? { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() } : l),
-                    team: newTeam,
-                    notifications: newNotifications
-                };
-            }),
+            restoreLead: (id) => {
+                set((state) => ({
+                    leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New', deletedAt: undefined } : l)
+                }));
+                updateDoc(doc(db, 'leads', id), { status: 'New', deletedAt: null }).catch(err => console.error('[SYNC] Lead restore failed:', err));
+            },
 
-            deleteLead: (id) => set((state) => ({
-                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash', deletedAt: Date.now() } : l)
-            })),
-
-            restoreLead: (id) => set((state) => ({
-                leads: state.leads.map((l) => l.id === id ? { ...l, status: 'New', deletedAt: undefined } : l)
-            })),
-
-            permanentDeleteLead: (id) => set((state) => ({
-                leads: state.leads.filter((l) => l.id !== id)
-            })),
+            permanentDeleteLead: (id) => {
+                set((state) => ({
+                    leads: state.leads.filter((l) => l.id !== id)
+                }));
+                deleteDoc(doc(db, 'leads', id)).catch(err => console.error('[SYNC] Lead permanent delete failed:', err));
+            },
 
             assignLeads: (leadIds, agentId, agentName) => set((s) => {
                 const count = leadIds.length;
@@ -682,7 +713,8 @@ export const useStore = create<Store>()(
 
             deleteProperty: (id) => set((s) => ({ properties: s.properties.filter(p => p.id !== id) })),
 
-            addTask: (t) => set((s) => {
+            addTask: (t) => {
+                const s = get();
                 const newTask: Task = {
                     ...t,
                     id: t.id || Math.random().toString(36).substr(2, 9),
@@ -697,11 +729,14 @@ export const useStore = create<Store>()(
                     }],
                     comments: []
                 };
-                return { tasks: [newTask, ...s.tasks] };
-            }),
+                set({ tasks: [newTask, ...s.tasks] });
+                // Firestore write
+                setDoc(doc(db, 'tasks', newTask.id), { ...newTask }, { merge: true }).catch(err => console.error('[SYNC] Task write failed:', err));
+            },
 
-            updateTaskStatus: (id, status, note) => set((s) => ({
-                tasks: s.tasks.map(t => t.id === id ? {
+            updateTaskStatus: (id, status, note) => {
+                const s = get();
+                const updatedTasks = s.tasks.map(t => t.id === id ? {
                     ...t,
                     status,
                     completed: status === 'Completed',
@@ -714,11 +749,17 @@ export const useStore = create<Store>()(
                         timestamp: Date.now(),
                         note
                     }]
-                } : t)
-            })),
+                } : t);
+                set({ tasks: updatedTasks });
+                const updatedTask = updatedTasks.find(t => t.id === id);
+                if (updatedTask) {
+                    setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task status update failed:', err));
+                }
+            },
 
-            addTaskComment: (id, text) => set((s) => ({
-                tasks: s.tasks.map(t => t.id === id ? {
+            addTaskComment: (id, text) => {
+                const s = get();
+                const updatedTasks = s.tasks.map(t => t.id === id ? {
                     ...t,
                     comments: [...(t.comments || []), {
                         id: Math.random().toString(36).substr(2, 9),
@@ -734,31 +775,43 @@ export const useStore = create<Store>()(
                         userName: s.user?.name || 'System',
                         timestamp: Date.now()
                     }]
-                } : t)
-            })),
+                } : t);
+                set({ tasks: updatedTasks });
+                const updatedTask = updatedTasks.find(t => t.id === id);
+                if (updatedTask) {
+                    setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task comment write failed:', err));
+                }
+            },
 
-            toggleTask: (id) => set((s) => {
+            toggleTask: (id) => {
+                const s = get();
                 const task = s.tasks.find(t => t.id === id);
-                if (!task) return s;
-                const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
-                return {
-                    tasks: s.tasks.map(t => t.id === id ? {
-                        ...t,
-                        status: newStatus,
-                        completed: !t.completed,
-                        updatedAt: Date.now(),
-                        history: [...(t.history || []), {
-                            id: Math.random().toString(36).substr(2, 9),
-                            action: `Marked as ${newStatus}`,
-                            userId: s.user?.id || 'system',
-                            userName: s.user?.name || 'System',
-                            timestamp: Date.now()
-                        }]
-                    } : t)
-                };
-            }),
+                if (!task) return;
+                const newStatus: Task['status'] = task.status === 'Completed' ? 'Pending' : 'Completed';
+                const updatedTasks = s.tasks.map(t => t.id === id ? {
+                    ...t,
+                    status: newStatus,
+                    completed: !t.completed,
+                    updatedAt: Date.now(),
+                    history: [...(t.history || []), {
+                        id: Math.random().toString(36).substr(2, 9),
+                        action: `Marked as ${newStatus}`,
+                        userId: s.user?.id || 'system',
+                        userName: s.user?.name || 'System',
+                        timestamp: Date.now()
+                    }]
+                } : t);
+                set({ tasks: updatedTasks });
+                const updatedTask = updatedTasks.find(t => t.id === id);
+                if (updatedTask) {
+                    setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task toggle failed:', err));
+                }
+            },
 
-            deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) })),
+            deleteTask: (id) => {
+                set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) }));
+                deleteDoc(doc(db, 'tasks', id)).catch(err => console.error('[SYNC] Task delete failed:', err));
+            },
 
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
 
