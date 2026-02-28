@@ -212,8 +212,9 @@ export const ClientPortal = () => {
             )}
 
             {/* Footer */}
-            <div className="text-center py-8 border-t border-white/5">
-                <p className="text-white/20 text-xs uppercase tracking-widest">Powered by D-Capital Group</p>
+            <div className="text-center py-8 border-t border-white/5 space-y-2">
+                <p className="text-white/20 text-xs uppercase tracking-widest">Powered by Doom Capital Real Estate L.L.C.</p>
+                <p className="text-white/20 text-xs font-mono"><a href="mailto:Admin@dcapitalrealestate.com" className="hover:text-amber-500 transition-colors">Admin@dcapitalrealestate.com</a></p>
             </div>
         </div>
     );

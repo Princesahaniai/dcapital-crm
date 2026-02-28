@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import {
     UserPlus, Mail, Phone, Shield,
     Ban, CheckCircle, Trash2, Search,
-    Clock, Copy, Key, Download
+    Clock, Copy, Key, Download, Megaphone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +20,8 @@ export const Team = () => {
     const [search, setSearch] = useState('');
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showAuditModal, setShowAuditModal] = useState(false);
+    const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+    const [broadcastMessage, setBroadcastMessage] = useState('');
     const [inviteLink, setInviteLink] = useState('');
 
     useEffect(() => {
@@ -61,6 +63,31 @@ export const Team = () => {
         navigator.clipboard.writeText(tempPass);
         toast.success(`Temp Password: ${tempPass} (Copied to Clipboard)`);
         alert(`Temporary Password: ${tempPass}\n\nShare this with the user. They will be prompted to change it on login.`);
+    };
+
+    const handleBroadcast = () => {
+        if (!broadcastMessage.trim()) return;
+
+        const agents = team.filter(m => m.status === 'Active' && (m.role === 'agent' || m.role === 'manager'));
+        let count = 0;
+
+        agents.forEach(agent => {
+            useStore.getState().addTask({
+                title: `[BROADCAST] ${broadcastMessage}`,
+                description: 'CEO/Admin Broadcast Message',
+                status: 'Pending',
+                priority: 'High',
+                category: 'Call',
+                assignedTo: agent.id,
+                assignedBy: user?.id || 'admin',
+                dueDate: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+            });
+            count++;
+        });
+
+        toast.success(`High Priority Broadcast sent to ${count} agents/managers 🚀`);
+        setShowBroadcastModal(false);
+        setBroadcastMessage('');
     };
 
     const closeModal = () => {
@@ -131,6 +158,13 @@ export const Team = () => {
                         >
                             <Clock className="w-5 h-5" />
                             Audit Logs
+                        </button>
+                        <button
+                            onClick={() => setShowBroadcastModal(true)}
+                            className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-500 hover:text-white transition-colors"
+                        >
+                            <Megaphone className="w-5 h-5" />
+                            CEO Broadcast
                         </button>
                         <button
                             onClick={() => setShowInviteModal(true)}
@@ -296,6 +330,45 @@ export const Team = () => {
                         ) : (
                             <InviteForm onInvite={handleInvite} onClose={() => setShowInviteModal(false)} />
                         )}
+                    </motion.div>
+                </div>
+            )}
+
+            {/* CEO Broadcast Modal */}
+            {showBroadcastModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 p-8 rounded-3xl w-full max-w-md border border-purple-500/30 relative">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Megaphone className="text-purple-400 w-6 h-6" />
+                                CEO Broadcast
+                            </h2>
+                            <button onClick={() => setShowBroadcastModal(false)} className="p-2 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
+                                ✕
+                            </button>
+                        </div>
+                        <p className="text-zinc-400 text-sm mb-6">This will instantly create a <strong>High Priority ([URGENT])</strong> task for ALL Active Agents and Managers on their dashboard.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">Broadcast Message</label>
+                                <textarea
+                                    className="w-full h-32 bg-black/50 border border-white/10 rounded-xl p-3 text-white focus:border-purple-500 outline-none transition-colors resize-none custom-scrollbar"
+                                    placeholder="e.g. Mandatory Team Meeting in 10 minutes at the Main Office."
+                                    value={broadcastMessage}
+                                    onChange={e => setBroadcastMessage(e.target.value)}
+                                ></textarea>
+                            </div>
+
+                            <div className="pt-2 flex gap-4">
+                                <button onClick={() => setShowBroadcastModal(false)} className="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold hover:bg-zinc-700 transition-colors">
+                                    Cancel
+                                </button>
+                                <button onClick={handleBroadcast} disabled={!broadcastMessage.trim()} className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-xl font-bold hover:from-purple-500 hover:to-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                    <Megaphone className="w-4 h-4" /> Send Directives
+                                </button>
+                            </div>
+                        </div>
                     </motion.div>
                 </div>
             )}

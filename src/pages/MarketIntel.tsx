@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Activity, DollarSign, Globe2, Building2, BarChart3 } from 'lucide-react';
+import { TrendingUp, Activity, DollarSign, Globe2, Building2, BarChart3, Share2 } from 'lucide-react';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -38,6 +38,20 @@ export const MarketIntel = () => {
         return () => clearInterval(timer);
     }, []);
 
+    const handleShare = (title: string, data: any[], type: 'property' | 'market') => {
+        let text = `📊 *${title}* \n\n`;
+        data.forEach(row => {
+            const name = type === 'property' ? row.area : (row.name || row.pair);
+            const value = type === 'property' ? row.value : row.price;
+            const trend = type === 'property' ? row.trend : row.percent;
+            const icon = row.status === 'up' ? '🟢' : row.status === 'down' ? '🔴' : '⚪';
+            text += `${icon} *${name}*: ${value} (${trend})\n`;
+        });
+        text += `\nShared via D-Capital Market Intelligence`;
+        const encoded = encodeURIComponent(text);
+        window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    };
+
     const renderWidget = (title: string, icon: React.ReactNode, data: any[], type: 'property' | 'market') => (
         <motion.div variants={item} className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-amber-500/10"></div>
@@ -49,10 +63,19 @@ export const MarketIntel = () => {
                     </div>
                     <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
                 </div>
-                {/* Simulated live dot */}
-                <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Live</span>
+                {/* Right side actions */}
+                <div className="flex items-center gap-3 relative z-10">
+                    <button
+                        onClick={() => handleShare(title, data, type)}
+                        className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/10 hover:border-amber-500/50 text-amber-500"
+                        title="Share via WhatsApp"
+                    >
+                        <Share2 size={16} />
+                    </button>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Live</span>
+                    </div>
                 </div>
             </div>
 

@@ -102,7 +102,7 @@ export const Settings = () => {
 
         if (!integrityCheck.leadsValid || !integrityCheck.propertiesValid ||
             !integrityCheck.tasksValid || !integrityCheck.activitiesValid) {
-            toast.error('⚠️ Data integrity check failed! Contact support.');
+            toast.error('⚠️ Data integrity check failed! Contact Admin@dcapitalrealestate.com.');
             return;
         }
 
@@ -499,6 +499,8 @@ export const Settings = () => {
                                         <button
                                             onClick={() => { if (confirm('Delete template?')) deleteMessageTemplate(t.id) }}
                                             className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Delete Template"
+                                            aria-label="Delete Template"
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -588,6 +590,16 @@ export const Settings = () => {
                     </div>
                 </motion.div>
             )}
+
+            {/* Official Branding Footer */}
+            <div className="mt-12 text-center border-t border-gray-100 dark:border-white/5 pt-8 pb-4">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    Powered by <strong className="text-gray-900 dark:text-white">Doom Capital Real Estate L.L.C.</strong>
+                </p>
+                <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
+                    Support: <a href="mailto:Admin@dcapitalrealestate.com" className="text-[#D4AF37] hover:text-[#B8962F] transition-colors">Admin@dcapitalrealestate.com</a>
+                </p>
+            </div>
         </motion.div>
     );
 };
