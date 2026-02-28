@@ -13,6 +13,7 @@ import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
 import { SocialStudio } from './pages/SocialStudio';
+import { WarRoom } from './pages/WarRoom';
 import { Trash } from './pages/Trash';
 import { SetPassword } from './pages/SetPassword';
 import { AuthDiagnostic } from './pages/AuthDiagnostic';
@@ -114,6 +115,7 @@ export default function App() {
                 <Route path="/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
                 <Route path="/admin/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
                 <Route path="/social-studio-v2" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
+                <Route path="/war-room" element={<ProtectedRoute><WarRoom /></ProtectedRoute>} />
                 <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
                 <Route path="/auth-diagnostic" element={<ProtectedRoute><AuthDiagnostic /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

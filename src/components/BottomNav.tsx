@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, CheckSquare, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, CheckSquare, Sparkles, Swords } from 'lucide-react';
 
 export const BottomNav = () => {
     const navigate = useNavigate();
@@ -7,6 +7,7 @@ export const BottomNav = () => {
 
     const navItems = [
         { path: '/', label: 'Home', icon: LayoutDashboard },
+        { path: '/war-room', label: 'War Room', icon: Swords },
         { path: '/leads', label: 'Leads', icon: Users },
         { path: '/inventory', label: 'Stock', icon: Building2 },
         { path: '/tasks', label: 'Tasks', icon: CheckSquare },
