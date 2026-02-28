@@ -45,6 +45,8 @@ export interface Lead {
     commission?: number;
     commissionPaid?: boolean;
     deletedAt?: number;
+    targetLocation?: string;
+    maxBudget?: number;
     // Enterprise Extensions
     history?: any[];
     meetingsDone?: number;

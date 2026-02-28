@@ -25,6 +25,8 @@ export const Leads = () => {
         email: '',
         phone: '',
         budget: 0,
+        maxBudget: 0,
+        targetLocation: '',
         status: 'New',
         source: 'Instagram',
         assignedTo: user?.id || '',
@@ -149,6 +151,8 @@ export const Leads = () => {
                         phone: String(row.Phone),
                         source: row.Source || 'Import',
                         budget: parseInt(row.Budget) || 0,
+                        maxBudget: parseInt(row.MaxBudget) || 0,
+                        targetLocation: row.TargetLocation || '',
                         status: (row.Status as Lead['status']) || 'New',
                         assignedTo: user?.id || '',
                         notes: row.Notes || '',
@@ -402,8 +406,27 @@ export const Leads = () => {
                             <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+971..." title="Phone" />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Mission Budget (AED)</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Current Value (AED)</label>
                             <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} placeholder="Target Value" title="Budget" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Max Budget (AED)</label>
+                            <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.maxBudget || ''} onChange={e => setForm({ ...form, maxBudget: Number(e.target.value) })} placeholder="Maximum Match Budget" title="Max Budget" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Target Location</label>
+                            <select title="Target Location" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.targetLocation || ''} onChange={e => setForm({ ...form, targetLocation: e.target.value })}>
+                                <option value="">Select Location</option>
+                                <option value="Downtown Dubai">Downtown Dubai</option>
+                                <option value="Dubai Marina">Dubai Marina</option>
+                                <option value="Palm Jumeirah">Palm Jumeirah</option>
+                                <option value="Jumeirah Village Circle (JVC)">Jumeirah Village Circle (JVC)</option>
+                                <option value="Business Bay">Business Bay</option>
+                                <option value="Dubai Creek Harbour">Dubai Creek Harbour</option>
+                                <option value="Dubai Hills Estate">Dubai Hills Estate</option>
+                                <option value="Emaar Beachfront">Emaar Beachfront</option>
+                                <option value="Bluewaters Island">Bluewaters Island</option>
+                            </select>
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Pipeline State</label>

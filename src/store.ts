@@ -109,6 +109,9 @@ interface Store {
     saasRevenue: number;
     updateTradingRevenue: (amount: number) => void;
     updateSaasRevenue: (amount: number) => void;
+
+    // Matchmaker Engine
+    getMatchedProperties: (lead: ExtendedLead) => Property[];
 }
 
 export const useStore = create<Store>()(
@@ -131,6 +134,15 @@ export const useStore = create<Store>()(
             saasRevenue: 0,
             updateTradingRevenue: (amount) => set({ tradingRevenue: amount }),
             updateSaasRevenue: (amount) => set({ saasRevenue: amount }),
+
+            getMatchedProperties: (lead: ExtendedLead) => {
+                if (!lead.targetLocation || !lead.maxBudget) return [];
+
+                return get().properties
+                    .filter(p => p.status === 'Available' && p.location === lead.targetLocation && p.price <= (lead.maxBudget || 0))
+                    .sort((a, b) => b.price - a.price)
+                    .slice(0, 3);
+            },
 
             login: async (email, password, rememberMe = false) => {
                 const normalizedEmail = email.toLowerCase().trim();

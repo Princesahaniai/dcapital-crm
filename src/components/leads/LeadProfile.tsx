@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, Mail, Calendar, FileText, Clock, Paperclip, CheckSquare, Edit3, User, MapPin } from 'lucide-react';
+import { X, Phone, Mail, Calendar, FileText, Clock, Paperclip, CheckSquare, Edit3, User, MapPin, Sparkles, Send } from 'lucide-react';
 import { StageIndicator } from './StageIndicator';
 import { ActivityTimeline } from './ActivityTimeline';
 import type { Lead, Task, Activity } from '../../types';
@@ -18,8 +18,10 @@ import { useLeadScore } from '../../hooks/useLeadScore';
 
 export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit }) => {
     const [activeTab, setActiveTab] = useState<Tab>('overview');
-    const { team, tasks, activities } = useStore();
+    const { team, tasks, activities, getMatchedProperties } = useStore();
     const { score, getScoreColor, getScoreGradient } = useLeadScore(lead);
+
+    const matches = getMatchedProperties(lead);
 
     // Mock Data Helpers (Replace with real data later)
     const assignedAgent = team.find(m => m.id === lead.assignedTo);
@@ -176,6 +178,52 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                                     </p>
                                                 </div>
                                             </section>
+                                        </div>
+
+                                        {/* SMART MATCHES WIDGET */}
+                                        <div className="col-span-2 mt-4 border-t border-gray-100 dark:border-white/5 pt-8">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                                    <Sparkles className="text-amber-500" size={18} /> Smart Matches
+                                                </h3>
+                                                <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full">
+                                                    Target: {lead.targetLocation || 'Any'} (Max: AED {lead.maxBudget?.toLocaleString() || 'Any'})
+                                                </span>
+                                            </div>
+
+                                            {(!lead.targetLocation || !lead.maxBudget) ? (
+                                                <div className="text-center py-10 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                                    <p className="text-gray-500 text-sm font-medium">Please edit this lead and set a Target Location & Max Budget to compute matches.</p>
+                                                </div>
+                                            ) : matches.length === 0 ? (
+                                                <div className="text-center py-10 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                                    <p className="text-amber-600 dark:text-amber-500 text-sm font-medium">No active inventory matches these specific requirements.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                    {matches.map(property => (
+                                                        <div key={property.id} className="bg-white dark:bg-black/20 rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                            <div className="h-32 bg-gray-200 relative">
+                                                                <img src={property.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9'} alt={property.name} className="w-full h-full object-cover" />
+                                                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                                                                    AED {property.price.toLocaleString()}
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-4">
+                                                                <h4 className="font-bold text-gray-900 dark:text-white truncate">{property.name}</h4>
+                                                                <p className="text-xs text-gray-500 truncate mb-4">{property.location}</p>
+                                                                <a
+                                                                    href={`https://wa.me/${lead.phone}?text=${encodeURIComponent(`Hello ${lead.name}, I found a property matching your criteria in ${property.location}. It's a gorgeous ${property.bedrooms}BR ${property.type} at ${property.name} for AED ${property.price.toLocaleString()}. Would you like to view it?`)}`}
+                                                                    target="_blank" rel="noopener noreferrer"
+                                                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                                                                >
+                                                                    <Send size={14} /> Pitch via WhatsApp
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
