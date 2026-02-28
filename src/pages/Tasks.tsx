@@ -194,8 +194,8 @@ export const Tasks = () => {
                 )}
             </AnimatePresence>
 
-            <div className="w-full overflow-x-auto">
-                <div className="space-y-4 min-w-[320px]">
+            <div className="w-full overflow-x-auto scrollbar-hide">
+                <div className="space-y-4 min-w-[800px]">
                     {visibleTasks.map(task => (
                         <motion.div
                             variants={item}
@@ -245,13 +245,15 @@ export const Tasks = () => {
                                 >
                                     <Eye size={18} />
                                 </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); deleteTask(task.id); toast.success('Mission Aborted'); }}
-                                    title="Delete mission"
-                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors touch-target"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); deleteTask(task.id); toast.success('Mission Aborted'); }}
+                                        title="Delete mission"
+                                        className="p-2 text-gray-400 hover:text-red-500 transition-colors touch-target"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     ))}

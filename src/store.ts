@@ -23,6 +23,7 @@ interface Notification {
     read: boolean;
     date: string;
     toUser?: string;
+    userId?: string; // Firestore: who this notification is for
 }
 
 interface ExtendedLead extends Lead {
@@ -91,6 +92,8 @@ interface Store {
     deleteTask: (id: string) => void;
     markNotificationRead: (id: string) => void;
     clearNotifications: () => void;
+    setNotifications: (notifications: Notification[]) => void;
+    addFirestoreNotification: (userId: string, text: string) => void;
     importData: (data: any) => void;
     resetSystem: () => void;
     resetLeads: () => void;
@@ -384,6 +387,7 @@ export const useStore = create<Store>()(
             setLeads: (leads) => set({ leads }),
             setTasks: (tasks) => set({ tasks }),
             setTeamFromSnapshot: (team) => set({ team }),
+            setNotifications: (notifications) => set({ notifications }),
 
             // Data Actions
             updateProfile: (name, email) => set((s) => ({ user: s.user ? { ...s.user, name, email } : null })),
@@ -588,15 +592,35 @@ export const useStore = create<Store>()(
                 activities: [activity, ...state.activities]
             })),
 
-            addNotification: (text) => set((state) => {
+            addNotification: (text) => {
+                const state = get();
+                const notifId = Math.random().toString(36).substr(2, 9);
                 const newNotif: Notification = {
-                    id: Math.random().toString(),
+                    id: notifId,
                     text,
                     read: false,
-                    date: new Date().toISOString()
+                    date: new Date().toISOString(),
+                    userId: state.user?.id
                 };
-                return { notifications: [newNotif, ...state.notifications] };
-            }),
+                set({ notifications: [newNotif, ...state.notifications] });
+                // Persist to Firestore
+                if (state.user?.id) {
+                    setDoc(doc(db, 'notifications', notifId), { ...newNotif }).catch(err => console.error('[SYNC] Notification write failed:', err));
+                }
+            },
+
+            // Write a notification to Firestore for another user (e.g. when assigning a task)
+            addFirestoreNotification: (userId, text) => {
+                const notifId = Math.random().toString(36).substr(2, 9);
+                const notifDoc = {
+                    id: notifId,
+                    text,
+                    read: false,
+                    date: new Date().toISOString(),
+                    userId
+                };
+                setDoc(doc(db, 'notifications', notifId), notifDoc).catch(err => console.error('[SYNC] Remote notification write failed:', err));
+            },
 
             updateLead: (id, data) => {
                 set((s) => {
@@ -684,9 +708,19 @@ export const useStore = create<Store>()(
 
             addQuickNote: (leadId, note) => set((s) => ({ leads: s.leads.map(l => l.id === leadId ? { ...l, notes: l.notes ? l.notes + '\n' + note : note, updatedAt: Date.now() } : l) })),
 
-            markNotificationRead: (id) => set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) })),
+            markNotificationRead: (id) => {
+                set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) }));
+                updateDoc(doc(db, 'notifications', id), { read: true }).catch(err => console.error('[SYNC] Notification read failed:', err));
+            },
 
-            clearNotifications: () => set({ notifications: [] }),
+            clearNotifications: () => {
+                const state = get();
+                set({ notifications: [] });
+                // Delete all from Firestore
+                state.notifications.forEach(n => {
+                    deleteDoc(doc(db, 'notifications', n.id)).catch(err => console.error('[SYNC] Notification delete failed:', err));
+                });
+            },
 
             addProperty: (p) => set((s) => ({ properties: [p, ...s.properties] })),
 
@@ -738,6 +772,10 @@ export const useStore = create<Store>()(
                 set({ tasks: [newTask, ...s.tasks] });
                 // Firestore write
                 setDoc(doc(db, 'tasks', newTask.id), { ...newTask }, { merge: true }).catch(err => console.error('[SYNC] Task write failed:', err));
+                // If assigned to another user, write a Firestore notification for them
+                if (newTask.assignedTo && newTask.assignedTo !== s.user?.id) {
+                    get().addFirestoreNotification(newTask.assignedTo, `📌 New Task Assigned: ${newTask.title}`);
+                }
             },
 
             updateTaskStatus: (id, status, note) => {

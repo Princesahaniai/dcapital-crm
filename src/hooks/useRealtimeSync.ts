@@ -6,10 +6,11 @@ import toast from 'react-hot-toast';
 
 /**
  * Real-time sync hook — subscribes to Firestore onSnapshot listeners
- * for leads, tasks, and team (users) collections.
+ * for leads, tasks, team (users), and notifications collections.
  * 
- * - CEO/Admin roles see all documents
+ * - CEO/Admin roles see all leads & tasks
  * - Agents/Managers only see documents assigned to them
+ * - Notifications are per-user (userId === currentUser.id)
  * - Fires toast notifications when new tasks or leads are assigned
  */
 export function useRealtimeSync() {
@@ -17,7 +18,7 @@ export function useRealtimeSync() {
     const setLeads = useStore((s) => s.setLeads);
     const setTasks = useStore((s) => s.setTasks);
     const setTeamFromSnapshot = useStore((s) => s.setTeamFromSnapshot);
-    const addNotification = useStore((s) => s.addNotification);
+    const setNotifications = useStore((s) => s.setNotifications);
 
     // Track known IDs to detect *new* documents for notification purposes
     const knownLeadIds = useRef<Set<string>>(new Set());
@@ -42,7 +43,6 @@ export function useRealtimeSync() {
 
                 // Detect new leads assigned to current user (skip first snapshot)
                 if (isFirstSnapshot.current.leads) {
-                    // Populate known IDs on first load
                     leads.forEach(l => knownLeadIds.current.add(l.id));
                     isFirstSnapshot.current.leads = false;
                 } else {
@@ -50,8 +50,7 @@ export function useRealtimeSync() {
                         if (change.type === 'added' && !knownLeadIds.current.has(change.doc.id)) {
                             const newLead = change.doc.data();
                             if (newLead.assignedTo === user.id) {
-                                toast(`📋 New Lead Assigned: ${newLead.name || 'Unknown'}`, { icon: '🔔' });
-                                addNotification(`📋 New Lead: ${newLead.name || 'Unknown'} — AED ${(newLead.budget || 0).toLocaleString()}`);
+                                toast(`📋 New Lead Assigned: ${newLead.name || 'Unknown'}`, { icon: '🔔', duration: 5000 });
                             }
                         }
                         knownLeadIds.current.add(change.doc.id);
@@ -84,8 +83,7 @@ export function useRealtimeSync() {
                         if (change.type === 'added' && !knownTaskIds.current.has(change.doc.id)) {
                             const newTask = change.doc.data();
                             if (newTask.assignedTo === user.id) {
-                                toast(`📌 New Task: ${newTask.title || 'Untitled'}`, { icon: '🔔' });
-                                addNotification(`📌 New Task Assigned: ${newTask.title || 'Untitled'}`);
+                                toast(`📌 New Task: ${newTask.title || 'Untitled'}`, { icon: '🔔', duration: 5000 });
                             }
                         }
                         knownTaskIds.current.add(change.doc.id);
@@ -110,6 +108,26 @@ export function useRealtimeSync() {
             unsubscribes.push(unsubTeam);
         } catch (err) {
             console.error('[REALTIME] Failed to set up team listener:', err);
+        }
+
+        // ─── NOTIFICATIONS LISTENER (Firestore-backed) ─────────
+        try {
+            const notifsQuery = query(
+                collection(db, 'notifications'),
+                where('userId', '==', user.id)
+            );
+
+            const unsubNotifs = onSnapshot(notifsQuery, (snapshot) => {
+                const notifs = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() } as any))
+                    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setNotifications(notifs);
+            }, (error) => {
+                console.error('[REALTIME] Notifications listener error:', error);
+            });
+            unsubscribes.push(unsubNotifs);
+        } catch (err) {
+            console.error('[REALTIME] Failed to set up notifications listener:', err);
         }
 
         console.log(`[REALTIME] ✅ Real-time sync active for ${user.email} (${user.role})`);
