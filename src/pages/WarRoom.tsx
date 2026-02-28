@@ -16,6 +16,8 @@ interface AgentStats {
     totalLeads: number;
     closedLeads: number;
     conversionRate: number;
+    monthlyQuota: number;
+    quotaProgress: number;
 }
 
 export const WarRoom = () => {
@@ -36,7 +38,9 @@ export const WarRoom = () => {
                     activePipeline: 0,
                     totalLeads: 0,
                     closedLeads: 0,
-                    conversionRate: 0
+                    conversionRate: 0,
+                    monthlyQuota: 100000,
+                    quotaProgress: 0
                 });
             }
         });
@@ -61,6 +65,9 @@ export const WarRoom = () => {
             if (agent.totalLeads > 0) {
                 agent.conversionRate = (agent.closedLeads / agent.totalLeads) * 100;
             }
+
+            // Calculate Quota Progress
+            agent.quotaProgress = Math.min((agent.closedCommission / agent.monthlyQuota) * 100, 100);
         });
 
         // Sort by Closed Commission (Descending) -> The Leaderboard Standard
@@ -136,15 +143,29 @@ export const WarRoom = () => {
                                     </div>
                                 </div>
 
-                                {/* Money */}
-                                <div className="text-right shrink-0">
+                                {/* Money & Quota */}
+                                <div className="text-right shrink-0 min-w-[120px]">
                                     <p className={`font-black text-lg md:text-xl tracking-tight ${index === 0 ? 'text-amber-500' : 'text-gray-900 dark:text-white'}`}>
                                         <span className="text-xs mr-1 opacity-50 font-normal">AED</span>
                                         {agent.closedCommission.toLocaleString()}
                                     </p>
-                                    <p className="text-xs text-gray-400 mt-1 flex items-center justify-end gap-1">
-                                        Pipeline: {agent.activePipeline > 0 ? (agent.activePipeline / 1000000).toFixed(1) + 'M' : '0'}
-                                    </p>
+                                    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-2 overflow-hidden shadow-inner">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-1000 ${agent.quotaProgress >= 100 ? 'bg-green-500' :
+                                                    index === 0 ? 'bg-amber-500' :
+                                                        index === 1 ? 'bg-gray-400' :
+                                                            index === 2 ? 'bg-orange-500' :
+                                                                'bg-blue-500'
+                                                }`}
+                                            style={{ width: `${agent.quotaProgress}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">
+                                        <span>Quota</span>
+                                        <span className={agent.quotaProgress >= 100 ? 'text-green-500 font-bold' : ''}>
+                                            {agent.quotaProgress >= 100 ? 'Achieved 🎯' : `${agent.quotaProgress.toFixed(0)}%`}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ))}
