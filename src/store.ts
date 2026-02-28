@@ -682,6 +682,7 @@ export const useStore = create<Store>()(
                     leads: state.leads.map((l) => l.id === id ? { ...l, status: 'Trash', deletedAt: Date.now() } : l)
                 }));
                 updateDoc(doc(db, 'leads', id), { status: 'Trash', deletedAt: Date.now() }).catch(err => console.error('[SYNC] Lead trash failed:', err));
+                get().logAudit('TRASH_LEAD', undefined, { leadId: id });
             },
 
             restoreLead: (id) => {
@@ -696,6 +697,7 @@ export const useStore = create<Store>()(
                     leads: state.leads.filter((l) => l.id !== id)
                 }));
                 deleteDoc(doc(db, 'leads', id)).catch(err => console.error('[SYNC] Lead permanent delete failed:', err));
+                get().logAudit('DELETE_LEAD_PERMANENT', undefined, { leadId: id });
             },
 
             assignLeads: (leadIds, agentId, agentName) => {

@@ -14,7 +14,7 @@ import { KanbanBoard } from '../components/leads/KanbanBoard';
 import type { Lead } from '../types';
 
 export const Leads = () => {
-    const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user } = useStore();
+    const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user, logAudit } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
@@ -190,6 +190,7 @@ export const Leads = () => {
         link.setAttribute('href', url);
         link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
         link.click();
+        logAudit('EXPORT_LEADS', undefined, { count: filteredLeads.length });
     };
 
     const downloadTemplate = async () => {

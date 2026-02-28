@@ -20,50 +20,6 @@ export const Dashboard = () => {
     const navigate = useNavigate();
     const [timeframe, setTimeframe] = useState<'All Time' | 'This Month' | 'This Quarter'>('All Time');
 
-    // Initialize test leads for functionality testing (only if completely empty)
-    useEffect(() => {
-        if (leads.length === 0) {
-            const testLeads = [
-                {
-                    id: 'test-1',
-                    name: 'Ahmed Al Maktoum',
-                    email: 'ahmed@example.ae',
-                    phone: '+971501234567',
-                    budget: 3500000,
-                    status: 'New' as const,
-                    source: 'Website',
-                    createdAt: Date.now(),
-                    updatedAt: Date.now()
-                },
-                {
-                    id: 'test-2',
-                    name: 'Sarah Johnson',
-                    email: 'sarah@example.com',
-                    phone: '+971509876543',
-                    budget: 2800000,
-                    status: 'Qualified' as const,
-                    source: 'Referral',
-                    createdAt: Date.now() - 86400000,
-                    updatedAt: Date.now()
-                },
-                {
-                    id: 'test-3',
-                    name: 'Mohammed Hassan',
-                    email: 'mohammed@example.ae',
-                    phone: '+971555555555',
-                    budget: 5200000,
-                    status: 'Closed' as const,
-                    source: 'Instagram',
-                    createdAt: Date.now() - 172800000,
-                    updatedAt: Date.now(),
-                    commission: 104000,
-                    commissionPaid: false
-                }
-            ];
-            testLeads.forEach(lead => addLead(lead));
-        }
-    }, [leads.length, addLead]);
-
     // RBAC: Filter leads based on user role
     const accessibleLeads = useMemo(() => getVisibleLeads(user, leads, team), [user, leads, team]);
 
