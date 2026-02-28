@@ -16,7 +16,7 @@ const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 const COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6'];
 
 export const Dashboard = () => {
-    const { leads, properties, team, user, addLead } = useStore();
+    const { leads, properties, team, user, addLead, tradingRevenue, saasRevenue, updateTradingRevenue, updateSaasRevenue } = useStore();
     const navigate = useNavigate();
     const [timeframe, setTimeframe] = useState<'All Time' | 'This Month' | 'This Quarter'>('All Time');
 
@@ -96,6 +96,11 @@ export const Dashboard = () => {
         .filter(l => l.status === 'Closed' && !l.commissionPaid)
         .reduce((sum, l) => sum + (l.commission || 0), 0);
 
+    // Empire Overview Calculations
+    const totalRealEstateCommission = filteredLeads.filter(l => l.status === 'Closed').reduce((sum, l) => sum + (l.commission || 0), 0);
+    const totalCorporateRevenue = totalRealEstateCommission + tradingRevenue + saasRevenue;
+    const empireProgress = Math.min((totalCorporateRevenue / 200000) * 100, 100);
+
     // Lead Source Data (from filtered leads)
     const sources = filteredLeads.reduce((acc: any, l) => {
         const src = l.source || 'Other';
@@ -125,6 +130,70 @@ export const Dashboard = () => {
             </div>
 
             <DemoBanner />
+
+            {/* EMPIRE OVERVIEW - ADMINS ONLY */}
+            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                <motion.div variants={item} className="bg-gradient-to-br from-zinc-900 to-black border border-[#D4AF37]/40 p-6 md:p-8 rounded-3xl relative overflow-hidden shadow-2xl mb-2">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/10 blur-[100px] pointer-events-none" />
+
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 relative z-10 gap-4">
+                        <div>
+                            <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3 tracking-tight">
+                                <Trophy className="text-[#D4AF37]" size={28} /> Empire Target: 200K AED
+                            </h2>
+                            <p className="text-zinc-400 font-medium mt-1">Global corporate revenue across all streams</p>
+                        </div>
+                        <div className="text-left md:text-right">
+                            <p className="text-4xl font-black text-[#D4AF37]">AED {totalCorporateRevenue.toLocaleString()}</p>
+                            <p className="text-zinc-500 font-bold text-xs tracking-widest uppercase mt-1">Total Generated</p>
+                        </div>
+                    </div>
+
+                    <div className="w-full bg-zinc-800/50 rounded-full h-4 mb-2 overflow-hidden border border-white/5 relative z-10 p-0.5">
+                        <div className="bg-gradient-to-r from-amber-500 to-[#D4AF37] h-full rounded-full relative transition-all duration-1000" style={{ width: `${empireProgress}%` }}>
+                            <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-bold text-zinc-400 relative z-10 mb-8">
+                        <span>0 AED</span>
+                        <span className="text-[#D4AF37] text-sm">{empireProgress.toFixed(1)}%</span>
+                        <span>200,000 AED</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-md">
+                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-2"><Building2 size={14} /> Real Estate</p>
+                            <p className="text-2xl font-bold text-white mt-2">AED {totalRealEstateCommission.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-md">
+                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-2"><PieChartIcon size={14} /> Trading</p>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="text-white font-bold text-lg">AED</span>
+                                <input
+                                    type="number"
+                                    value={tradingRevenue || ''}
+                                    onChange={(e) => updateTradingRevenue(Number(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full bg-transparent text-2xl font-bold text-white outline-none border-b border-transparent focus:border-[#D4AF37]/50 transition-colors"
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-md">
+                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-2"><Wallet size={14} /> SaaS</p>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="text-white font-bold text-lg">AED</span>
+                                <input
+                                    type="number"
+                                    value={saasRevenue || ''}
+                                    onChange={(e) => updateSaasRevenue(Number(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full bg-transparent text-2xl font-bold text-white outline-none border-b border-transparent focus:border-[#D4AF37]/50 transition-colors"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
 
             {/* METRICS ROW */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -346,7 +415,7 @@ export const Dashboard = () => {
                         </div>
                     ) : (
                         <EmptyState
-                            icon={Users}
+                            icon={Users as any}
                             title="No Leads Yet"
                             description="Start building your pipeline by adding your first lead"
                             actionLabel="Add Lead"
@@ -366,7 +435,7 @@ export const Dashboard = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                            {pieData.map((entry, index) => (
+                                            {pieData.map((_, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
                                             ))}
                                         </Pie>

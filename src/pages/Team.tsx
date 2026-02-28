@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import {
     UserPlus, Mail, Phone, Shield,
     Ban, CheckCircle, Trash2, Search,
-    Clock, Copy, Key
+    Clock, Copy, Key, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -68,6 +68,27 @@ export const Team = () => {
         setShowInviteModal(false);
     };
 
+    const exportWPSPayroll = () => {
+        const headers = ['Employee ID', 'Employee Name', 'Basic Salary', 'Commission', 'Total Earnings', 'Currency'];
+        const csvRows = team.map(member => {
+            const basicSalary = member.role === 'ceo' ? 50000 : member.role === 'manager' ? 20000 : 10000;
+            const commission = member.commissionEarned || 0;
+            const total = basicSalary + commission;
+            return `"${member.id}","${member.name}","${basicSalary}","${commission}","${total}","AED"`;
+        });
+
+        const csvString = [headers.join(','), ...csvRows].join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `WPS_Payroll_Export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("WPS Payroll Exported Successfully!");
+    };
+
     const filteredUsers = team.filter(member => {
         const matchesFilter = filter === 'all' || member.status === filter;
         const matchesSearch =
@@ -96,7 +117,14 @@ export const Team = () => {
                     <p className="text-zinc-400 mt-1">Manage your organization members</p>
                 </div>
                 {isAdmin && (
-                    <div className="flex gap-2 w-full md:w-auto">
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                        <button
+                            onClick={exportWPSPayroll}
+                            className="bg-green-500/10 text-green-500 border border-green-500/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-500 hover:text-black transition-colors"
+                        >
+                            <Download className="w-5 h-5" />
+                            Export WPS Payroll
+                        </button>
                         <button
                             onClick={() => setShowAuditModal(true)}
                             className="bg-zinc-800 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"

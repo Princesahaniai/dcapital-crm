@@ -103,6 +103,12 @@ interface Store {
     fetchTeam: () => Promise<void>; // New action to sync team
     addActivity: (a: Activity) => void;
     addNotification: (text: string) => void;
+
+    // Multi-Stream Revenue
+    tradingRevenue: number;
+    saasRevenue: number;
+    updateTradingRevenue: (amount: number) => void;
+    updateSaasRevenue: (amount: number) => void;
 }
 
 export const useStore = create<Store>()(
@@ -120,6 +126,11 @@ export const useStore = create<Store>()(
             team: [], // Production: Empty state - Only CEO and Admin via login
             notifications: [], // Production: Empty state
             auditLogs: [],
+
+            tradingRevenue: 0,
+            saasRevenue: 0,
+            updateTradingRevenue: (amount) => set({ tradingRevenue: amount }),
+            updateSaasRevenue: (amount) => set({ saasRevenue: amount }),
 
             login: async (email, password, rememberMe = false) => {
                 const normalizedEmail = email.toLowerCase().trim();
