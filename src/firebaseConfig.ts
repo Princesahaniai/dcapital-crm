@@ -5,7 +5,7 @@ import { getStorage } from 'firebase/storage';
 
 // 🔥 NUCLEAR FIX — Raw hardcoded Firebase config, zero env var dependencies
 const firebaseConfig = {
-    apiKey: 'AIzaSyBwHEULX6o5VjIQrz_Ud-HBT5QIZD0Bamps',
+    apiKey: 'AIzaSyAfEzLNrvSMWUiYc89vLSIO96w8_x22Jek',
     authDomain: 'dcapital-crm-prod.firebaseapp.com',
     projectId: 'dcapital-crm-prod',
     storageBucket: 'dcapital-crm-prod.firebasestorage.app',
