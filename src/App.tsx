@@ -22,6 +22,8 @@ import PWAInstall from './components/PWAInstall';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const user = useStore((state) => state.user);
+    const isAuthLoading = useStore((state) => state.isAuthLoading);
+
     // Meeting Guidelines Reminder
     React.useEffect(() => {
         const checkMeetings = () => {
@@ -45,11 +47,29 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             });
         };
 
-        const interval = setInterval(checkMeetings, 60000); // Check every minute
-        checkMeetings(); // Check immediately
+        const interval = setInterval(checkMeetings, 60000);
+        checkMeetings();
 
         return () => clearInterval(interval);
     }, []);
+
+    // 🛡️ AUTH LOADING GUARD: Don't redirect until Firebase has responded
+    if (isAuthLoading) {
+        return (
+            <div className="h-screen w-screen bg-black flex flex-col items-center justify-center gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
+                    <span className="font-bold text-white text-3xl">D</span>
+                </div>
+                <div className="text-center">
+                    <p className="text-[#D4AF37] font-bold text-lg tracking-wide">Loading D-Capital OS...</p>
+                    <p className="text-zinc-600 text-xs mt-2">Verifying your session</p>
+                </div>
+                <div className="w-48 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '60%', animation: 'loading 1.5s ease-in-out infinite' }} />
+                </div>
+            </div>
+        );
+    }
 
     if (!user) return <Navigate to="/login" replace />;
     return (

@@ -77,3 +77,18 @@ textarea {
 body {
   @apply bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300;
 }
+
+/* Auth loading screen animation */
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}

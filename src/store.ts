@@ -45,6 +45,7 @@ interface Store {
     notifications: Notification[];
     loginTimestamp: number | null;
     rememberMe: boolean;
+    isAuthLoading: boolean;
     passwordResetTokens: Record<string, { token: string; email: string; expires: number }>;
 
     // Auth Actions
@@ -103,6 +104,7 @@ export const useStore = create<Store>()(
             leads: [], // Production: Empty state
             loginTimestamp: null,
             rememberMe: false,
+            isAuthLoading: true,
             passwordResetTokens: {},
             properties: [], // Production: Empty state
             tasks: [], // Production: Empty state
@@ -321,7 +323,7 @@ export const useStore = create<Store>()(
                             const userProfile = docSnap.data();
                             if (userProfile.status === 'Suspended' || userProfile.status === 'Inactive') {
                                 await signOut(auth);
-                                set({ user: null });
+                                set({ user: null, isAuthLoading: false });
                                 toast.error('Access Suspended');
                                 return;
                             }
@@ -334,7 +336,8 @@ export const useStore = create<Store>()(
                                     role: userProfile.role || 'agent'
                                 } as any,
                                 loginTimestamp: Date.now(),
-                                rememberMe: true // Persist session
+                                rememberMe: true,
+                                isAuthLoading: false
                             });
                         } else {
                             // Handle edge case: User in Auth but not Firestore
@@ -343,15 +346,22 @@ export const useStore = create<Store>()(
                                 set({
                                     user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
                                     loginTimestamp: Date.now(),
-                                    rememberMe: true
+                                    rememberMe: true,
+                                    isAuthLoading: false
                                 });
+                            } else {
+                                // No profile found and not a master admin — stop loading
+                                set({ isAuthLoading: false });
                             }
                         }
                     } else {
                         // Only clear if we thought we were logged in
+                        // No user signed in — stop loading
                         if (state.user) {
                             console.log('[AUTH] No user. Clearing session.');
-                            set({ user: null, loginTimestamp: null });
+                            set({ user: null, loginTimestamp: null, isAuthLoading: false });
+                        } else {
+                            set({ isAuthLoading: false });
                         }
                     }
                 });
