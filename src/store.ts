@@ -90,6 +90,7 @@ interface Store {
     addTaskComment: (id: string, text: string) => void;
     toggleTask: (id: string) => void;
     deleteTask: (id: string) => void;
+    runDailyTaskSweep: () => Promise<void>;
     markNotificationRead: (id: string) => void;
     clearNotifications: () => void;
     setNotifications: (notifications: Notification[]) => void;
@@ -759,7 +760,39 @@ export const useStore = create<Store>()(
                 });
             },
 
-            addProperty: (p) => set((s) => ({ properties: [p, ...s.properties] })),
+            addProperty: (p) => {
+                const s = get();
+                // Ensure ID exists for real-time sync later if needed
+                const newProperty = { ...p, id: p.id || Math.random().toString(36).substr(2, 9), createdAt: Date.now() };
+                set({ properties: [newProperty, ...s.properties] });
+                // Firestore write
+                setDoc(doc(db, 'properties', newProperty.id), newProperty).catch(err => console.error('[SYNC] Property write failed:', err));
+
+                // Smart Inventory Match algorithm against A-Grade Leads
+                try {
+                    const aGradeLeads = s.leads.filter((l: any) => s.calculateLeadScore(l) === 'A');
+                    aGradeLeads.forEach((lead: any) => {
+                        const leadLoc = (lead.targetLocation || '').toLowerCase();
+                        const propLoc = (newProperty.location || '').toLowerCase();
+                        if (leadLoc && propLoc.includes(leadLoc) && lead.maxBudget && newProperty.price <= lead.maxBudget) {
+                            // Match Found!
+                            const msg = `🌟 High-Value Match: ${newProperty.name} matches A-Grade client ${lead.name}'s criteria!`;
+                            if (lead.assignedTo) {
+                                get().addFirestoreNotification(lead.assignedTo, msg);
+                            } else {
+                                // Send to all admins if unassigned
+                                const admins = s.team.filter(m => m.role === 'ceo' || m.role === 'admin');
+                                admins.forEach(admin => {
+                                    get().addFirestoreNotification(admin.id, msg);
+                                });
+                            }
+                            get().logAudit('High-Value Match Found', undefined, { propertyId: newProperty.id, leadId: lead.id, leadName: lead.name });
+                        }
+                    });
+                } catch (e) {
+                    console.error('[SYNC] Smart Inventory Match failed to run:', e);
+                }
+            },
 
             updateProperty: (id, data) => set((s) => {
                 const oldProp = s.properties.find(p => p.id === id);
@@ -899,6 +932,50 @@ export const useStore = create<Store>()(
                 set({ tasks: updatedTasks });
                 deleteDoc(doc(db, 'tasks', id)).catch(err => console.error('[SYNC] Task delete failed:', err));
                 get().logAudit('DELETE_TASK', undefined, { taskId: id });
+            },
+
+            runDailyTaskSweep: async () => {
+                const s = get();
+                try {
+                    const lastSweep = localStorage.getItem('dcapital_last_task_sweep');
+                    const today = new Date().toISOString().split('T')[0];
+                    if (lastSweep === today) return; // Already swept today
+
+                    const now = Date.now();
+                    const fortyEightHoursMs = 48 * 60 * 60 * 1000;
+                    let sweepCount = 0;
+
+                    const updatedTasks = s.tasks.map(t => {
+                        if (!t.completed && t.dueDate && (now - t.dueDate) > fortyEightHoursMs && !t.title.includes('[URGENT]')) {
+                            sweepCount++;
+                            const updatedTask = {
+                                ...t,
+                                title: `[URGENT] ${t.title}`,
+                                priority: 'High' as const,
+                                updatedAt: now
+                            };
+                            updateDoc(doc(db, 'tasks', t.id), {
+                                title: updatedTask.title,
+                                priority: 'High',
+                                updatedAt: now
+                            }).catch(err => console.error('[SYNC] Task sweep update failed:', err));
+                            return updatedTask;
+                        }
+                        return t;
+                    });
+
+                    if (sweepCount > 0) {
+                        set({ tasks: updatedTasks });
+                        const admins = s.team.filter(m => m.role === 'ceo' || m.role === 'admin');
+                        admins.forEach(admin => {
+                            get().addFirestoreNotification(admin.id, `⚠️ Task Sweep: ${sweepCount} overdue task(s) auto-flagged as High Priority.`);
+                        });
+                        get().logAudit('AUTO_TASK_SWEEP', undefined, { flaggedCount: sweepCount });
+                    }
+                    localStorage.setItem('dcapital_last_task_sweep', today);
+                } catch (e) {
+                    console.error('[SYNC] Task sweep failed:', e);
+                }
             },
 
             // COMMS HUB

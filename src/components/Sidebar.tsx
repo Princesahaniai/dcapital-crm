@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords, Activity } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -87,6 +87,7 @@ export const Sidebar = () => {
                         <p className="px-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Main Menu</p>
                         <div className="space-y-1">
                             <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
+                            <NavItem to="/market-intel" icon={Activity} label="Market Intel" />
                             <NavItem to="/war-room" icon={Swords} label="The War Room" />
                             <NavItem to="/leads" icon={Users} label="Leads Engine" />
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />

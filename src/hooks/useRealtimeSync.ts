@@ -73,6 +73,7 @@ export function useRealtimeSync() {
             const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
                 const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
                 setTasks(tasks);
+                useStore.getState().runDailyTaskSweep();
 
                 // Detect new tasks assigned to current user (skip first snapshot)
                 if (isFirstSnapshot.current.tasks) {
