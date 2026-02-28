@@ -133,3 +133,10 @@ export interface Notification {
     date: string;
     type?: string;
 }
+
+export interface MessageTemplate {
+    id: string;
+    title: string;
+    content: string;
+    target: 'whatsapp' | 'email';
+}

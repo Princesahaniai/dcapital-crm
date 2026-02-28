@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../store';
-import { Save, Upload, Download, Trash2, UserCircle, ShieldCheck, Lock, AlertTriangle, HardDrive, Webhook, Copy } from 'lucide-react';
+import { Save, Upload, Download, Trash2, UserCircle, ShieldCheck, Lock, AlertTriangle, HardDrive, Webhook, Copy, MessageSquare, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
@@ -10,7 +10,7 @@ const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { st
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 
 export const Settings = () => {
-    const { user, leads, properties, tasks, activities, importData, resetSystem, resetLeads, resetProperties, updateProfile, changePassword } = useStore();
+    const { user, leads, properties, tasks, activities, importData, resetSystem, resetLeads, resetProperties, updateProfile, changePassword, messageTemplates, fetchMessageTemplates, saveMessageTemplate, deleteMessageTemplate } = useStore();
     const fileInput = useRef<HTMLInputElement>(null);
     const [name, setName] = useState(user?.name || '');
     const [email, setEmail] = useState(user?.email || '');
@@ -24,6 +24,10 @@ export const Settings = () => {
     const [showDailyBackup, setShowDailyBackup] = useState(false);
     const [storageUsage, setStorageUsage] = useState({ used: 0, total: 5, percentage: 0 });
     const [showStorageWarning, setShowStorageWarning] = useState(false);
+
+    // Comms Hub State
+    const [templateTitle, setTemplateTitle] = useState('');
+    const [templateContent, setTemplateContent] = useState('');
 
     // Calculate localStorage usage
     const calculateStorageUsage = () => {
@@ -79,7 +83,12 @@ export const Settings = () => {
             setDaysSinceBackup(999);
             setShowDailyBackup(true);
         }
-    }, []);
+
+        // Fetch templates on mount
+        if (user?.role === 'ceo' || user?.role === 'admin') {
+            fetchMessageTemplates();
+        }
+    }, [user?.role]);
 
     const handleExport = (isDailyBackup = false) => {
         // Data integrity check before export
@@ -139,6 +148,13 @@ export const Settings = () => {
         calculateStorageUsage();
 
         toast.success(isDailyBackup ? '✅ Daily Backup Complete!' : '✅ Backup Downloaded Successfully');
+    };
+
+    const handleSaveTemplate = async () => {
+        if (!templateTitle || !templateContent) return toast.error('Fill all fields');
+        await saveMessageTemplate({ title: templateTitle, content: templateContent, target: 'whatsapp' });
+        setTemplateTitle('');
+        setTemplateContent('');
     };
 
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -424,6 +440,71 @@ export const Settings = () => {
                             >
                                 <Copy size={20} />
                             </button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* COMMS HUB - ADMIN ONLY */}
+            {(user?.role === 'ceo' || user?.role === 'admin' || user?.email?.includes('admin')) && (
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass border-2 border-emerald-500/20 p-8 rounded-2xl shadow-lg dark:shadow-none mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-semibold flex items-center gap-3 text-gray-900 dark:text-white">
+                            <MessageSquare className="text-emerald-500" size={22} /> Comms Hub (Templates)
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Define New */}
+                        <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-6 h-fit">
+                            <h3 className="font-bold text-emerald-900 dark:text-emerald-500 mb-4">Create WhatsApp Template</h3>
+                            <div className="space-y-4">
+                                <input
+                                    type="text"
+                                    placeholder="Template Name e.g., Initial Intro"
+                                    value={templateTitle}
+                                    onChange={(e) => setTemplateTitle(e.target.value)}
+                                    className="w-full bg-white dark:bg-black border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 outline-none"
+                                />
+                                <textarea
+                                    placeholder="Hi {name}, I noticed your interest in..."
+                                    value={templateContent}
+                                    onChange={(e) => setTemplateContent(e.target.value)}
+                                    rows={4}
+                                    className="w-full bg-white dark:bg-black border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 outline-none resize-none"
+                                />
+                                <button
+                                    onClick={handleSaveTemplate}
+                                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                                >
+                                    <Plus size={18} /> Save Template
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* List Existing */}
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-gray-900 dark:text-white mb-4">Saved Quick Replies ({messageTemplates.length})</h3>
+                            {messageTemplates.length === 0 ? (
+                                <div className="text-center p-6 text-gray-500 text-sm border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                                    No templates stored yet. Establish your enterprise scripts here for 1-click sales blasting.
+                                </div>
+                            ) : (
+                                messageTemplates.map(t => (
+                                    <div key={t.id} className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 p-4 rounded-xl flex items-start justify-between group">
+                                        <div>
+                                            <h4 className="font-bold text-sm text-gray-900 dark:text-white">{t.title}</h4>
+                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{t.content}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => { if (confirm('Delete template?')) deleteMessageTemplate(t.id) }}
+                                            className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </motion.div>

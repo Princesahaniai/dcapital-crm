@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Lead, Property, Task, Activity, User, Notification } from './types';
+import type { Lead, Property, Task, Activity, User, Notification, MessageTemplate } from './types';
 import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
@@ -112,6 +112,12 @@ interface Store {
 
     // Matchmaker Engine
     getMatchedProperties: (lead: ExtendedLead) => Property[];
+
+    // Comms Hub
+    messageTemplates: MessageTemplate[];
+    fetchMessageTemplates: () => Promise<void>;
+    saveMessageTemplate: (template: Partial<MessageTemplate>) => Promise<void>;
+    deleteMessageTemplate: (id: string) => Promise<void>;
 }
 
 export const useStore = create<Store>()(
@@ -129,6 +135,7 @@ export const useStore = create<Store>()(
             team: [], // Production: Empty state - Only CEO and Admin via login
             notifications: [], // Production: Empty state
             auditLogs: [],
+            messageTemplates: [],
 
             tradingRevenue: 0,
             saasRevenue: 0,
@@ -878,8 +885,47 @@ export const useStore = create<Store>()(
             },
 
             deleteTask: (id) => {
-                set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) }));
+                const s = get();
+                const updatedTasks = s.tasks.filter(t => t.id !== id);
+                set({ tasks: updatedTasks });
                 deleteDoc(doc(db, 'tasks', id)).catch(err => console.error('[SYNC] Task delete failed:', err));
+            },
+
+            // COMMS HUB
+            fetchMessageTemplates: async () => {
+                try {
+                    const snapshot = await getDocs(collection(db, 'message_templates'));
+                    const templates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageTemplate));
+                    set({ messageTemplates: templates });
+                } catch (err) {
+                    console.error('[SYNC] Failed to fetch message templates', err);
+                }
+            },
+            saveMessageTemplate: async (template) => {
+                try {
+                    const id = template.id || Math.random().toString(36).substr(2, 9);
+                    const newTemplate = { ...template, id } as MessageTemplate;
+                    const docRef = doc(db, 'message_templates', id);
+                    await setDoc(docRef, newTemplate, { merge: true });
+                    set(s => ({
+                        messageTemplates: s.messageTemplates.find(t => t.id === id)
+                            ? s.messageTemplates.map(t => t.id === id ? newTemplate : t)
+                            : [...s.messageTemplates, newTemplate]
+                    }));
+                    toast.success('Template saved');
+                } catch (err) {
+                    console.error('[SYNC] Failed to save message template', err);
+                    toast.error('Failed to save template');
+                }
+            },
+            deleteMessageTemplate: async (id) => {
+                try {
+                    await deleteDoc(doc(db, 'message_templates', id));
+                    set(s => ({ messageTemplates: s.messageTemplates.filter(t => t.id !== id) }));
+                    toast.success('Template deleted');
+                } catch (err) {
+                    console.error('[SYNC] Failed to delete message template', err);
+                }
             },
 
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
