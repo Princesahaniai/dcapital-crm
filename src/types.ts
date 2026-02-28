@@ -53,6 +53,9 @@ export interface Lead {
     meetingsTarget?: number;
     nextMeeting?: string;
     potentialCommission?: number;
+    // AI Scoring & Nurture
+    leadScore?: 'A' | 'B' | 'C';
+    smartNurture?: boolean;
 }
 
 export interface Property {

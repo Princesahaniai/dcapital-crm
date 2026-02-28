@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, Trash2, Zap } from 'lucide-react';
 import { StageIndicator } from './StageIndicator';
 import { WhatsAppButton } from '../WhatsAppButton';
 import type { Lead } from '../../types';
@@ -18,7 +18,7 @@ interface LeadCardProps {
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDelete, agentName = 'Unassigned' }) => {
-    const { user } = useStore();
+    const { user, toggleSmartNurture } = useStore();
     const scoreData = calculateLeadScore(lead);
 
     const stopProp = (e: React.MouseEvent, action: () => void) => {
@@ -95,6 +95,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
             {/* Bottom: Quick Actions */}
             <div className="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5">
                 <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} compact />
+
+                <button
+                    onClick={(e) => stopProp(e, () => toggleSmartNurture(lead.id))}
+                    title={lead.smartNurture ? 'Disable Smart Nurture' : 'Enable Smart Nurture'}
+                    aria-label="Toggle Smart Nurture"
+                    className={`p-2.5 rounded-xl transition-colors ${lead.smartNurture ? 'bg-amber-500/20 text-amber-500 ring-1 ring-amber-500/30' : 'bg-gray-50 dark:bg-white/5 text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-500'}`}
+                >
+                    <Zap size={16} />
+                </button>
 
                 <button
                     onClick={(e) => stopProp(e, handleCall)}

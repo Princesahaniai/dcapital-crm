@@ -118,6 +118,10 @@ interface Store {
     fetchMessageTemplates: () => Promise<void>;
     saveMessageTemplate: (template: Partial<MessageTemplate>) => Promise<void>;
     deleteMessageTemplate: (id: string) => Promise<void>;
+
+    // AI Lead Scoring & Nurture
+    calculateLeadScore: (lead: ExtendedLead) => 'A' | 'B' | 'C';
+    toggleSmartNurture: (leadId: string) => void;
 }
 
 export const useStore = create<Store>()(
@@ -926,6 +930,29 @@ export const useStore = create<Store>()(
                 } catch (err) {
                     console.error('[SYNC] Failed to delete message template', err);
                 }
+            },
+
+            // AI LEAD SCORING ENGINE
+            calculateLeadScore: (lead) => {
+                const primeLocations = ['jlt', 'palm jumeirah', 'downtown', 'dubai marina', 'city walk', 'business bay', 'difc', 'jumeirah'];
+                const budget = lead.budget || lead.maxBudget || 0;
+                const location = (lead.targetLocation || '').toLowerCase();
+                const isPrime = primeLocations.some(loc => location.includes(loc));
+
+                if (budget >= 2000000 && isPrime) return 'A';
+                if (budget >= 1000000) return 'B';
+                return 'C';
+            },
+
+            toggleSmartNurture: (leadId) => {
+                const lead = get().leads.find(l => l.id === leadId);
+                if (!lead) return;
+                const newValue = !lead.smartNurture;
+                set(s => ({
+                    leads: s.leads.map(l => l.id === leadId ? { ...l, smartNurture: newValue } : l)
+                }));
+                updateDoc(doc(db, 'leads', leadId), { smartNurture: newValue }).catch(err => console.error('[SYNC] Nurture toggle failed:', err));
+                toast.success(newValue ? '🤖 Smart Nurture Enabled' : 'Smart Nurture Disabled');
             },
 
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),

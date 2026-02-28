@@ -1,11 +1,42 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store';
 import { motion } from 'framer-motion';
-import { Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Trash2, RotateCcw, AlertTriangle, Clock, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const Trash = () => {
-    const { leads, restoreLead, permanentDeleteLead } = useStore();
+    const { leads, restoreLead, permanentDeleteLead, user } = useStore();
     const deletedLeads = leads.filter(l => l.status === 'Trash');
+    const isAdmin = user?.role === 'ceo' || user?.role === 'admin';
+
+    // Smart Nurture: Check for leads sitting in 'New' > 4 hours with smartNurture enabled
+    useEffect(() => {
+        const check = () => {
+            const now = Date.now();
+            const fourHours = 4 * 60 * 60 * 1000;
+            const staleLeads = useStore.getState().leads.filter(
+                l => l.smartNurture && l.status === 'New' && (now - l.createdAt) > fourHours
+            );
+            staleLeads.forEach(lead => {
+                const notifText = `⚠️ Smart Nurture Alert: ${lead.name} has been in 'New' for over 4 hours. Re-assign immediately.`;
+                const existing = useStore.getState().notifications.some(n => n.text.includes(lead.name) && n.text.includes('Smart Nurture'));
+                if (!existing) {
+                    useStore.getState().addNotification(notifText);
+                    toast(`🤖 ${lead.name} needs attention!`, { icon: '⚠️' });
+                }
+            });
+        };
+        check();
+        const interval = setInterval(check, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, []);
+
+    const getDaysRemaining = (deletedAt?: number) => {
+        if (!deletedAt) return 30;
+        const elapsed = Date.now() - deletedAt;
+        const remaining = 30 - Math.floor(elapsed / (1000 * 60 * 60 * 24));
+        return Math.max(remaining, 0);
+    };
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -15,7 +46,7 @@ export const Trash = () => {
                 </div>
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 dark:text-white">Trash</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Restore or permanently delete items</p>
+                    <p className="text-gray-500 dark:text-gray-400">Items are automatically purged after 30 days</p>
                 </div>
             </div>
 
@@ -26,47 +57,66 @@ export const Trash = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {deletedLeads.map((lead) => (
-                        <motion.div
-                            key={lead.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="bg-white dark:bg-[#1C1C1E] p-4 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm"
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-bold text-gray-900 dark:text-white">{lead.name}</h3>
-                                    <p className="text-xs text-gray-500 uppercase tracking-widest">{lead.source}</p>
+                    {deletedLeads.map((lead) => {
+                        const daysLeft = getDaysRemaining(lead.deletedAt);
+                        return (
+                            <motion.div
+                                key={lead.id}
+                                layout
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="bg-white dark:bg-[#1C1C1E] p-5 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm"
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">{lead.name}</h3>
+                                        <p className="text-xs text-gray-500 uppercase tracking-widest">{lead.source}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${daysLeft <= 7 ? 'bg-red-500/10 text-red-500' : daysLeft <= 14 ? 'bg-amber-500/10 text-amber-500' : 'bg-gray-100 dark:bg-white/10 text-gray-500'}`}>
+                                            <Clock size={12} />
+                                            {daysLeft}d left
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="px-2 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold uppercase rounded-lg">
-                                    Deleted
-                                </div>
-                            </div>
 
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => restoreLead(lead.id)}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 font-bold text-xs rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
-                                >
-                                    <RotateCcw size={14} />
-                                    Restore
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (window.confirm('Delete permanently? This cannot be undone.')) {
-                                            permanentDeleteLead(lead.id);
-                                        }
-                                    }}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
-                                >
-                                    <AlertTriangle size={14} />
-                                    Delete
-                                </button>
-                            </div>
-                        </motion.div>
-                    ))}
+                                {lead.budget && (
+                                    <p className="text-xs text-gray-400 mb-4">Budget: AED {lead.budget?.toLocaleString()}</p>
+                                )}
+
+                                <div className="flex gap-2">
+                                    {isAdmin ? (
+                                        <>
+                                            <button
+                                                onClick={() => restoreLead(lead.id)}
+                                                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 font-bold text-xs rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
+                                            >
+                                                <RotateCcw size={14} />
+                                                Restore
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm('Delete permanently? This cannot be undone.')) {
+                                                        permanentDeleteLead(lead.id);
+                                                    }
+                                                }}
+                                                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                                            >
+                                                <AlertTriangle size={14} />
+                                                Delete
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-50 dark:bg-white/5 text-gray-400 font-bold text-xs rounded-xl">
+                                            <Shield size={14} />
+                                            Admin Only
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        );
+                    })}
                 </div>
             )}
         </div>
