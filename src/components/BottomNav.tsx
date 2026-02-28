@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, CheckSquare, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, CheckSquare, Sparkles } from 'lucide-react';
 
 export const BottomNav = () => {
     const navigate = useNavigate();
@@ -10,7 +10,7 @@ export const BottomNav = () => {
         { path: '/leads', label: 'Leads', icon: Users },
         { path: '/inventory', label: 'Stock', icon: Building2 },
         { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-        { path: '/settings', label: 'More', icon: Menu }
+        { path: '/social-studio', label: 'Studio', icon: Sparkles }
     ];
 
     const handleNavClick = (e: React.MouseEvent, path: string) => {

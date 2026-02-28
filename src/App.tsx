@@ -12,7 +12,7 @@ import { Team } from './pages/Team';
 import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
-import SocialStudioV2 from './pages/SocialStudioV2';
+import { SocialStudio } from './pages/SocialStudio';
 import { Trash } from './pages/Trash';
 import { SetPassword } from './pages/SetPassword';
 import { AuthDiagnostic } from './pages/AuthDiagnostic';
@@ -111,9 +111,9 @@ export default function App() {
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-                <Route path="/social-studio" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
-                <Route path="/admin/social-studio" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
-                <Route path="/social-studio-v2" element={<ProtectedRoute><SocialStudioV2 /></ProtectedRoute>} />
+                <Route path="/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
+                <Route path="/admin/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
+                <Route path="/social-studio-v2" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
                 <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
                 <Route path="/auth-diagnostic" element={<ProtectedRoute><AuthDiagnostic /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
