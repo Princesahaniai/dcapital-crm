@@ -89,7 +89,7 @@ export const Dashboard = () => {
     const recentLeads = [...accessibleLeads].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
 
     return (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 md:space-y-6 p-4 md:p-10 pt-4 md:pt-8 h-screen w-full overflow-y-auto scrollbar-hide">
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 md:space-y-6 p-4 md:p-10 pt-4 md:pt-8 h-screen w-full max-w-full overflow-y-auto overflow-x-hidden scrollbar-hide">
             {/* HEADER */}
             <Header title="Executive Dashboard" subtitle="Real-time organization intelligence" />
 
