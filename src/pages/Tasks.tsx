@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { CheckCircle, Circle, Plus, Trash2, Calendar, Phone, Mail, FileText, AlertCircle, User, Clock, Search, PlayCircle, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TaskDetail } from '../components/TaskDetail';
+import { Modal } from '../components/Modal';
 import toast from 'react-hot-toast';
 import type { Task } from '../types';
 
@@ -117,83 +118,76 @@ export const Tasks = () => {
                 ))}
             </div>
 
-            <AnimatePresence>
-                {showAddForm && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/10 p-6 rounded-3xl space-y-4 shadow-sm overflow-hidden"
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-4">
-                                <input
-                                    placeholder="Mission Title (e.g., Follow up with Mr. Khalil)"
-                                    title="Task Title"
-                                    className="w-full border border-gray-200 dark:border-white/10 rounded-xl p-4 outline-none focus:border-blue-500"
-                                    value={text}
-                                    onChange={e => setText(e.target.value)}
-                                />
-                                <textarea
-                                    placeholder="Detailed mission briefing..."
-                                    title="Task Description"
-                                    className="w-full bg-gray-50 dark:bg-transparent border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-blue-500 min-h-[100px]"
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                />
+            <Modal isOpen={showAddForm} onClose={() => setShowAddForm(false)} title="New Mission">
+                <div className="space-y-4 p-2">
+                    <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-4">
+                            <input
+                                placeholder="Mission Title (e.g., Follow up with Mr. Khalil)"
+                                title="Task Title"
+                                className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                                value={text}
+                                onChange={e => setText(e.target.value)}
+                            />
+                            <textarea
+                                placeholder="Detailed mission briefing..."
+                                title="Task Description"
+                                className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-blue-500 min-h-[100px] transition-all"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Assignee</p>
+                                <select
+                                    title="Assignee"
+                                    className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                                    value={assignedTo}
+                                    onChange={e => setAssignedTo(e.target.value)}
+                                >
+                                    <option value={user?.id}>Myself</option>
+                                    {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && team.map(m => (
+                                        <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                                    ))}
+                                </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Assignee</p>
-                                    <select
-                                        title="Assignee"
-                                        className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm"
-                                        value={assignedTo}
-                                        onChange={e => setAssignedTo(e.target.value)}
-                                    >
-                                        <option value={user?.id}>Myself</option>
-                                        {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && team.map(m => (
-                                            <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Category</p>
-                                    <select title="Category" className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={category} onChange={e => setCategory(e.target.value as any)}>
-                                        <option>Call</option><option>Meeting</option><option>Email</option><option>Paperwork</option><option>Follow-up</option><option>Site Visit</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Due Date</p>
-                                    <input type="date" title="Due Date" className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Time</p>
-                                    <input type="time" title="Due Time" className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm" value={dueTime} onChange={e => setDueTime(e.target.value)} />
-                                </div>
-                                <div className="space-y-1 col-span-2">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Priority</p>
-                                    <div className="flex gap-2">
-                                        {(['Low', 'Medium', 'High'] as const).map(p => (
-                                            <button
-                                                key={p}
-                                                onClick={() => setPriority(p)}
-                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all border ${priority === p ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-200 dark:border-white/10 text-gray-500'}`}
-                                            >
-                                                {p}
-                                            </button>
-                                        ))}
-                                    </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Category</p>
+                                <select title="Category" className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white" value={category} onChange={e => setCategory(e.target.value as any)}>
+                                    <option>Call</option><option>Meeting</option><option>Email</option><option>Paperwork</option><option>Follow-up</option><option>Site Visit</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Due Date</p>
+                                <input type="date" title="Due Date" className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Time</p>
+                                <input type="time" title="Due Time" className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white" value={dueTime} onChange={e => setDueTime(e.target.value)} />
+                            </div>
+                            <div className="space-y-1 col-span-2">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Priority</p>
+                                <div className="flex gap-2">
+                                    {(['Low', 'Medium', 'High'] as const).map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setPriority(p)}
+                                            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all border ${priority === p ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-200 dark:border-white/10 text-gray-500'}`}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
-                            <button onClick={() => setShowAddForm(false)} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-white transition-colors">Cancel</button>
-                            <button onClick={handleAdd} className="bg-blue-500 text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 active:scale-95">Dispatch Mission</button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-6 mt-4 border-t border-gray-100 dark:border-white/5">
+                        <button onClick={() => setShowAddForm(false)} className="px-6 py-3 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-white transition-colors">Cancel</button>
+                        <button onClick={handleAdd} className="bg-blue-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Dispatch Mission</button>
+                    </div>
+                </div>
+            </Modal>
 
             <div className="w-full overflow-x-auto scrollbar-hide">
                 <div className="space-y-4 min-w-[800px]">

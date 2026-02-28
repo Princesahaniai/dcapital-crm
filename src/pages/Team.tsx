@@ -250,7 +250,7 @@ export const Team = () => {
             {/* Invite Modal */}
             {showInviteModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1C1C1E] p-8 rounded-3xl w-full max-w-md border border-white/10 relative">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 p-8 rounded-3xl w-full max-w-md border border-zinc-700 relative max-h-[80vh] overflow-y-auto custom-scrollbar">
                         {inviteLink ? (
                             <div className="text-center">
                                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
@@ -275,7 +275,7 @@ export const Team = () => {
             {/* Audit Logs Modal */}
             {showAuditModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1C1C1E] p-8 rounded-3xl w-full max-w-4xl h-[80vh] border border-white/10 relative flex flex-col">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 p-8 rounded-3xl w-full max-w-4xl h-[80vh] border border-zinc-700 relative flex flex-col">
                         <div className="flex justify-between items-center mb-6">
                             <div>
                                 <h2 className="text-xl font-bold text-white">System Audit Logs</h2>

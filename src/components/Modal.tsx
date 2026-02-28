@@ -44,10 +44,10 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className={`mobile-modal-content ${maxWidth} relative`}
+                        className={`mobile-modal-content ${maxWidth} bg-white dark:bg-zinc-900 border border-transparent dark:border-zinc-700 relative overflow-hidden rounded-2xl shadow-2xl flex flex-col max-h-[90vh]`}
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center sticky top-0 bg-white dark:bg-[#1C1C1E] z-10">
+                        <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white dark:bg-zinc-900 z-10 shrink-0">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
                             <button
                                 onClick={onClose}

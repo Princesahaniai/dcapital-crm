@@ -10,6 +10,13 @@ const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 export const SocialStudio = () => {
     const [activeTab, setActiveTab] = useState<'vault' | 'captions' | 'campaigns'>('vault');
 
+    // Caption Generator State
+    const [propertyType, setPropertyType] = useState('');
+    const [location, setLocation] = useState('');
+    const [features, setFeatures] = useState('');
+    const [generatedResults, setGeneratedResults] = useState<{ type: string, content: string }[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+
     const handleCopy = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success('Caption copied to clipboard!');
@@ -52,8 +59,38 @@ export const SocialStudio = () => {
         "Waking up to this view every day? Yes, please. 🌅 Discover the ultimate waterfront living experience. Tag someone you'd live here with! 👇 #WaterfrontProperty #LuxuryLiving",
     ];
 
+    const generateCaptions = () => {
+        if (!propertyType || !location) {
+            toast.error("Please provide Property Type and Location.");
+            return;
+        }
+        setIsGenerating(true);
+        setTimeout(() => {
+            setGeneratedResults([
+                {
+                    type: 'Instagram Short',
+                    content: `Just listed: Exquisite ${propertyType} in the heart of ${location}. ${features ? features + '. ' : ''}Unmatched elegance awaits. ✨ DM for a private tour. #LuxuryRealEstate #${location.replace(/\s+/g, '')} #DubaiHomes`
+                },
+                {
+                    type: 'Instagram Story/Reel',
+                    content: `POV: You just found your dream ${propertyType} in ${location}. 🌴 Stunning views, premium finishes, and absolute luxury. ${features ? 'Featuring: ' + features + '. ' : ''}Ready to move in? 🔑 Link in bio. #${propertyType.replace(/\s+/g, '')} #DubaiLuxury`
+                },
+                {
+                    type: 'LinkedIn Professional',
+                    content: `Exceptional investment opportunity in ${location}. This premium ${propertyType} offers state-of-the-art amenities and world-class design. ${features ? 'Key highlights include: ' + features + '. ' : ''}Contact me directly for an exclusive portfolio review. 📈 #RealEstateInvestment #DubaiProperty #WealthManagement`
+                },
+                {
+                    type: 'AI Image Prompt',
+                    content: `Ultra-realistic architectural photography of a luxury ${propertyType} located in ${location}, Dubai. ${features ? 'Featuring ' + features + '. ' : ''}Sunset lighting, cinematic atmosphere, 8k resolution, shot on 35mm lens, highly detailed, premium interior design, photorealistic --v 5.2 --ar 16:9`
+                }
+            ]);
+            setIsGenerating(false);
+            toast.success("Marketing assets generated successfully!");
+        }, 1500);
+    };
+
     return (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 md:space-y-6 p-4 md:p-10 pt-4 md:pt-8 h-screen w-full max-w-full overflow-y-auto overflow-x-hidden scrollbar-hide pb-32 md:pb-10">
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 md:space-y-6 p-4 md:p-10 pt-4 md:pt-8 h-screen w-full max-w-full overflow-y-auto overflow-x-hidden scrollbar-hide pb-24 md:pb-8">
             {/* HEADER */}
             <Header title="AI Social Studio" subtitle="Generate, manage, and deploy marketing assets" />
 
@@ -145,24 +182,71 @@ export const SocialStudio = () => {
                                     </h2>
                                     <p className="text-white/80 text-sm font-medium max-w-md">Instantly create high-converting social media copy tailored to your property listings.</p>
                                 </div>
-                                <button className="mt-4 md:mt-0 bg-white text-orange-600 px-6 py-3 rounded-xl font-bold hover:bg-orange-50 transition-all shadow-md active:scale-95 touch-target">
+                                <button
+                                    onClick={() => setGeneratedResults([])}
+                                    className="mt-4 md:mt-0 bg-white text-orange-600 px-6 py-3 rounded-xl font-bold hover:bg-orange-50 transition-all shadow-md active:scale-95 touch-target"
+                                >
                                     New Prompt
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {MOCK_CAPTIONS.map((caption, idx) => (
-                                    <div key={idx} className="bg-white dark:bg-[#1C1C1E] p-6 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm">
-                                        <p className="text-gray-700 dark:text-gray-300 mb-6 text-sm leading-relaxed">{caption}</p>
-                                        <button
-                                            onClick={() => handleCopy(caption)}
-                                            className="w-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all touch-target"
-                                        >
-                                            <Copy size={18} /> Copy to Clipboard
-                                        </button>
+                            {/* Generator Form */}
+                            {generatedResults.length === 0 ? (
+                                <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Property Type</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Luxury Villa, Penthouse"
+                                            value={propertyType}
+                                            onChange={(e) => setPropertyType(e.target.value)}
+                                            className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                                        />
                                     </div>
-                                ))}
-                            </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Location</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Palm Jumeirah, Downtown Dubai"
+                                            value={location}
+                                            onChange={(e) => setLocation(e.target.value)}
+                                            className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Key Features</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Private pool, marina views, smart home"
+                                            value={features}
+                                            onChange={(e) => setFeatures(e.target.value)}
+                                            className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={generateCaptions}
+                                        disabled={isGenerating}
+                                        className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg active:scale-95 touch-target mt-4 disabled:opacity-50"
+                                    >
+                                        {isGenerating ? 'Generating...' : <><Sparkles size={20} /> Generate Assets</>}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {generatedResults.map((result, idx) => (
+                                        <div key={idx} className="bg-white dark:bg-[#1C1C1E] p-6 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm flex flex-col h-full">
+                                            <span className="inline-block px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full text-xs font-bold w-fit mb-4">{result.type}</span>
+                                            <p className="text-gray-700 dark:text-gray-300 mb-6 text-sm leading-relaxed flex-1">{result.content}</p>
+                                            <button
+                                                onClick={() => handleCopy(result.content)}
+                                                className="w-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all mt-auto touch-target"
+                                            >
+                                                <Copy size={18} /> Copy to Clipboard
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </motion.div>
                     )}
 
