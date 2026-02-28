@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link, Map } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/Modal';
@@ -8,10 +8,12 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import type { Property } from '../types';
 
+import { PropertyMap } from '../components/PropertyMap';
+
 export const Inventory = () => {
     const { properties, addProperty, updateProperty, deleteProperty, user } = useStore();
     const [search, setSearch] = useState('');
-    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'table' | 'map'>('grid');
     const [filterDev, setFilterDev] = useState('All');
     const [filterType, setFilterType] = useState('All');
     const [filterStatus, setFilterStatus] = useState('All');
@@ -300,6 +302,13 @@ export const Inventory = () => {
                         >
                             <List size={20} />
                         </button>
+                        <button
+                            onClick={() => setViewMode('map')}
+                            title="Map View"
+                            className={`p-2 px-4 rounded-lg transition-all font-bold flex items-center gap-2 ${viewMode === 'map' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Map size={20} />
+                        </button>
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -369,6 +378,13 @@ export const Inventory = () => {
                         <Plus size={18} className="inline mr-2" /> Add First Property
                     </button>
                 </motion.div>
+            )}
+
+            {/* MAP VIEW */}
+            {viewMode === 'map' && filteredProps.length > 0 && (
+                <div className="mb-8">
+                    <PropertyMap properties={filteredProps} />
+                </div>
             )}
 
             {/* GRID VIEW */}

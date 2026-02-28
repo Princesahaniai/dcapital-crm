@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
@@ -30,6 +31,7 @@
     "framer-motion": "^12.34.0",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "papaparse": "^5.5.3",
     "pexels": "^1.4.0",
@@ -37,6 +39,7 @@
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",
     "react-is": "^18.2.0",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.4.0",
