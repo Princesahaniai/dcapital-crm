@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2 } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/Modal';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 import type { Property } from '../types';
 
 export const Inventory = () => {
@@ -18,6 +20,15 @@ export const Inventory = () => {
     // Comparison State
     const [compareList, setCompareList] = useState<string[]>([]);
     const [showCompare, setShowCompare] = useState(false);
+
+    // Share Collection State
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareClientName, setShareClientName] = useState('');
+    const [shareClientPhone, setShareClientPhone] = useState('');
+    const [shareMessage, setShareMessage] = useState('');
+    const [generatedLink, setGeneratedLink] = useState('');
+    const [linkCopied, setLinkCopied] = useState(false);
+    const [isCreatingCollection, setIsCreatingCollection] = useState(false);
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
@@ -180,6 +191,41 @@ export const Inventory = () => {
         }
     };
 
+    // Create Client Collection
+    const createCollection = async () => {
+        if (compareList.length === 0) return toast.error('Select at least 1 property');
+        if (!shareClientName.trim()) return toast.error('Enter the client name');
+        setIsCreatingCollection(true);
+        try {
+            const collectionId = Math.random().toString(36).substr(2, 12);
+            const selectedProps = properties.filter(p => compareList.includes(p.id));
+            await setDoc(doc(db, 'shared_collections', collectionId), {
+                leadName: shareClientName,
+                leadPhone: shareClientPhone,
+                agentName: user?.name || 'Agent',
+                agentPhone: user?.phone || '',
+                propertyIds: compareList,
+                properties: selectedProps,
+                message: shareMessage,
+                createdAt: Date.now()
+            });
+            const link = `${window.location.origin}/portal/${collectionId}`;
+            setGeneratedLink(link);
+            toast.success('🔗 Client Collection Created!');
+        } catch (err) {
+            toast.error('Failed to create collection');
+        } finally {
+            setIsCreatingCollection(false);
+        }
+    };
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(generatedLink);
+        setLinkCopied(true);
+        toast.success('Link copied!');
+        setTimeout(() => setLinkCopied(false), 2000);
+    };
+
     // Developer badge styling
     const getDeveloperBadge = (developer: string) => {
         const styles: Record<string, string> = {
@@ -201,12 +247,20 @@ export const Inventory = () => {
                 </motion.div>
                 <div className="flex gap-2 flex-wrap">
                     {compareList.length > 0 && (
-                        <button
-                            onClick={() => setShowCompare(true)}
-                            className="bg-gradient-to-r from-amber-500 to-yellow-600 text-black px-5 py-3 rounded-full font-bold flex items-center gap-2 hover:from-amber-400 hover:to-yellow-500 transition-all shadow-lg shadow-amber-500/30 animate-pulse"
-                        >
-                            <BarChart2 size={18} /> Compare ({compareList.length})
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowCompare(true)}
+                                className="bg-gradient-to-r from-amber-500 to-yellow-600 text-black px-5 py-3 rounded-full font-bold flex items-center gap-2 hover:from-amber-400 hover:to-yellow-500 transition-all shadow-lg shadow-amber-500/30 animate-pulse"
+                            >
+                                <BarChart2 size={18} /> Compare ({compareList.length})
+                            </button>
+                            <button
+                                onClick={() => { setShowShareModal(true); setGeneratedLink(''); setLinkCopied(false); }}
+                                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-3 rounded-full font-bold flex items-center gap-2 hover:from-blue-400 hover:to-indigo-500 transition-all shadow-lg shadow-blue-500/30"
+                            >
+                                <Share2 size={18} /> Share ({compareList.length})
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={openNew}
@@ -688,6 +742,80 @@ export const Inventory = () => {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* SHARE COLLECTION MODAL */}
+            <Modal isOpen={showShareModal} onClose={() => setShowShareModal(false)} title="Create Client Collection">
+                <div className="space-y-4">
+                    {!generatedLink ? (
+                        <>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Create a shareable link with {compareList.length} selected propert{compareList.length === 1 ? 'y' : 'ies'} for your client.
+                            </p>
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Client Name *</label>
+                                <input
+                                    type="text"
+                                    value={shareClientName}
+                                    onChange={e => setShareClientName(e.target.value)}
+                                    placeholder="e.g. Ahmad Al Maktoum"
+                                    className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-amber-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Client Phone</label>
+                                <input
+                                    type="text"
+                                    value={shareClientPhone}
+                                    onChange={e => setShareClientPhone(e.target.value)}
+                                    placeholder="+971 50 123 4567"
+                                    className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-amber-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Personal Message</label>
+                                <textarea
+                                    value={shareMessage}
+                                    onChange={e => setShareMessage(e.target.value)}
+                                    placeholder="A curated selection of premium properties just for you..."
+                                    className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-gray-900 dark:text-white outline-none focus:border-amber-500 min-h-[80px]"
+                                />
+                            </div>
+                            <button
+                                onClick={createCollection}
+                                disabled={isCreatingCollection}
+                                className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold hover:from-blue-400 hover:to-indigo-500 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isCreatingCollection ? 'Creating...' : <><Link size={18} /> Generate VIP Link</>}
+                            </button>
+                        </>
+                    ) : (
+                        <div className="text-center space-y-4">
+                            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
+                                <Check className="text-green-500" size={32} />
+                            </div>
+                            <h3 className="text-lg font-black text-gray-900 dark:text-white">Collection Ready!</h3>
+                            <div className="bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-3 flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={generatedLink}
+                                    title="Generated collection link"
+                                    placeholder="Link will appear here"
+                                    className="flex-1 bg-transparent text-sm text-gray-600 dark:text-gray-300 outline-none font-mono"
+                                />
+                                <button
+                                    onClick={copyLink}
+                                    className={`p-2 rounded-lg transition-colors ${linkCopied ? 'bg-green-500/10 text-green-500' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-300'}`}
+                                    title="Copy Link"
+                                >
+                                    {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-400">Share this link with your client via WhatsApp or Email.</p>
+                        </div>
+                    )}
+                </div>
             </Modal>
         </div >
     );
