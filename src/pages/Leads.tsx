@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
-import { Phone, Plus, Search, Trash2, Edit, FileDown, Upload, Download, Mail, Calendar } from 'lucide-react';
+import { Phone, Plus, Search, Trash2, Edit, FileDown, Upload, Download, Mail, Calendar, LayoutGrid, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
@@ -10,12 +10,14 @@ import { MeetingModal } from '../components/MeetingModal';
 import { Modal } from '../components/Modal';
 import { LeadCard } from '../components/leads/LeadCard';
 import { LeadProfile } from '../components/leads/LeadProfile';
+import { KanbanBoard } from '../components/leads/KanbanBoard';
 import type { Lead } from '../types';
 
 export const Leads = () => {
     const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
 
     // Initial Form State
     const initialForm: Partial<Lead> = {
@@ -41,6 +43,14 @@ export const Leads = () => {
     const [showTrash, setShowTrash] = useState(false);
 
     const accessibleLeads = useMemo(() => getVisibleLeads(user, leads, team), [user, leads, team]);
+
+    // Team ID -> Name map for KanbanBoard
+    const teamMap = useMemo(() => {
+        const map: Record<string, string> = {};
+        team.forEach(m => { map[m.id] = m.name; });
+        if (user) map[user.id] = user.name;
+        return map;
+    }, [team, user]);
 
     const filteredLeads = accessibleLeads.filter(lead => {
         // Trash Logic
@@ -216,17 +226,33 @@ export const Leads = () => {
                     <button onClick={openNew} className="bg-blue-500 dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 dark:hover:bg-gray-200 transition-all shadow-lg shadow-blue-500/20">
                         <Plus size={18} /> Add Lead
                     </button>
+                    <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                            title="List View"
+                        >
+                            <List size={18} />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('board')}
+                            className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                            title="Board View"
+                        >
+                            <LayoutGrid size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div className="space-y-4 sticky top-0 z-30 bg-gray-50 dark:bg-black pt-2 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:relative md:top-auto md:bg-transparent md:py-0">
                 <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#1C1C1E] p-3 md:p-4 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm">
                     <div className="relative flex-1">
-                        <Search className="absolute left-4 top-3.5 text-gray-400 dark:text-gray-500" size={20} />
+                        <Search className="absolute left-4 top-4 text-gray-400 dark:text-gray-500" size={24} />
                         <input
                             type="text"
-                            placeholder="Search leads..."
-                            className="w-full bg-gray-50 dark:bg-black/50 text-gray-900 dark:text-white pl-12 p-3 rounded-xl border border-gray-300 dark:border-white/10 focus:border-blue-500 dark:focus:border-white/30 outline-none"
+                            placeholder="Search by Name, Email, or Phone..."
+                            className="w-full bg-gray-50 dark:bg-black/50 text-gray-900 dark:text-white pl-12 p-4 text-lg font-medium rounded-2xl border-2 border-gray-200 dark:border-white/10 focus:border-blue-500 dark:focus:border-white/30 outline-none shadow-sm transition-all"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             title="Search leads"
@@ -250,75 +276,88 @@ export const Leads = () => {
                 </div>
             </div>
 
-            {/* RESPONSIVE GRID VIEW (Mission Control) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                <AnimatePresence>
-                    {filteredLeads.map(lead => (
-                        <div key={lead.id}>
-                            {/* Mobile Optimized View */}
-                            <div className="md:hidden">
-                                <motion.div
-                                    key={lead.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
-                                    onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                >
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
-                                            <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
-                                        </div>
-                                        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                                            lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-                                                lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-                                                    'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
-                                            }`}>
-                                            {lead.status}
-                                        </span>
-                                    </div>
+            {/* KANBAN BOARD VIEW */}
+            {viewMode === 'board' && !showTrash && (
+                <KanbanBoard
+                    leads={filteredLeads}
+                    teamMap={teamMap}
+                    onSelectLead={(lead) => setSelectedLead(lead)}
+                    onMoveStage={(leadId, newStatus) => {
+                        updateLead(leadId, { status: newStatus });
+                        toast.success(`Lead moved to ${newStatus}`);
+                    }}
+                />
+            )}
 
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
-                                        <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
-                                            <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
+            {/* RESPONSIVE GRID VIEW (List Mode) */}
+            {(viewMode === 'list' || showTrash) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                    <AnimatePresence>
+                        {filteredLeads.map(lead => (
+                            <div key={lead.id}>
+                                {/* Mobile Optimized View */}
+                                <div className="md:hidden">
+                                    <motion.div
+                                        key={lead.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
+                                        onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                    >
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
+                                                lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                                    lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+                                                        'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
+                                                }`}>
+                                                {lead.status}
+                                            </span>
                                         </div>
-                                        <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
-                                                    {getAgentName(lead.assignedTo).charAt(0)}
+
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
+                                                <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+                                                        {getAgentName(lead.assignedTo).charAt(0)}
+                                                    </div>
+                                                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
                                                 </div>
-                                                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
-                                        <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
-                                        <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                                            <Phone size={16} /> Call
-                                        </a>
-                                    </div>
-                                </motion.div>
+                                        <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
+                                            <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
+                                            <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                                                <Phone size={16} /> Call
+                                            </a>
+                                        </div>
+                                    </motion.div>
+                                </div>
+
+                                {/* Desktop Card View */}
+                                <div className="hidden md:block">
+                                    <LeadCard
+                                        lead={lead}
+                                        onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                        onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
+                                        onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
+                                        agentName={getAgentName(lead.assignedTo)}
+                                    />
+                                </div>
                             </div>
-
-                            {/* Desktop Card View */}
-                            <div className="hidden md:block">
-                                <LeadCard
-                                    lead={lead}
-                                    onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                    onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
-                                    onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
-                                    agentName={getAgentName(lead.assignedTo)}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </AnimatePresence>
-            </div>
-
-            {/* LEAD PROFILE MODAL */}
+                        ))}
+                    </AnimatePresence>
+                </div>
+            )}
             <AnimatePresence>
                 {selectedLead && !isEditing && !isMeetingModalOpen && !isEmailModalOpen && (
                     <LeadProfile

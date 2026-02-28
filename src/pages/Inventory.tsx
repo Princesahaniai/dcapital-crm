@@ -219,14 +219,14 @@ export const Inventory = () => {
             </div>
 
             {/* FILTERS & SEARCH */}
-            <div className="bg-[#1C1C1E] apple-glass p-5 rounded-3xl border border-white/10 space-y-4">
+            <div className="bg-[#1C1C1E] apple-glass p-5 rounded-3xl border border-white/10 space-y-4 shadow-lg">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="relative flex-1">
-                        <Search className="absolute left-4 top-3.5 text-gray-500" size={20} />
+                        <Search className="absolute left-4 top-4 text-gray-400" size={24} />
                         <input
                             type="text"
-                            placeholder="Search by property name or location..."
-                            className="w-full pl-12 pr-4 py-3 rounded-xl border border-white/10 focus:border-amber-500/50 outline-none transition-all"
+                            placeholder="Search by Property Name, Developer, or Location..."
+                            className="w-full bg-black/40 text-white pl-12 pr-4 py-4 text-lg font-medium rounded-2xl border-2 border-white/10 focus:border-amber-500 outline-none transition-all shadow-inner placeholder:text-gray-500"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />

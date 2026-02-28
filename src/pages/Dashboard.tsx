@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Wallet, Users, Building2, Trophy, PieChart as PieChartIcon, ArrowUpRight, Inbox, Calendar, MapPin, Clock, CheckCircle2, ListTodo } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -18,6 +18,7 @@ const COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6'];
 export const Dashboard = () => {
     const { leads, properties, team, user, addLead } = useStore();
     const navigate = useNavigate();
+    const [timeframe, setTimeframe] = useState<'All Time' | 'This Month' | 'This Quarter'>('All Time');
 
     // Initialize test leads for functionality testing (only if completely empty)
     useEffect(() => {
@@ -66,32 +67,62 @@ export const Dashboard = () => {
     // RBAC: Filter leads based on user role
     const accessibleLeads = useMemo(() => getVisibleLeads(user, leads, team), [user, leads, team]);
 
-    // Analytics Calculations (using accessible leads only)
-    const pipeline = accessibleLeads.filter(l => l.status !== 'Lost').reduce((sum, l) => sum + (l.budget || 0), 0);
+    // Apply Timeframe Filter
+    const filteredLeads = useMemo(() => {
+        if (timeframe === 'All Time') return accessibleLeads;
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1).getTime();
+
+        return accessibleLeads.filter(l => {
+            const created = l.createdAt || 0;
+            if (timeframe === 'This Month') return created >= startOfMonth;
+            if (timeframe === 'This Quarter') return created >= startOfQuarter;
+            return true;
+        });
+    }, [accessibleLeads, timeframe]);
+
+    // Analytics Calculations (using filtered leads)
+    const pipeline = filteredLeads.filter(l => l.status !== 'Lost').reduce((sum, l) => sum + (l.budget || 0), 0);
+    const closedPipeline = filteredLeads.filter(l => l.status === 'Closed').reduce((sum, l) => sum + (l.budget || 0), 0);
+    const pipelineProgress = pipeline > 0 ? Math.round((closedPipeline / pipeline) * 100) : 0;
 
     // Commission: Show based on role
     const isCEO = user?.role === 'ceo' || (user?.email?.includes('ajay') ?? false);
 
-    const relevantLeads = isCEO ? accessibleLeads : accessibleLeads.filter(l => l.assignedTo === user?.id);
+    const relevantLeads = isCEO ? filteredLeads : filteredLeads.filter(l => l.assignedTo === user?.id);
     const unpaidCommission = relevantLeads
         .filter(l => l.status === 'Closed' && !l.commissionPaid)
         .reduce((sum, l) => sum + (l.commission || 0), 0);
 
-    // Lead Source Data (from accessible leads)
-    const sources = accessibleLeads.reduce((acc: any, l) => {
+    // Lead Source Data (from filtered leads)
+    const sources = filteredLeads.reduce((acc: any, l) => {
         const src = l.source || 'Other';
         acc[src] = (acc[src] || 0) + 1;
         return acc;
     }, {});
     const pieData = Object.keys(sources).map(k => ({ name: k, value: sources[k] }));
 
-    // Recent Leads (Limit 5, from accessible leads)
-    const recentLeads = [...accessibleLeads].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
+    // Recent Leads (Limit 5, from filtered leads)
+    const recentLeads = [...filteredLeads].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
 
     return (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 md:space-y-6 p-4 md:p-10 pt-4 md:pt-8 h-screen w-full max-w-full overflow-y-auto overflow-x-hidden scrollbar-hide">
             {/* HEADER */}
-            <Header title="Executive Dashboard" subtitle="Real-time organization intelligence" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <Header title="Executive Dashboard" subtitle="Real-time organization intelligence" />
+                <select
+                    value={timeframe}
+                    onChange={(e) => setTimeframe(e.target.value as any)}
+                    title="Timeframe Filter"
+                    className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm outline-none focus:border-amber-500 cursor-pointer"
+                >
+                    <option value="All Time">All Time</option>
+                    <option value="This Month">This Month</option>
+                    <option value="This Quarter">This Quarter</option>
+                </select>
+            </div>
 
             <DemoBanner />
 
@@ -103,14 +134,23 @@ export const Dashboard = () => {
                         <span className="text-[10px] md:text-xs font-bold text-green-500 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full"><ArrowUpRight size={10} className="md:w-3 md:h-3" /> Live</span>
                     </div>
                     <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">AED {(pipeline / 1000000).toFixed(1)}M</h3>
-                    <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">Total Pipeline</p>
+                    <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3">Total Pipeline</p>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-gray-100 dark:bg-white/5 rounded-full h-1.5 mb-1 overflow-hidden">
+                        <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${pipelineProgress}%` }}></div>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-bold">
+                        <span className="text-gray-400 dark:text-gray-500">Closed: AED {(closedPipeline / 1000000).toFixed(1)}M</span>
+                        <span className="text-amber-500">{pipelineProgress}%</span>
+                    </div>
                 </motion.div>
 
                 <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass shadow-sm dark:shadow-none p-5 md:p-6 rounded-3xl relative overflow-hidden border border-gray-100 dark:border-none">
                     <div className="flex justify-between items-start mb-3 md:mb-4">
                         <div className="p-2 md:p-3 rounded-2xl bg-blue-500/10 text-blue-500"><Users size={20} className="md:w-6 md:h-6" /></div>
                     </div>
-                    <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{accessibleLeads.length}</h3>
+                    <h3 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">{filteredLeads.length}</h3>
                     <p className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">Total Leads</p>
                 </motion.div>
 
