@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Lead, Property, Task, Activity, User, Notification } from './types';
-import { auth, db } from './firebaseConfig';
+import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 interface TeamMember extends User {
@@ -89,7 +89,7 @@ interface Store {
     resetSystem: () => void;
     resetLeads: () => void;
     resetProperties: () => void;
-    addTeamMember: (member: TeamMember) => Promise<string>; // Returns invite link or ID
+    addTeamMember: (member: TeamMember) => Promise<any>; // Returns credentials object
     removeTeamMember: (id: string) => Promise<void>;
     fetchTeam: () => Promise<void>; // New action to sync team
     addActivity: (a: Activity) => void;
@@ -452,9 +452,9 @@ export const useStore = create<Store>()(
 
                     console.log('[INVITE] Creating Firebase Auth account...');
 
-                    // ⭐ CRITICAL: Create Firebase Auth account
+                    // ⭐ CRITICAL: Create user via SECONDARY auth to prevent admin session hijack
                     const userCredential = await createUserWithEmailAndPassword(
-                        auth,
+                        secondaryAuth,
                         normalizedEmail,
                         tempPassword
                     );
@@ -483,6 +483,10 @@ export const useStore = create<Store>()(
 
                     await setDoc(doc(db, 'users', uid), newMember);
                     console.log('[INVITE] Firestore profile created');
+
+                    // 🛡️ Sign out the secondary auth so it doesn't linger
+                    await signOut(secondaryAuth);
+                    console.log('[INVITE] Secondary auth signed out — admin session safe');
 
                     // Log audit trail
                     try {
