@@ -312,51 +312,59 @@ export const useStore = create<Store>()(
                     const state = get();
                     if (user) {
                         console.log('[AUTH] User detected:', user.uid);
-                        // If already logged in with same ID, skip
-                        if (state.user?.id === user.uid) return;
+                        // If already logged in with same ID, just clear loading and skip re-fetch
+                        if (state.user?.id === user.uid) {
+                            set({ isAuthLoading: false });
+                            return;
+                        }
 
-                        // Fetch Profile
-                        const userDocRef = doc(db, 'users', user.uid);
-                        const docSnap = await getDoc(userDocRef);
+                        // Fetch Profile — wrapped in try/catch/finally to guarantee isAuthLoading clears
+                        try {
+                            const userDocRef = doc(db, 'users', user.uid);
+                            const docSnap = await getDoc(userDocRef);
 
-                        if (docSnap.exists()) {
-                            const userProfile = docSnap.data();
-                            if (userProfile.status === 'Suspended' || userProfile.status === 'Inactive') {
-                                await signOut(auth);
-                                set({ user: null, isAuthLoading: false });
-                                toast.error('Access Suspended');
-                                return;
-                            }
+                            if (docSnap.exists()) {
+                                const userProfile = docSnap.data();
+                                if (userProfile.status === 'Suspended' || userProfile.status === 'Inactive') {
+                                    await signOut(auth);
+                                    set({ user: null, isAuthLoading: false });
+                                    toast.error('Access Suspended');
+                                    return;
+                                }
 
-                            set({
-                                user: {
-                                    id: user.uid,
-                                    email: user.email || '',
-                                    name: userProfile.name || user.displayName || 'User',
-                                    role: userProfile.role || 'agent'
-                                } as any,
-                                loginTimestamp: Date.now(),
-                                rememberMe: true,
-                                isAuthLoading: false
-                            });
-                        } else {
-                            // Handle edge case: User in Auth but not Firestore
-                            // Allow Master Admins specifically
-                            if (user.email === 'princesahani.work@gmail.com' || user.email === 'ajay@dcapitalrealestate.com') {
                                 set({
-                                    user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
+                                    user: {
+                                        id: user.uid,
+                                        email: user.email || '',
+                                        name: userProfile.name || user.displayName || 'User',
+                                        role: userProfile.role || 'agent'
+                                    } as any,
                                     loginTimestamp: Date.now(),
                                     rememberMe: true,
                                     isAuthLoading: false
                                 });
                             } else {
-                                // No profile found and not a master admin — stop loading
-                                set({ isAuthLoading: false });
+                                // Handle edge case: User in Auth but not Firestore
+                                // Allow Master Admins specifically
+                                if (user.email === 'princesahani.work@gmail.com' || user.email === 'ajay@dcapitalrealestate.com') {
+                                    set({
+                                        user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
+                                        loginTimestamp: Date.now(),
+                                        rememberMe: true,
+                                        isAuthLoading: false
+                                    });
+                                } else {
+                                    // No profile found and not a master admin — stop loading
+                                    set({ isAuthLoading: false });
+                                }
                             }
+                        } catch (error) {
+                            console.error('[AUTH] Error fetching user profile during auth change:', error);
+                            // Even if Firestore fails, clear loading so the app doesn't hang
+                            set({ isAuthLoading: false });
                         }
                     } else {
-                        // Only clear if we thought we were logged in
-                        // No user signed in — stop loading
+                        // No user signed in — always clear loading
                         if (state.user) {
                             console.log('[AUTH] No user. Clearing session.');
                             set({ user: null, loginTimestamp: null, isAuthLoading: false });
