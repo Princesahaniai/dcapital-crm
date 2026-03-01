@@ -44,7 +44,9 @@ export function useRealtimeSync() {
                 ? query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id))
                 : query(collection(db, 'leads'), where('companyId', '==', cmpId));
 
-            const unsubLeads = onSnapshot(leadsQuery, (snapshot) => {
+            const unsubLeads = onSnapshot(leadsQuery, { includeMetadataChanges: true }, (snapshot) => {
+                const fromCache = snapshot.metadata.fromCache;
+                if (fromCache) console.log('[REALTIME] 📦 Leads served from offline cache');
                 let rawLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
                 // STRICT RBAC ENFORCEMENT
@@ -82,7 +84,9 @@ export function useRealtimeSync() {
                 ? query(collection(db, 'tasks'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id))
                 : query(collection(db, 'tasks'), where('companyId', '==', cmpId));
 
-            const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
+            const unsubTasks = onSnapshot(tasksQuery, { includeMetadataChanges: true }, (snapshot) => {
+                const fromCache = snapshot.metadata.fromCache;
+                if (fromCache) console.log('[REALTIME] 📦 Tasks served from offline cache');
                 let rawTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
                 // STRICT RBAC ENFORCEMENT
