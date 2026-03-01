@@ -27,6 +27,15 @@ export interface ActivityLog {
     timestamp: number;
 }
 
+export interface LeadDocument {
+    id: string;
+    name: string;
+    url: string;
+    type: 'pdf' | 'image';
+    uploadedAt: number;
+    uploadedBy: string;
+}
+
 export interface Lead {
     id: string;
     name: string;
@@ -56,6 +65,13 @@ export interface Lead {
     // AI Scoring & Nurture
     leadScore?: 'A' | 'B' | 'C';
     smartNurture?: boolean;
+    // Secure Deal Vault & KYC
+    documents?: LeadDocument[];
+    kyc?: {
+        passport: boolean;
+        emiratesId: boolean;
+        formB: boolean;
+    };
 }
 
 export interface Property {

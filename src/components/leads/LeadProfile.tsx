@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Mail, Calendar, FileText, Clock, Paperclip, CheckSquare, Edit3, User, MapPin, Sparkles, Send } from 'lucide-react';
 import { StageIndicator } from './StageIndicator';
 import { ActivityTimeline } from './ActivityTimeline';
+import { DocumentVault } from './DocumentVault';
 import type { Lead, Task, Activity } from '../../types';
 import { useStore } from '../../store';
 
@@ -234,13 +235,16 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                     </div>
                                 )}
 
-                                {/* Placeholders for other tabs */}
-                                {['documents', 'tasks'].includes(activeTab) && (
+                                {activeTab === 'documents' && (
+                                    <DocumentVault lead={lead} />
+                                )}
+
+                                {activeTab === 'tasks' && (
                                     <div className="text-center py-20 text-gray-500">
                                         <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            {activeTab === 'documents' ? <Paperclip size={24} /> : <CheckSquare size={24} />}
+                                            <CheckSquare size={24} />
                                         </div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No {activeTab} yet</h3>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No tasks yet</h3>
                                         <p>This module is under construction.</p>
                                     </div>
                                 )}

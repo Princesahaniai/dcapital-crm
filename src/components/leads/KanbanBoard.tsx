@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Phone, Mail, DollarSign, User } from 'lucide-react';
+import { ArrowRight, Phone, Mail, DollarSign, User, AlertCircle } from 'lucide-react';
 import type { Lead } from '../../types';
+import toast from 'react-hot-toast';
 
 const PIPELINE_STAGES: Lead['status'][] = ['New', 'Contacted', 'Qualified', 'Viewing', 'Negotiation', 'Closed'];
 
@@ -95,7 +96,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onMoveStage, on
                                             {/* Move to Next Stage */}
                                             {nextStage && (
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); onMoveStage(lead.id, nextStage); }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (nextStage === 'Closed') {
+                                                            const kyc = lead.kyc;
+                                                            if (!kyc || !kyc.passport || !kyc.emiratesId || !kyc.formB) {
+                                                                toast.error('❌ Compliance Error: 100% KYC Required before closing deal.', { duration: 4000 });
+                                                                return;
+                                                            }
+                                                        }
+                                                        onMoveStage(lead.id, nextStage);
+                                                    }}
                                                     className={`w-full mt-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold ${colors.text} bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-all touch-target`}
                                                 >
                                                     Move to {nextStage} <ArrowRight size={12} />
