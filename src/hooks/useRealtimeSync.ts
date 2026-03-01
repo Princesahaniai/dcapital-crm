@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot, type Unsubscribe } from 'firebase
 import { db } from '../firebaseConfig';
 import { useStore } from '../store';
 import toast from 'react-hot-toast';
+import { getVisibleLeads } from '../utils/permissions';
 
 /**
  * Real-time sync hook — subscribes to Firestore onSnapshot listeners
@@ -19,7 +20,6 @@ export function useRealtimeSync() {
     const setTasks = useStore((s) => s.setTasks);
     const setTeamFromSnapshot = useStore((s) => s.setTeamFromSnapshot);
     const setNotifications = useStore((s) => s.setNotifications);
-    const { getVisibleLeads } = require('../utils/permissions');
 
     // Track known IDs to detect *new* documents for notification purposes
     const knownLeadIds = useRef<Set<string>>(new Set());
