@@ -40,11 +40,18 @@ export default async function handler(req: any, res: any) {
             return res.status(400).json({ error: 'Invalid payload: Name is required' });
         }
 
+        const companyId = payload.companyId || 'default-company';
+
         let assignedTo = '';
         let strategyUsed = 'manual';
 
-        // 1. Fetch Global Settings
-        const settingsRef = db.collection('settings').doc('global');
+        // 1. Fetch Global Settings for the Specific Company
+        // Path adjusted to look for settings scoped by company, e.g., companies/{companyId}/settings/global
+        // But since we are pushing SaaS quickly, if settings is top level we do:
+        // const settingsRef = db.collection('settings').doc('global');
+        // Let's assume settings are inside a company doc, or just flat but we scope by query.
+        // Actually, the easiest is an index inside the settings doc. We'll use a specific settings document per company.
+        const settingsRef = db.collection('settings_by_company').doc(companyId);
         const settingsDoc = await settingsRef.get();
         let settings = { autoRouting: false, routingStrategy: 'manual', lastAssignedIndex: 0 };
 
@@ -54,8 +61,14 @@ export default async function handler(req: any, res: any) {
 
         // 2. Round-Robin Assignment Logic
         if (settings.autoRouting && settings.routingStrategy === 'round-robin') {
-            const usersSnapshot = await db.collection('users').where('role', '==', 'agent').where('status', '==', 'active').get();
-            const agents = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const usersSnapshot = await db.collection('users')
+                .where('companyId', '==', companyId)
+                .where('role', '==', 'agent')
+                .get(); // Note: Assumes 'status' is checked client-side, or we drop it from query if no composite index exists
+
+            const agents = usersSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() as any }))
+                .filter((a: any) => a.status !== 'Suspended' && a.status !== 'Inactive');
 
             if (agents.length > 0) {
                 // Determine next agent
@@ -87,6 +100,7 @@ export default async function handler(req: any, res: any) {
             lastContact: Date.now(),
             commission: 0,
             commissionPaid: false,
+            companyId: companyId,
             notes: payload.notes || `Generated via ${payload.source || 'Portal Webhook'}. Routing: ${strategyUsed}`
         };
 
@@ -100,6 +114,7 @@ export default async function handler(req: any, res: any) {
         await db.collection('webhook_logs').add({
             receivedAt: admin.firestore.FieldValue.serverTimestamp(),
             payload: payload,
+            companyId: companyId,
             assignedTo: assignedTo,
             strategyUsed: strategyUsed
         });

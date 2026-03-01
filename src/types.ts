@@ -15,6 +15,7 @@ export interface User {
     phone?: string;
     tempPassword?: string;
     mustChangePassword?: boolean;
+    companyId?: string;
 }
 
 export interface ActivityLog {
@@ -34,6 +35,7 @@ export interface LeadDocument {
     type: 'pdf' | 'image';
     uploadedAt: number;
     uploadedBy: string;
+    companyId?: string;
 }
 
 export interface Lead {
@@ -72,6 +74,7 @@ export interface Lead {
         emiratesId: boolean;
         formB: boolean;
     };
+    companyId?: string;
 }
 
 export interface Property {
@@ -93,6 +96,7 @@ export interface Property {
     updatedAt?: number;
     gallery?: string[];
     features?: string[];
+    companyId?: string;
 }
 
 export interface Activity {
@@ -104,6 +108,7 @@ export interface Activity {
     userName?: string;
     leadId?: string;
     metadata?: any;
+    companyId?: string;
 }
 
 export interface TaskHistoryItem {
@@ -143,6 +148,7 @@ export interface Task {
     location?: string;
     meetingType?: 'in-person' | 'video' | 'call';
     duration?: number; // in minutes
+    companyId?: string;
 }
 
 export interface Notification {
@@ -158,10 +164,12 @@ export interface MessageTemplate {
     title: string;
     content: string;
     target: 'whatsapp' | 'email';
+    companyId?: string;
 }
 
 export interface GlobalSettings {
     autoRouting: boolean;
     routingStrategy: 'round-robin' | 'manual';
     lastAssignedIndex: number;
+    companyId?: string;
 }

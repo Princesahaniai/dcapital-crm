@@ -1,0 +1,102 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to get the current user's profile
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Is the user authenticated?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Is the user requesting data that belongs to their company?
+    // Expects the document being evaluated to have a 'companyId' field
+    function belongsToCompany() {
+      return isAuthenticated() && resource.data.companyId == getUserData().companyId;
+    }
+    
+    // Are they creating data and properly stamping it with their company ID?
+    function isStampingOwnCompany() {
+      return isAuthenticated() && request.resource.data.companyId == getUserData().companyId;
+    }
+
+    // ─── SaaS MULTI-TENANT IRON WALL ───
+    
+    // Global Settings (company scoped)
+    match /settings_by_company/{companyId} {
+      allow read, write: if isAuthenticated() && getUserData().companyId == companyId;
+    }
+
+    // Companies Collection
+    match /companies/{companyId} {
+      allow read: if isAuthenticated() && getUserData().companyId == companyId;
+      // Creation handles via Cloud Function or strict Admin bypass (currently open for fast SaaS init, 
+      // in production lock this to specific cloud functions)
+      allow create: if isAuthenticated(); 
+      allow update: if isAuthenticated() && getUserData().companyId == companyId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Users can read any team member in their same company
+      allow read: if isAuthenticated() && resource.data.companyId == getUserData().companyId;
+      
+      // Creating a user requires stamping the correct company
+      allow create: if isStampingOwnCompany();
+      
+      // Updating user data (only within same company)
+      allow update: if belongsToCompany() && isStampingOwnCompany();
+      
+      // Allow self-read directly during auth flow
+      allow read, update: if request.auth.uid == userId;
+    }
+
+    // Core Data Entities
+    match /{path=**}/leads/{document} {
+      allow read, delete: if belongsToCompany();
+      allow create, update: if isStampingOwnCompany();
+    }
+    
+    match /{path=**}/properties/{document} {
+      allow read, delete: if belongsToCompany();
+      allow create, update: if isStampingOwnCompany();
+    }
+
+    match /{path=**}/tasks/{document} {
+      allow read, delete: if belongsToCompany();
+      allow create, update: if isStampingOwnCompany();
+    }
+    
+    match /{path=**}/audit_logs/{document} {
+      allow read: if belongsToCompany();
+      allow create: if isStampingOwnCompany();
+    }
+    
+    match /{path=**}/notifications/{document} {
+      allow read, delete: if belongsToCompany();
+      allow create, update: if isStampingOwnCompany();
+    }
+
+    match /{path=**}/message_templates/{document} {
+      allow read, delete: if belongsToCompany();
+      allow create, update: if isStampingOwnCompany();
+    }
+
+    // Webhook specific override (Bypass for API)
+    // Webhook logs should only be read by admins of that company
+    match /webhook_logs/{document} {
+      allow read: if belongsToCompany() && getUserData().role in ['ceo', 'admin'];
+      allow create: if true; // Open for external webhook
+    }
+    
+    // Legacy fallback (remove in strict prod)
+    match /settings/global {
+      allow read: if isAuthenticated();
+    }
+
+  }
+}

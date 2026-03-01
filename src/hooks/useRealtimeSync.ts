@@ -31,12 +31,18 @@ export function useRealtimeSync() {
 
         const unsubscribes: Unsubscribe[] = [];
         const canSeeAll = user.role === 'ceo' || user.role === 'admin';
+        const cmpId = user.companyId;
+
+        if (!cmpId) {
+            console.warn('[REALTIME] 🛑 No companyId found for user. Real-time sync blocked to prevent data leakage.');
+            return;
+        }
 
         // ─── LEADS LISTENER ─────────────────────────────────────
         try {
             const leadsQuery = user.role === 'agent'
-                ? query(collection(db, 'leads'), where('assignedTo', '==', user.id))
-                : query(collection(db, 'leads'));
+                ? query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id))
+                : query(collection(db, 'leads'), where('companyId', '==', cmpId));
 
             const unsubLeads = onSnapshot(leadsQuery, (snapshot) => {
                 let rawLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -73,8 +79,8 @@ export function useRealtimeSync() {
         // ─── TASKS LISTENER ─────────────────────────────────────
         try {
             const tasksQuery = user.role === 'agent'
-                ? query(collection(db, 'tasks'), where('assignedTo', '==', user.id))
-                : query(collection(db, 'tasks'));
+                ? query(collection(db, 'tasks'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id))
+                : query(collection(db, 'tasks'), where('companyId', '==', cmpId));
 
             const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
                 let rawTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -114,7 +120,8 @@ export function useRealtimeSync() {
 
         // ─── TEAM (USERS) LISTENER ──────────────────────────────
         try {
-            const unsubTeam = onSnapshot(collection(db, 'users'), (snapshot) => {
+            const teamQuery = query(collection(db, 'users'), where('companyId', '==', cmpId));
+            const unsubTeam = onSnapshot(teamQuery, (snapshot) => {
                 const team = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
                 setTeamFromSnapshot(team);
             }, (error) => {
@@ -129,6 +136,7 @@ export function useRealtimeSync() {
         try {
             const notifsQuery = query(
                 collection(db, 'notifications'),
+                where('companyId', '==', cmpId),
                 where('userId', '==', user.id)
             );
 

@@ -98,8 +98,9 @@ export const Settings = () => {
         if (user?.role === 'ceo' || user?.role === 'admin') {
             fetchMessageTemplates();
 
-            // Listen to Global Settings for routing
-            const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+            // Listen to Global Settings for routing scoped to the current company
+            const companyId = user?.companyId || 'default-company';
+            const unsubSettings = onSnapshot(doc(db, 'settings_by_company', companyId), (docSnap) => {
                 if (docSnap.exists()) {
                     setRoutingSettings(docSnap.data() as GlobalSettings);
                 }
@@ -107,12 +108,13 @@ export const Settings = () => {
 
             return () => unsubSettings();
         }
-    }, [user?.role]);
+    }, [user?.role, user?.companyId]);
 
     const handleUpdateRouting = async (updates: Partial<GlobalSettings>) => {
         try {
+            const companyId = user?.companyId || 'default-company';
             const newSettings = { ...routingSettings, ...updates };
-            await setDoc(doc(db, 'settings', 'global'), newSettings, { merge: true });
+            await setDoc(doc(db, 'settings_by_company', companyId), newSettings, { merge: true });
             toast.success('Routing settings updated');
         } catch (error) {
             console.error(error);

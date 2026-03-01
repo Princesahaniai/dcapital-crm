@@ -23,6 +23,7 @@ import { useStore } from './store';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import toast, { Toaster } from 'react-hot-toast';
 import PWAInstall from './components/PWAInstall';
+import { RegisterAgency } from './pages/RegisterAgency';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const user = useStore((state) => state.user);
@@ -105,6 +106,7 @@ export default function App() {
             <PWAInstall />
             <Toaster position="top-center" toastOptions={{ style: { background: '#1C1C1E', color: '#fff', border: '1px solid #333' } }} />
             <Routes>
+                <Route path="/register-agency" element={<RegisterAgency />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

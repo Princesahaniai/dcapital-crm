@@ -428,21 +428,38 @@ export const useStore = create<Store>()(
             updateProfile: (name, email) => set((s) => ({ user: s.user ? { ...s.user, name, email } : null })),
 
             addLead: (l) => {
+                const cmpId = get().user?.companyId;
+                const leadWithCompany = { ...l, companyId: cmpId };
+
                 set((s) => {
                     if (s.leads.some(existing => existing.id === l.id)) return {};
-                    return { leads: [l, ...s.leads] };
+                    return { leads: [leadWithCompany, ...s.leads] };
                 });
+
                 // Fire-and-forget Firestore write
-                setDoc(doc(db, 'leads', l.id), { ...l }, { merge: true }).catch(err => console.error('[SYNC] Lead write failed:', err));
+                if (cmpId) {
+                    setDoc(doc(db, 'leads', l.id), leadWithCompany, { merge: true }).catch(err => console.error('[SYNC] Lead write failed:', err));
+                } else {
+                    console.error('[SYNC] Blocked: No Company ID found for Lead');
+                }
             },
 
             addBulkLeads: (newLeads) => {
-                set((s) => ({ leads: [...newLeads, ...s.leads] }));
+                const cmpId = get().user?.companyId;
+                if (!cmpId) {
+                    console.error('[SYNC] Blocked: No Company ID found for Bulk Import');
+                    return { success: 0, failed: newLeads.length };
+                }
+
+                const stampedLeads = newLeads.map(l => ({ ...l, companyId: cmpId }));
+
+                set((s) => ({ leads: [...stampedLeads, ...s.leads] }));
+
                 // Batch write to Firestore
-                newLeads.forEach(l => {
-                    setDoc(doc(db, 'leads', l.id), { ...l }, { merge: true }).catch(err => console.error('[SYNC] Bulk lead write failed:', err));
+                stampedLeads.forEach(l => {
+                    setDoc(doc(db, 'leads', l.id), l, { merge: true }).catch(err => console.error('[SYNC] Bulk lead write failed:', err));
                 });
-                return { success: newLeads.length, failed: 0 };
+                return { success: stampedLeads.length, failed: 0 };
             },
 
             fetchTeam: async () => {
@@ -457,8 +474,11 @@ export const useStore = create<Store>()(
 
             // Enterprise Implementations
             fetchAuditLogs: async () => {
+                const cmpId = get().user?.companyId;
+                if (!cmpId) return;
+
                 try {
-                    const q = query(collection(db, 'audit_logs'), where('timestamp', '>', Date.now() - 30 * 24 * 60 * 60 * 1000));
+                    const q = query(collection(db, 'audit_logs'), where('companyId', '==', cmpId), where('timestamp', '>', Date.now() - 30 * 24 * 60 * 60 * 1000));
                     const querySnapshot = await getDocs(q);
                     const logs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).sort((a, b) => b.timestamp - a.timestamp);
                     set({ auditLogs: logs });
@@ -470,13 +490,16 @@ export const useStore = create<Store>()(
             logAudit: async (action, targetUserId, details) => {
                 try {
                     const currentUser = get().user;
+                    if (!currentUser?.companyId) return;
+
                     const logEntry = {
                         action,
                         performedBy: currentUser?.id || 'system',
                         performedByName: currentUser?.name || 'System',
                         targetUserId,
                         details,
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
+                        companyId: currentUser.companyId
                     };
                     await setDoc(doc(collection(db, 'audit_logs')), logEntry);
                     set(s => ({ auditLogs: [logEntry, ...s.auditLogs] }));
@@ -640,20 +663,25 @@ export const useStore = create<Store>()(
                 set({ notifications: [newNotif, ...state.notifications] });
                 // Persist to Firestore
                 if (state.user?.id) {
-                    setDoc(doc(db, 'notifications', notifId), { ...newNotif }).catch(err => console.error('[SYNC] Notification write failed:', err));
+                    const payload = { ...newNotif };
+                    if (state.user.companyId) payload.companyId = state.user.companyId;
+                    setDoc(doc(db, 'notifications', notifId), payload).catch(err => console.error('[SYNC] Notification write failed:', err));
                 }
             },
 
             // Write a notification to Firestore for another user (e.g. when assigning a task)
             addFirestoreNotification: (userId, text) => {
                 const notifId = Math.random().toString(36).substr(2, 9);
-                const notifDoc = {
+                const cmpId = get().user?.companyId;
+                const notifDoc: any = {
                     id: notifId,
                     text,
                     read: false,
                     date: new Date().toISOString(),
                     userId
                 };
+                if (cmpId) notifDoc.companyId = cmpId;
+
                 setDoc(doc(db, 'notifications', notifId), notifDoc).catch(err => console.error('[SYNC] Remote notification write failed:', err));
             },
 
@@ -763,10 +791,18 @@ export const useStore = create<Store>()(
             addProperty: (p) => {
                 const s = get();
                 // Ensure ID exists for real-time sync later if needed
-                const newProperty = { ...p, id: p.id || Math.random().toString(36).substr(2, 9), createdAt: Date.now() };
+                const cmpId = s.user?.companyId;
+                const newProperty: any = { ...p, id: p.id || Math.random().toString(36).substr(2, 9), createdAt: Date.now() };
+                if (cmpId) newProperty.companyId = cmpId;
+
                 set({ properties: [newProperty, ...s.properties] });
+
                 // Firestore write
-                setDoc(doc(db, 'properties', newProperty.id), newProperty).catch(err => console.error('[SYNC] Property write failed:', err));
+                if (cmpId) {
+                    setDoc(doc(db, 'properties', newProperty.id), newProperty).catch(err => console.error('[SYNC] Property write failed:', err));
+                } else {
+                    console.error('[SYNC] Blocked: No Company ID found for Property');
+                }
 
                 // Smart Inventory Match algorithm against A-Grade Leads
                 try {
@@ -825,7 +861,9 @@ export const useStore = create<Store>()(
 
             addTask: (t) => {
                 const s = get();
-                const newTask: Task = {
+                const cmpId = s.user?.companyId;
+
+                const newTask: any = {
                     ...t,
                     id: t.id || Math.random().toString(36).substr(2, 9),
                     createdAt: Date.now(),
@@ -839,9 +877,17 @@ export const useStore = create<Store>()(
                     }],
                     comments: []
                 };
+
+                if (cmpId) newTask.companyId = cmpId;
+
                 set({ tasks: [newTask, ...s.tasks] });
+
                 // Firestore write
-                setDoc(doc(db, 'tasks', newTask.id), { ...newTask }, { merge: true }).catch(err => console.error('[SYNC] Task write failed:', err));
+                if (cmpId) {
+                    setDoc(doc(db, 'tasks', newTask.id), newTask, { merge: true }).catch(err => console.error('[SYNC] Task write failed:', err));
+                } else {
+                    console.error('[SYNC] Blocked: No Company ID found for Task');
+                }
                 // If assigned to another user, write a Firestore notification for them
                 if (newTask.assignedTo && newTask.assignedTo !== s.user?.id) {
                     get().addFirestoreNotification(newTask.assignedTo, `📌 New Task Assigned: ${newTask.title}`);
@@ -990,8 +1036,11 @@ export const useStore = create<Store>()(
             },
             saveMessageTemplate: async (template) => {
                 try {
+                    const cmpId = get().user?.companyId;
+                    if (!cmpId) throw new Error('No company ID found');
+
                     const id = template.id || Math.random().toString(36).substr(2, 9);
-                    const newTemplate = { ...template, id } as MessageTemplate;
+                    const newTemplate = { ...template, id, companyId: cmpId } as MessageTemplate;
                     const docRef = doc(db, 'message_templates', id);
                     await setDoc(docRef, newTemplate, { merge: true });
                     set(s => ({
