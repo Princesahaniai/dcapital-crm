@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link, Map } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link, Map, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/Modal';
