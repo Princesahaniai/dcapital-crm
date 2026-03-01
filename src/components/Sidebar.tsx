@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords, Activity, ShieldAlert } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -110,6 +110,9 @@ export const Sidebar = () => {
                                 <NavItem to="/settings" icon={Settings} label="System Settings" />
                             )}
                             <NavItem to="/trash" icon={Trash2} label="Trash" />
+                            {user?.isSuperAdmin && (
+                                <NavItem to="/super-admin" icon={ShieldAlert} label="God Mode" />
+                            )}
                         </div>
                     </div>
                 </nav>

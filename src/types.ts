@@ -16,6 +16,9 @@ export interface User {
     tempPassword?: string;
     mustChangePassword?: boolean;
     companyId?: string;
+    // SaaS Flags
+    isSuperAdmin?: boolean;
+    subscriptionStatus?: 'active' | 'suspended';
 }
 
 export interface ActivityLog {

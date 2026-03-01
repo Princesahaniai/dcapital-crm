@@ -230,12 +230,18 @@ export const useStore = create<Store>()(
                             return false;
                         }
 
+                        // Super Admin Override
+                        const isSuperAdmin = normalizedEmail === 'admin@dcapitalrealestate.com';
+
                         set({
                             user: {
                                 id: user.uid,
                                 email: user.email || '',
                                 name: userProfile.name || user.displayName || 'User',
-                                role: userProfile.role || 'agent'
+                                role: userProfile.role || 'agent',
+                                isSuperAdmin,
+                                subscriptionStatus: userProfile.subscriptionStatus || 'active',
+                                companyId: userProfile.companyId
                             } as any,
                             loginTimestamp: Date.now(),
                             rememberMe
@@ -375,12 +381,18 @@ export const useStore = create<Store>()(
                                     return;
                                 }
 
+                                const normalizedEmail = (user.email || '').toLowerCase().trim();
+                                const isSuperAdmin = normalizedEmail === 'admin@dcapitalrealestate.com';
+
                                 set({
                                     user: {
                                         id: user.uid,
                                         email: user.email || '',
                                         name: userProfile.name || user.displayName || 'User',
-                                        role: userProfile.role || 'agent'
+                                        role: userProfile.role || 'agent',
+                                        isSuperAdmin,
+                                        subscriptionStatus: userProfile.subscriptionStatus || 'active',
+                                        companyId: userProfile.companyId
                                     } as any,
                                     loginTimestamp: Date.now(),
                                     rememberMe: true,

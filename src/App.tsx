@@ -24,6 +24,8 @@ import { useRealtimeSync } from './hooks/useRealtimeSync';
 import toast, { Toaster } from 'react-hot-toast';
 import PWAInstall from './components/PWAInstall';
 import { RegisterAgency } from './pages/RegisterAgency';
+import { SuperAdmin } from './pages/SuperAdmin';
+import { Paywall } from './pages/Paywall';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const user = useStore((state) => state.user);
@@ -77,6 +79,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (!user) return <Navigate to="/login" replace />;
+
+    // 🔒 SUBSCRIPTION GATE: Block suspended agencies (Super Admin is exempt)
+    if (user.subscriptionStatus === 'suspended' && !user.isSuperAdmin) {
+        return <Paywall />;
+    }
+
     return (
         <div className="flex safe-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white overflow-hidden transition-colors duration-300">
             <Sidebar />
@@ -124,6 +132,7 @@ export default function App() {
                 <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
                 <Route path="/auth-diagnostic" element={<ProtectedRoute><AuthDiagnostic /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
                 <Route path="/portal/:collectionId" element={<ClientPortal />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
