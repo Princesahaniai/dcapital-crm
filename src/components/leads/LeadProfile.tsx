@@ -16,6 +16,8 @@ interface LeadProfileProps {
 type Tab = 'overview' | 'history' | 'documents' | 'tasks' | 'notes';
 
 import { useLeadScore } from '../../hooks/useLeadScore';
+import { generateLeadBrief } from '../../utils/pdfGenerator';
+import toast from 'react-hot-toast';
 
 export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit }) => {
     const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -67,6 +69,15 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                toast.success('Generating Client Brief...');
+                                generateLeadBrief(lead, assignedAgent?.name || 'Agent');
+                            }}
+                            className="p-3 bg-blue-500 hover:bg-blue-600 rounded-xl text-white transition-colors font-bold flex items-center gap-2 shadow-lg shadow-blue-500/30"
+                        >
+                            <FileText size={16} /> Generate Client Brief
+                        </button>
                         <button onClick={onEdit} className="p-3 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors font-bold flex items-center gap-2">
                             <Edit3 size={16} /> Edit
                         </button>

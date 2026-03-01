@@ -9,6 +9,7 @@ import { db } from '../firebaseConfig';
 import type { Property } from '../types';
 
 import { PropertyMap } from '../components/PropertyMap';
+import { generatePropertyBrochure } from '../utils/pdfGenerator';
 
 export const Inventory = () => {
     const { properties, addProperty, updateProperty, deleteProperty, user } = useStore();
@@ -450,6 +451,16 @@ export const Inventory = () => {
                                 </div>
                                 <div className="flex gap-2 mt-4">
                                     <button
+                                        onClick={() => {
+                                            toast.success('Generating Brochure...');
+                                            generatePropertyBrochure(p, user?.name || 'Agent');
+                                        }}
+                                        title="Download PDF Brochure"
+                                        className="px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all border border-blue-500/20"
+                                    >
+                                        <FileText size={16} />
+                                    </button>
+                                    <button
                                         onClick={() => openEdit(p)}
                                         title="Edit Property"
                                         className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-all border border-white/10"
@@ -526,6 +537,16 @@ export const Inventory = () => {
                                                     }`}
                                             >
                                                 <BarChart2 size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    toast.success('Generating Brochure...');
+                                                    generatePropertyBrochure(p, user?.name || 'Agent');
+                                                }}
+                                                title="Download PDF Brochure"
+                                                className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"
+                                            >
+                                                <FileText size={16} />
                                             </button>
                                             <button
                                                 onClick={() => openEdit(p)}
