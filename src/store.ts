@@ -1046,6 +1046,12 @@ export const useStore = create<Store>()(
 
             resetProperties: () => set({ properties: [] })
         }),
-        { name: 'dcapital-ultimate-db', storage: createJSONStorage(() => localStorage) }
+        {
+            name: 'dcapital-ultimate-db',
+            storage: createJSONStorage(() => localStorage),
+            partialize: (state) => Object.fromEntries(
+                Object.entries(state).filter(([key]) => key !== 'isAuthLoading')
+            )
+        }
     )
 );

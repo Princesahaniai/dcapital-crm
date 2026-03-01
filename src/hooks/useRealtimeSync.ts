@@ -19,6 +19,7 @@ export function useRealtimeSync() {
     const setTasks = useStore((s) => s.setTasks);
     const setTeamFromSnapshot = useStore((s) => s.setTeamFromSnapshot);
     const setNotifications = useStore((s) => s.setNotifications);
+    const { getVisibleLeads } = require('../utils/permissions');
 
     // Track known IDs to detect *new* documents for notification purposes
     const knownLeadIds = useRef<Set<string>>(new Set());
@@ -33,12 +34,17 @@ export function useRealtimeSync() {
 
         // ─── LEADS LISTENER ─────────────────────────────────────
         try {
-            const leadsQuery = canSeeAll
-                ? query(collection(db, 'leads'))
-                : query(collection(db, 'leads'), where('assignedTo', '==', user.id));
+            const leadsQuery = user.role === 'agent'
+                ? query(collection(db, 'leads'), where('assignedTo', '==', user.id))
+                : query(collection(db, 'leads'));
 
             const unsubLeads = onSnapshot(leadsQuery, (snapshot) => {
-                const leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+                let rawLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+                // STRICT RBAC ENFORCEMENT
+                const team = useStore.getState().team;
+                const leads = getVisibleLeads(user, rawLeads, team);
+
                 setLeads(leads);
 
                 // Detect new leads assigned to current user (skip first snapshot)
@@ -66,12 +72,20 @@ export function useRealtimeSync() {
 
         // ─── TASKS LISTENER ─────────────────────────────────────
         try {
-            const tasksQuery = canSeeAll
-                ? query(collection(db, 'tasks'))
-                : query(collection(db, 'tasks'), where('assignedTo', '==', user.id));
+            const tasksQuery = user.role === 'agent'
+                ? query(collection(db, 'tasks'), where('assignedTo', '==', user.id))
+                : query(collection(db, 'tasks'));
 
             const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
-                const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+                let rawTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+                // STRICT RBAC ENFORCEMENT
+                const tasks = rawTasks.filter(t => {
+                    if (user.role === 'ceo' || user.role === 'admin') return true;
+                    if (user.role === 'manager') return t.assignedTo === user.id || t.assignedBy === user.id;
+                    return t.assignedTo === user.id; // Fallback for agent or viewer
+                });
+
                 setTasks(tasks);
                 useStore.getState().runDailyTaskSweep();
 

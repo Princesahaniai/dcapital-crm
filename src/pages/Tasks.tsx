@@ -119,7 +119,7 @@ export const Tasks = () => {
             </div>
 
             <Modal isOpen={showAddForm} onClose={() => setShowAddForm(false)} title="New Mission">
-                <div className="space-y-4 p-2">
+                <div className="space-y-4 p-2 max-h-[85dvh] overflow-y-auto pb-20">
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-4">
                             <input
