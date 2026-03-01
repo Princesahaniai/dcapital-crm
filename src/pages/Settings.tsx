@@ -459,12 +459,12 @@ export const Settings = () => {
                                 type="text"
                                 readOnly
                                 title="Webhook URL"
-                                value="https://dcapital-crm.vercel.app/api/lead-webhook"
+                                value="https://dcapital-crm.vercel.app/api/catch-lead"
                                 className="flex-1 bg-white dark:bg-black border border-amber-200 dark:border-amber-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none"
                             />
                             <button
                                 onClick={() => {
-                                    navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/lead-webhook');
+                                    navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/catch-lead');
                                     toast.success('Webhook URL Copied!');
                                 }}
                                 className="bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-center transition-colors shrink-0"
@@ -604,12 +604,12 @@ export const Settings = () => {
                                     type="text"
                                     readOnly
                                     title="Portal Webhook URL"
-                                    value="https://dcapital-crm.vercel.app/api/portal-webhook"
+                                    value="https://dcapital-crm.vercel.app/api/catch-lead"
                                     className="flex-1 bg-white dark:bg-black border border-purple-200 dark:border-purple-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none"
                                 />
                                 <button
                                     onClick={() => {
-                                        navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/portal-webhook');
+                                        navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/catch-lead');
                                         toast.success('Webhook URL Copied!');
                                     }}
                                     className="bg-purple-500 hover:bg-purple-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-center transition-colors shrink-0"
