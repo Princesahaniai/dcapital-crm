@@ -159,3 +159,9 @@ export interface MessageTemplate {
     content: string;
     target: 'whatsapp' | 'email';
 }
+
+export interface GlobalSettings {
+    autoRouting: boolean;
+    routingStrategy: 'round-robin' | 'manual';
+    lastAssignedIndex: number;
+}

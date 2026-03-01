@@ -1,10 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../store';
-import { Save, Upload, Download, Trash2, UserCircle, ShieldCheck, Lock, AlertTriangle, HardDrive, Webhook, Copy, MessageSquare, Plus } from 'lucide-react';
+import { Save, Upload, Download, Trash2, UserCircle, ShieldCheck, Lock, AlertTriangle, HardDrive, Webhook, Copy, MessageSquare, Plus, Route } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
 import { validatePassword } from '../utils/password';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import type { GlobalSettings } from '../types';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -28,6 +31,13 @@ export const Settings = () => {
     // Comms Hub State
     const [templateTitle, setTemplateTitle] = useState('');
     const [templateContent, setTemplateContent] = useState('');
+
+    // Lead Routing Settings
+    const [routingSettings, setRoutingSettings] = useState<GlobalSettings>({
+        autoRouting: false,
+        routingStrategy: 'manual',
+        lastAssignedIndex: 0
+    });
 
     // Calculate localStorage usage
     const calculateStorageUsage = () => {
@@ -87,8 +97,28 @@ export const Settings = () => {
         // Fetch templates on mount
         if (user?.role === 'ceo' || user?.role === 'admin') {
             fetchMessageTemplates();
+
+            // Listen to Global Settings for routing
+            const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+                if (docSnap.exists()) {
+                    setRoutingSettings(docSnap.data() as GlobalSettings);
+                }
+            });
+
+            return () => unsubSettings();
         }
     }, [user?.role]);
+
+    const handleUpdateRouting = async (updates: Partial<GlobalSettings>) => {
+        try {
+            const newSettings = { ...routingSettings, ...updates };
+            await setDoc(doc(db, 'settings', 'global'), newSettings, { merge: true });
+            toast.success('Routing settings updated');
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update routing settings');
+        }
+    };
 
     const handleExport = (isDailyBackup = false) => {
         // Data integrity check before export
@@ -507,6 +537,85 @@ export const Settings = () => {
                                     </div>
                                 ))
                             )}
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* LEAD ROUTING & API - ADMIN ONLY */}
+            {(user?.role === 'ceo' || user?.role === 'admin' || user?.email?.includes('admin')) && (
+                <motion.div variants={item} className="bg-white dark:bg-[#1C1C1E] dark:apple-glass border-2 border-purple-500/20 p-8 rounded-2xl shadow-lg dark:shadow-none mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-semibold flex items-center gap-3 text-gray-900 dark:text-white">
+                            <Route className="text-purple-500" size={22} /> Lead Routing & API
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Distribution Strategy */}
+                        <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl p-6">
+                            <h3 className="font-bold text-purple-900 dark:text-purple-500 mb-4">Distribution Strategy</h3>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 bg-white dark:bg-black rounded-lg border border-purple-100 dark:border-purple-500/20">
+                                    <div>
+                                        <p className="font-bold text-gray-900 dark:text-white mb-1">Enable Auto-Routing</p>
+                                        <p className="text-xs text-gray-500 font-medium">Automatically assign leads arriving via webhook.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            aria-label="Enable Auto-Routing"
+                                            checked={routingSettings.autoRouting}
+                                            onChange={(e) => handleUpdateRouting({ autoRouting: e.target.checked })}
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Routing Engine</label>
+                                    <select
+                                        className="w-full border border-purple-200 dark:border-purple-500/30 p-3 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white outline-none focus:border-purple-500"
+                                        aria-label="Routing Engine Strategy"
+                                        title="Routing Engine Strategy"
+                                        value={routingSettings.routingStrategy}
+                                        onChange={(e) => handleUpdateRouting({ routingStrategy: e.target.value as 'round-robin' | 'manual' })}
+                                        disabled={!routingSettings.autoRouting}
+                                    >
+                                        <option value="manual">Centralized (Manual CEO Assignment)</option>
+                                        <option value="round-robin">Round-Robin (Equally to Active Agents)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Portal Webhook */}
+                        <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl p-6">
+                            <h3 className="font-bold text-purple-900 dark:text-purple-500">Universal Portal Webhook</h3>
+                            <p className="text-sm text-purple-700 dark:text-purple-400 mt-1 mb-4">
+                                Connect this endpoint to Bayut, Property Finder, Meta Ads, or Zapier (POST request). Data will automatically route through the engine above.
+                            </p>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    title="Portal Webhook URL"
+                                    value="https://dcapital-crm.vercel.app/api/portal-webhook"
+                                    className="flex-1 bg-white dark:bg-black border border-purple-200 dark:border-purple-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none"
+                                />
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/portal-webhook');
+                                        toast.success('Webhook URL Copied!');
+                                    }}
+                                    className="bg-purple-500 hover:bg-purple-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-center transition-colors shrink-0"
+                                    title="Copy Webhook URL"
+                                >
+                                    <Copy size={20} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </motion.div>
