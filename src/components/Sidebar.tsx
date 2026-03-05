@@ -88,7 +88,6 @@ export const Sidebar = () => {
                         <div className="space-y-1">
                             <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
                             <NavItem to="/market-intel" icon={Activity} label="Market Intel" />
-                            <NavItem to="/war-room" icon={Swords} label="The War Room" />
                             <NavItem to="/leads" icon={Users} label="Leads Engine" />
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />
                             <NavItem to="/tasks" icon={CheckSquare} label="Mission Control" />

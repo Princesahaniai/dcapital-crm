@@ -1101,7 +1101,28 @@ export const useStore = create<Store>()(
 
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
 
-            resetSystem: () => set({ leads: [], properties: [], tasks: [], activities: [] }),
+            resetSystem: async () => {
+                const cmpId = get().user?.companyId;
+                if (!cmpId) return;
+
+                try {
+                    // Wipe leads for this company
+                    const leadsSnap = await getDocs(query(collection(db, 'leads'), where('companyId', '==', cmpId)));
+                    const taskSnap = await getDocs(query(collection(db, 'tasks'), where('companyId', '==', cmpId)));
+                    const propsSnap = await getDocs(query(collection(db, 'properties'), where('companyId', '==', cmpId)));
+
+                    const batch: Promise<void>[] = [];
+                    leadsSnap.forEach(d => batch.push(deleteDoc(doc(db, 'leads', d.id))));
+                    taskSnap.forEach(d => batch.push(deleteDoc(doc(db, 'tasks', d.id))));
+                    propsSnap.forEach(d => batch.push(deleteDoc(doc(db, 'properties', d.id))));
+
+                    await Promise.all(batch);
+                    set({ leads: [], properties: [], tasks: [], activities: [] });
+                    console.log('[RESET] Factory reset complete — all data wiped for', cmpId);
+                } catch (error) {
+                    console.error('[RESET] Factory reset failed:', error);
+                }
+            },
 
             resetLeads: () => set({ leads: [] }),
 

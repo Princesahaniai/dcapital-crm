@@ -19,6 +19,57 @@ import { useLeadScore } from '../../hooks/useLeadScore';
 import { generateLeadBrief } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 
+const QuickNotes: React.FC<{ lead: Lead }> = ({ lead }) => {
+    const [newNote, setNewNote] = useState('');
+    const addQuickNote = useStore(s => s.addQuickNote);
+
+    const handleSaveNote = () => {
+        if (!newNote.trim()) return;
+        addQuickNote(lead.id, newNote.trim());
+        toast.success('Note saved');
+        setNewNote('');
+    };
+
+    // Parse existing notes (stored as newline-separated string)
+    const existingNotes = lead.notes ? lead.notes.split('\n').filter(Boolean) : [];
+
+    return (
+        <div className="space-y-4">
+            <div className="flex gap-2">
+                <textarea
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Type a quick note... (e.g. 'Client prefers 2BR in Marina under 2M')"
+                    rows={3}
+                    className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-amber-500 placeholder:text-gray-400"
+                />
+            </div>
+            <button
+                onClick={handleSaveNote}
+                disabled={!newNote.trim()}
+                className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            >
+                Save Note
+            </button>
+
+            {existingNotes.length > 0 && (
+                <div className="space-y-2 mt-4 border-t border-gray-100 dark:border-white/5 pt-4">
+                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Previous Notes</p>
+                    {existingNotes.map((note, i) => (
+                        <div key={i} className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            {note}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {existingNotes.length === 0 && (
+                <p className="text-center text-sm text-gray-400 py-8">No notes yet. Add your first note above.</p>
+            )}
+        </div>
+    );
+};
+
 export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit }) => {
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const { team, tasks, activities, getMatchedProperties } = useStore();
@@ -261,13 +312,7 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                 )}
 
                                 {activeTab === 'notes' && (
-                                    <div className="text-center py-20 text-gray-500">
-                                        <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <FileText size={24} />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Notes Module</h3>
-                                        <p>Detailed notes with voice input coming soon.</p>
-                                    </div>
+                                    <QuickNotes lead={lead} />
                                 )}
                             </motion.div>
                         </AnimatePresence>
