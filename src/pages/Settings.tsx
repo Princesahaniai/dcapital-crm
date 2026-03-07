@@ -459,12 +459,12 @@ export const Settings = () => {
                                 type="text"
                                 readOnly
                                 title="Webhook URL"
-                                value="https://dcapital-crm.vercel.app/api/catch-lead"
+                                value="https://dcapital-crm.vercel.app/api/meta-webhook"
                                 className="flex-1 bg-white dark:bg-black border border-amber-200 dark:border-amber-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none"
                             />
                             <button
                                 onClick={() => {
-                                    navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/catch-lead');
+                                    navigator.clipboard.writeText('https://dcapital-crm.vercel.app/api/meta-webhook');
                                     toast.success('Webhook URL Copied!');
                                 }}
                                 className="bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-center transition-colors shrink-0"
@@ -472,6 +472,37 @@ export const Settings = () => {
                             >
                                 <Copy size={20} />
                             </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-500/20 rounded-xl p-6 mt-6">
+                        <h3 className="font-bold text-green-900 dark:text-green-500">Official WhatsApp Business API</h3>
+                        <p className="text-sm text-green-700 dark:text-green-400 mt-1 mb-4">
+                            Connect your Meta Developer credentials to enable bulk broadcasting and automated messaging.
+                        </p>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">WhatsApp Token (Permanent Access Token)</label>
+                                <input
+                                    type="password"
+                                    className="w-full bg-white dark:bg-black border border-green-200 dark:border-green-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none focus:border-green-500"
+                                    value={routingSettings.whatsappToken || ''}
+                                    onChange={(e) => handleUpdateRouting({ whatsappToken: e.target.value })}
+                                    placeholder="EAAI... (Graph API Token)"
+                                    title="WhatsApp Token"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Phone Number ID</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-white dark:bg-black border border-green-200 dark:border-green-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none focus:border-green-500"
+                                    value={routingSettings.whatsappPhoneId || ''}
+                                    onChange={(e) => handleUpdateRouting({ whatsappPhoneId: e.target.value })}
+                                    placeholder="e.g. 1029384756..."
+                                    title="WhatsApp Phone ID"
+                                />
+                            </div>
                         </div>
                     </div>
                 </motion.div>

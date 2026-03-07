@@ -4,6 +4,7 @@ import { Phone, Plus, Search, Trash2, Edit, FileDown, Upload, Download, Mail, Ca
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
+import { MessageSquareShare } from 'lucide-react';
 import { WhatsAppButton } from '../components/WhatsAppButton';
 import { EmailModal } from '../components/EmailModal';
 import { MeetingModal } from '../components/MeetingModal';
@@ -11,7 +12,10 @@ import { Modal } from '../components/Modal';
 import { LeadCard } from '../components/leads/LeadCard';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
-import type { Lead } from '../types';
+import { sendWhatsAppMessage } from '../utils/whatsappAPI';
+import type { Lead, GlobalSettings } from '../types';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
 export const Leads = () => {
     const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user, logAudit } = useStore();
@@ -39,6 +43,10 @@ export const Leads = () => {
     const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [importing, setImporting] = useState(false);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const [selectedLeadsForBroadcast, setSelectedLeadsForBroadcast] = useState<string[]>([]);
+    const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+    const [broadcastTemplate, setBroadcastTemplate] = useState('new_project_launch');
 
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Viewing', 'Negotiation', 'Closed', 'Lost'];
 
@@ -197,6 +205,87 @@ export const Leads = () => {
         logAudit('EXPORT_LEADS', undefined, { count: filteredLeads.length });
     };
 
+    const handleBulkWhatsApp = async () => {
+        if (!user) return toast.error('Authentication Error');
+
+        const companyId = user.companyId || 'default-company';
+
+        setIsBroadcasting(true);
+        const loadingToastId = toast.loading('Initializing WhatsApp Engine...');
+
+        try {
+            // First, fetch WhatsApp credentials from global settings
+            const settingsDoc = await getDoc(doc(db, 'settings_by_company', companyId));
+            const settingsData = settingsDoc.data() as GlobalSettings;
+
+            const token = settingsData?.whatsappToken || process.env.VITE_WHATSAPP_TOKEN;
+            const phoneId = settingsData?.whatsappPhoneId || process.env.VITE_WHATSAPP_PHONE_ID;
+
+            if (!token || !phoneId) {
+                toast.error('WhatsApp API keys missing. Configure in Settings.', { id: loadingToastId });
+                setIsBroadcasting(false);
+                return;
+            }
+
+            // Figure out which leads to message
+            const targets = selectedLeadsForBroadcast.length > 0
+                ? filteredLeads.filter(l => selectedLeadsForBroadcast.includes(l.id))
+                : filteredLeads;
+
+            const targetsWithPhones = targets.filter(l => l.phone && l.phone.length >= 8);
+
+            if (targetsWithPhones.length === 0) {
+                toast.error('No selected leads have valid phone numbers.', { id: loadingToastId });
+                setIsBroadcasting(false);
+                return;
+            }
+
+            const confirmMsg = `Broadcast template '${broadcastTemplate}' to ${targetsWithPhones.length} leads safely?\n\nThis uses the Official API with a 2-second rate limit delay between each message.`;
+            if (!confirm(confirmMsg)) {
+                toast.dismiss(loadingToastId);
+                setIsBroadcasting(false);
+                return;
+            }
+
+            toast.loading(`Broadcasting to ${targetsWithPhones.length} leads...`, { id: loadingToastId });
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < targetsWithPhones.length; i++) {
+                const lead = targetsWithPhones[i];
+                const phone = lead.phone!;
+
+                // Construct variables - usually just the lead's first name for a default template
+                const variables = [lead.name.split(' ')[0]];
+
+                const result = await sendWhatsAppMessage(phone, broadcastTemplate, token, phoneId, 'en', variables);
+
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`Failed to send WA to ${phone}:`, result.error);
+                }
+
+                // Rate limiting specific to Meta policies
+                if (i < targetsWithPhones.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+
+            toast.success(`Broadcast Complete: ${successCount} Sent, ${failCount} Failed`, { id: loadingToastId, duration: 5000 });
+
+        } catch (error) {
+            console.error('Broadcast Error:', error);
+            toast.error('An error occurred during the broadcast.', { id: loadingToastId });
+        } finally {
+            setIsBroadcasting(false);
+            setShowBroadcastModal(false);
+            setSelectedLeadsForBroadcast([]); // Clear selection
+        }
+    };
+
     const downloadTemplate = async () => {
         const { generateTemplate } = await import('../utils/csvHelpers');
         const csv = generateTemplate();
@@ -219,6 +308,16 @@ export const Leads = () => {
                     <button onClick={downloadTemplate} title="Download Template" className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors">
                         <FileDown size={20} />
                     </button>
+                    {(user?.role === 'ceo' || user?.role === 'admin' || user?.email?.includes('admin')) && (
+                        <button
+                            onClick={() => setShowBroadcastModal(true)}
+                            disabled={isBroadcasting}
+                            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${isBroadcasting ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#E3FFEB] text-[#00A843] hover:bg-[#D1F7DB] border border-[#00A843]/30'}`}
+                            title="Bulk WhatsApp via Meta API"
+                        >
+                            <MessageSquareShare size={18} /> {isBroadcasting ? 'Broadcasting...' : 'Bulk WhatsApp'}
+                        </button>
+                    )}
                     <button
                         onClick={() => setShowTrash(!showTrash)}
                         className={`p-3 rounded-xl transition-colors ${showTrash ? 'bg-red-50 text-red-500 dark:bg-red-900/20' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white'}`}
@@ -451,6 +550,56 @@ export const Leads = () => {
                         <button type="submit" className="flex-1 py-4 bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all">Deploy Lead</button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal
+                isOpen={showBroadcastModal}
+                onClose={() => setShowBroadcastModal(false)}
+                title="WhatsApp Broadcaster Engine (Official API)"
+            >
+                <div className="p-6 space-y-6">
+                    <div className="bg-[#E3FFEB] dark:bg-[#00A843]/10 border border-[#00A843]/30 p-4 rounded-2xl">
+                        <p className="text-sm text-[#00A843] dark:text-[#00A843] font-medium">
+                            This uses Meta's Official WhatsApp Cloud API to send approved templates to {selectedLeadsForBroadcast.length > 0 ? selectedLeadsForBroadcast.length : filteredLeads.length} selected leads safely, respecting rate limits.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Meta Approved Template Name</label>
+                        <input
+                            className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-xl text-gray-900 dark:text-white outline-none focus:border-[#00A843]"
+                            value={broadcastTemplate}
+                            onChange={e => setBroadcastTemplate(e.target.value)}
+                            placeholder="e.g. new_project_welcome"
+                            title="Template Name"
+                        />
+                        <p className="text-xs text-gray-400 ml-1">Must precisely match the template name approved in Meta Developer Portal.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Target Audience</label>
+                        <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4">
+                            {selectedLeadsForBroadcast.length > 0 ? (
+                                <p className="text-gray-900 dark:text-white font-bold">{selectedLeadsForBroadcast.length} Specific Checkmarked Leads</p>
+                            ) : (
+                                <p className="text-gray-900 dark:text-white font-bold">ALL {filteredLeads.length} Leads visible in the current view</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-4 mt-6">
+                        <button type="button" onClick={() => setShowBroadcastModal(false)} className="px-6 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl transition-all">Cancel</button>
+                        <button
+                            type="button"
+                            className="flex-1 py-4 bg-[#00A843] hover:bg-[#008A37] text-white font-bold rounded-2xl shadow-lg shadow-[#00A843]/30 flex items-center justify-center gap-2 transition-all"
+                            onClick={handleBulkWhatsApp}
+                            disabled={isBroadcasting}
+                        >
+                            <MessageSquareShare size={20} />
+                            {isBroadcasting ? 'Broadcasting...' : 'Launch WhatsApp Broadcast'}
+                        </button>
+                    </div>
+                </div>
             </Modal>
 
             {/* FLOATING ACTION BUTTON (MOBILE) */}

@@ -175,4 +175,6 @@ export interface GlobalSettings {
     routingStrategy: 'round-robin' | 'manual';
     lastAssignedIndex: number;
     companyId?: string;
+    whatsappToken?: string;
+    whatsappPhoneId?: string;
 }
