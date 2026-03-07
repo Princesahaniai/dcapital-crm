@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
+import { getMessaging, isSupported } from 'firebase/messaging';
 
 // 🔥 Firebase config — hardcoded for unbreakable production
 const firebaseConfig = {
@@ -29,6 +30,16 @@ enableMultiTabIndexedDbPersistence(db)
     });
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+export let messaging: any = null;
+
+isSupported().then((supported) => {
+    if (supported) {
+        messaging = getMessaging(app);
+        console.log('✅ Firebase Messaging supported and initialized');
+    } else {
+        console.warn('⚠️ Firebase Messaging is NOT supported in this browser');
+    }
+});
 
 // 🛡️ FIX 1: Set persistence at app init level — survives page refreshes
 setPersistence(auth, browserLocalPersistence)

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, Mail, Calendar, FileText, Clock, Paperclip, CheckSquare, Edit3, User, MapPin, Sparkles, Send } from 'lucide-react';
+import { X, Phone, Mail, Calendar, FileText, Clock, Paperclip, CheckSquare, Edit3, User, MapPin, Sparkles, Send, ChevronDown } from 'lucide-react';
 import { StageIndicator } from './StageIndicator';
 import { ActivityTimeline } from './ActivityTimeline';
 import { DocumentVault } from './DocumentVault';
 import type { Lead, Task, Activity } from '../../types';
 import { useStore } from '../../store';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
 
 interface LeadProfileProps {
     lead: Lead;
@@ -30,8 +32,20 @@ const QuickNotes: React.FC<{ lead: Lead }> = ({ lead }) => {
         setNewNote('');
     };
 
-    // Parse existing notes (stored as newline-separated string)
-    const existingNotes = lead.notes ? lead.notes.split('\n').filter(Boolean) : [];
+    // Parse existing notes
+    let parsedNotes: any[] = [];
+    if (Array.isArray(lead.notes)) {
+        parsedNotes = [...lead.notes];
+    } else if (typeof lead.notes === 'string' && lead.notes.trim()) {
+        parsedNotes = lead.notes.split('\n').filter(Boolean).map(text => ({
+            text,
+            author: 'Legacy Note',
+            timestamp: lead.createdAt || Date.now()
+        }));
+    }
+
+    // Sort chronologically (newest at the top)
+    const existingNotes = parsedNotes.sort((a, b) => b.timestamp - a.timestamp);
 
     return (
         <div className="space-y-4">
@@ -56,8 +70,12 @@ const QuickNotes: React.FC<{ lead: Lead }> = ({ lead }) => {
                 <div className="space-y-2 mt-4 border-t border-gray-100 dark:border-white/5 pt-4">
                     <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Previous Notes</p>
                     {existingNotes.map((note, i) => (
-                        <div key={i} className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                            {note}
+                        <div key={i} className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl px-4 py-3 text-sm flex flex-col gap-1">
+                            <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                                <span className="font-bold text-gray-600 dark:text-gray-300">{note.author}</span>
+                                <span>{new Date(note.timestamp).toLocaleString()}</span>
+                            </div>
+                            <span className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{note.text}</span>
                         </div>
                     ))}
                 </div>
@@ -72,7 +90,7 @@ const QuickNotes: React.FC<{ lead: Lead }> = ({ lead }) => {
 
 export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit }) => {
     const [activeTab, setActiveTab] = useState<Tab>('overview');
-    const { team, tasks, activities, getMatchedProperties } = useStore();
+    const { team, tasks, activities, getMatchedProperties, updateLead, properties } = useStore();
     const { score, getScoreColor, getScoreGradient } = useLeadScore(lead);
 
     const matches = getMatchedProperties(lead);
@@ -107,9 +125,39 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                         <div>
                             <div className="flex items-center gap-3 mb-1">
                                 <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{lead.name}</h2>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-gray-100 dark:bg-white/10 text-gray-500 border-white/10'}`}>
-                                    {lead.status}
-                                </span>
+                                <div className="relative">
+                                    <select
+                                        value={lead.status}
+                                        onChange={async (e) => {
+                                            const newStatus = e.target.value as any;
+                                            const previousStatus = lead.status;
+                                            updateLead(lead.id, { status: newStatus });
+
+                                            try {
+                                                await updateDoc(doc(db, 'leads', lead.id), { status: newStatus });
+                                                toast.success(`Status updated to ${newStatus}`);
+                                            } catch (error) {
+                                                console.error('Failed to update status:', error);
+                                                updateLead(lead.id, { status: previousStatus });
+                                                toast.error('Failed to update status');
+                                            }
+                                        }}
+                                        className={`appearance-none pr-8 pl-3 py-1 rounded-full text-xs font-bold border outline-none cursor-pointer transition-colors ${lead.status === 'New' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                            lead.status === 'Closed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                                                'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/20'
+                                            }`}
+                                    >
+                                        <option value="New">New</option>
+                                        <option value="Contacted">Contacted</option>
+                                        <option value="Qualified">Qualified</option>
+                                        <option value="Viewing">Viewing</option>
+                                        <option value="Negotiation">Negotiation</option>
+                                        <option value="Closed">Closed</option>
+                                        <option value="Lost">Lost</option>
+                                        <option value="Trash">Trash</option>
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                                </div>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                                 <span className="flex items-center gap-1.5"><Phone size={14} /> {lead.phone}</span>
@@ -243,6 +291,45 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                             </section>
                                         </div>
 
+                                        {/* INVENTORY LINKING */}
+                                        <div className="col-span-2 mt-4 border-t border-gray-100 dark:border-white/5 pt-8">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                                    <CheckSquare className="text-blue-500" size={18} /> Linked Inventory
+                                                </h3>
+                                                {lead.propertyId && (
+                                                    <span className="text-xs font-bold text-green-500 bg-green-500/10 px-3 py-1 rounded-full">
+                                                        Match Secured
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="bg-gray-50 dark:bg-white/5 p-6 rounded-2xl border border-gray-100 dark:border-white/5">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase">Select Target Property</label>
+                                                    <select
+                                                        value={lead.propertyId || ''}
+                                                        onChange={async (e) => {
+                                                            const newPropId = e.target.value;
+                                                            try {
+                                                                await updateDoc(doc(db, 'leads', lead.id), { propertyId: newPropId || null });
+                                                                updateLead(lead.id, { propertyId: newPropId || undefined });
+                                                                toast.success(newPropId ? 'Property linked' : 'Property unlinked');
+                                                            } catch (err) {
+                                                                toast.error('Failed to link property');
+                                                            }
+                                                        }}
+                                                        className="w-full bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 dark:text-white appearance-none"
+                                                    >
+                                                        <option value="">-- No Property Linked --</option>
+                                                        {properties?.filter(p => p.status === 'Available').map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name} - AED {p.price.toLocaleString()} ({p.location})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {/* SMART MATCHES WIDGET */}
                                         <div className="col-span-2 mt-4 border-t border-gray-100 dark:border-white/5 pt-8">
                                             <div className="flex items-center justify-between mb-6">
@@ -275,13 +362,29 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                                             <div className="p-4">
                                                                 <h4 className="font-bold text-gray-900 dark:text-white truncate">{property.name}</h4>
                                                                 <p className="text-xs text-gray-500 truncate mb-4">{property.location}</p>
-                                                                <a
-                                                                    href={`https://wa.me/${lead.phone}?text=${encodeURIComponent(`Hello ${lead.name}, I found a property matching your criteria in ${property.location}. It's a gorgeous ${property.bedrooms}BR ${property.type} at ${property.name} for AED ${property.price.toLocaleString()}. Would you like to view it?`)}`}
-                                                                    target="_blank" rel="noopener noreferrer"
-                                                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                                                                >
-                                                                    <Send size={14} /> Pitch via WhatsApp
-                                                                </a>
+                                                                <div className="flex flex-col gap-2">
+                                                                    <a
+                                                                        href={`https://wa.me/${lead.phone}?text=${encodeURIComponent(`Hello ${lead.name}, I found a property matching your criteria in ${property.location}. It's a gorgeous ${property.bedrooms}BR ${property.type} at ${property.name} for AED ${property.price.toLocaleString()}. Would you like to view it?`)}`}
+                                                                        target="_blank" rel="noopener noreferrer"
+                                                                        className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                                                                    >
+                                                                        <Send size={14} /> Pitch via WhatsApp
+                                                                    </a>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await updateDoc(doc(db, 'leads', lead.id), { propertyId: property.id });
+                                                                                updateLead(lead.id, { propertyId: property.id });
+                                                                                toast.success('Property linked to lead');
+                                                                            } catch (err) {
+                                                                                toast.error('Failed to link property');
+                                                                            }
+                                                                        }}
+                                                                        className="w-full bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                                                                    >
+                                                                        Link Property
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}

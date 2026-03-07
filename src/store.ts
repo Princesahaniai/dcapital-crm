@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Lead, Property, Task, Activity, User, Notification, MessageTemplate } from './types';
 import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 interface TeamMember extends User {
@@ -784,7 +784,41 @@ export const useStore = create<Store>()(
                 });
             },
 
-            addQuickNote: (leadId, note) => set((s) => ({ leads: s.leads.map(l => l.id === leadId ? { ...l, notes: l.notes ? l.notes + '\n' + note : note, updatedAt: Date.now() } : l) })),
+            addQuickNote: (leadId, note) => {
+                const state = get();
+                const userName = state.user?.name || 'System';
+                const newNoteObj = {
+                    text: note,
+                    author: userName,
+                    timestamp: Date.now()
+                };
+
+                set((s) => ({
+                    leads: s.leads.map(l => {
+                        if (l.id !== leadId) return l;
+                        let currentNotes: any[] = [];
+                        if (Array.isArray(l.notes)) {
+                            currentNotes = l.notes;
+                        } else if (typeof l.notes === 'string' && l.notes.trim()) {
+                            currentNotes = l.notes.split('\n').filter(Boolean).map(text => ({
+                                text,
+                                author: 'Legacy Note',
+                                timestamp: l.createdAt || Date.now()
+                            }));
+                        }
+                        return { ...l, notes: [...currentNotes, newNoteObj], updatedAt: Date.now() };
+                    })
+                }));
+
+                try {
+                    updateDoc(doc(db, 'leads', leadId), {
+                        notes: arrayUnion(newNoteObj),
+                        updatedAt: Date.now()
+                    });
+                } catch (err) {
+                    console.error('[SYNC] Quick note write failed:', err);
+                }
+            },
 
             markNotificationRead: (id) => {
                 set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) }));

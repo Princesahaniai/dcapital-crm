@@ -49,7 +49,7 @@ export interface Lead {
     budget?: number;
     source?: string;
     status: 'New' | 'Contacted' | 'Qualified' | 'Viewing' | 'Negotiation' | 'Closed' | 'Lost' | 'Trash';
-    notes?: string;
+    notes?: any[] | string;
     assignedTo?: string;
     assignedName?: string;
     createdAt: number;

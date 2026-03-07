@@ -99,6 +99,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
 };
 
+import { usePushNotifications } from './hooks/usePushNotifications';
+
+// ... (in App component)
+
 export default function App() {
     // Global Auth Listener
     React.useEffect(() => {
@@ -108,6 +112,9 @@ export default function App() {
 
     // Real-Time Sync (onSnapshot for leads, tasks, team)
     useRealtimeSync();
+
+    // FCM Notification Token Registration
+    usePushNotifications();
 
     return (
         <>
