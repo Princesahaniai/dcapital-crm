@@ -503,6 +503,17 @@ export const Settings = () => {
                                     title="WhatsApp Phone ID"
                                 />
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Meta App Secret (Webhook Auth)</label>
+                                <input
+                                    type="password"
+                                    className="w-full bg-white dark:bg-black border border-green-200 dark:border-green-500/30 p-3 rounded-lg text-gray-900 dark:text-gray-300 font-mono text-sm outline-none focus:border-green-500"
+                                    value={routingSettings.metaAppSecret || ''}
+                                    onChange={(e) => handleUpdateRouting({ metaAppSecret: e.target.value })}
+                                    placeholder="e.g. 8f6a9c... (For X-Hub-Signature-256)"
+                                    title="Meta App Secret"
+                                />
+                            </div>
                         </div>
                     </div>
                 </motion.div>

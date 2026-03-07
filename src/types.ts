@@ -177,4 +177,5 @@ export interface GlobalSettings {
     companyId?: string;
     whatsappToken?: string;
     whatsappPhoneId?: string;
+    metaAppSecret?: string;
 }

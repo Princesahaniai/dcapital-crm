@@ -14,7 +14,7 @@ import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
 import { sendWhatsAppMessage } from '../utils/whatsappAPI';
 import type { Lead, GlobalSettings } from '../types';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 export const Leads = () => {
@@ -261,11 +261,27 @@ export const Leads = () => {
 
                 const result = await sendWhatsAppMessage(phone, broadcastTemplate, token, phoneId, 'en', variables);
 
+                let systemNoteText = '';
+
                 if (result.success) {
                     successCount++;
+                    systemNoteText = `System: WhatsApp Template [${broadcastTemplate}] sent successfully.`;
                 } else {
                     failCount++;
                     console.error(`Failed to send WA to ${phone}:`, result.error);
+                    systemNoteText = `System: WhatsApp Failed - ${result.error}`;
+                }
+
+                try {
+                    await updateDoc(doc(db, 'leads', lead.id), {
+                        notes: arrayUnion({
+                            text: systemNoteText,
+                            author: 'System',
+                            timestamp: Date.now()
+                        })
+                    });
+                } catch (noteErr) {
+                    console.error('Failed to update lead timeline:', noteErr);
                 }
 
                 // Rate limiting specific to Meta policies
