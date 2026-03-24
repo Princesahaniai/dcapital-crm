@@ -53,7 +53,17 @@ export const Team = () => {
             }
         } catch (error: any) {
             console.error('Invite error:', error);
-            toast.error(error.message || 'Failed to create user');
+            
+            if (error.message?.includes('Ghost User')) {
+                // Permanent alert for Ghost User manually
+                toast.error(error.message, { 
+                    duration: 60000, 
+                    style: { maxWidth: '500px', border: '1px solid red' } 
+                });
+                alert('⚠️ ' + error.message);
+            } else {
+                toast.error(error.message || 'Failed to create user');
+            }
         }
     };
 
