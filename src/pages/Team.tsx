@@ -454,6 +454,7 @@ const InviteForm = ({ onInvite, onClose }: any) => {
                     <div>
                         <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">Role</label>
                         <select
+                            title="Select User Role"
                             className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white focus:border-[#D4AF37] outline-none transition-colors"
                             value={form.role}
                             onChange={e => setForm({ ...form, role: e.target.value })}

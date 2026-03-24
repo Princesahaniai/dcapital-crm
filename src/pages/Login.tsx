@@ -5,6 +5,9 @@ import { ArrowRight, Lock, Mail, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { ForgotPassword } from '../components/ForgotPassword';
+import { auth, db } from '../firebaseConfig';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 export const Login = () => {
     const [email, setEmail] = useState('');
@@ -28,6 +31,8 @@ export const Login = () => {
             toast.error('Access Denied');
         }
     };
+
+
 
     if (showForgotPassword) {
         return (
@@ -110,7 +115,8 @@ export const Login = () => {
                         Access Terminal <ArrowRight size={18} />
                     </button>
                 </form>
-                <p className="text-center text-gray-600 text-[10px] mt-8 uppercase tracking-widest">Restricted to Authorized Personnel Only</p>
+
+                <p className="text-center text-gray-600 text-[10px] mt-4 uppercase tracking-widest">Restricted to Authorized Personnel Only</p>
             </motion.div>
         </div>
     );

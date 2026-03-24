@@ -374,7 +374,7 @@ export const SocialStudio = () => {
                                                                     <span className="text-[10px] uppercase font-bold text-zinc-500 mb-1 block">{cap.type}</span>
                                                                     <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">{cap.content}</p>
                                                                 </div>
-                                                                <button onClick={() => handleCopy(cap.content)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0">
+                                                                <button title="Copy caption" onClick={() => handleCopy(cap.content)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0">
                                                                     <Copy size={16} />
                                                                 </button>
                                                             </div>

@@ -77,6 +77,20 @@ export interface Lead {
         emiratesId: boolean;
         formB: boolean;
     };
+    waStatus?: 'Sent' | 'Delivered' | 'Failed';
+    companyId?: string;
+    // Batch Management & Prospect Mode
+    category?: 'lead' | 'prospect';
+    fileId?: string;
+    fileName?: string;
+}
+
+export interface ImportFile {
+    id: string;
+    name: string;
+    uploadDate: number;
+    leadCount: number;
+    category: 'lead' | 'prospect';
     companyId?: string;
 }
 

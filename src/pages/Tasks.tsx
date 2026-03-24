@@ -11,7 +11,7 @@ const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { st
 const item = { hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0 } };
 
 export const Tasks = () => {
-    const { tasks, addTask, deleteTask, user, team } = useStore();
+    const { isDataLoading, tasks, addTask, deleteTask, user, team } = useStore();
     const [text, setText] = useState('');
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState<Task['priority']>('Medium');
@@ -22,6 +22,7 @@ export const Tasks = () => {
 
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
     const [filterStatus, setFilterStatus] = useState<'All' | 'Pending' | 'In Progress' | 'Completed' | 'Overdue'>('All');
 
     // Role-based filtering
@@ -40,13 +41,19 @@ export const Tasks = () => {
     }, [tasks, user, filterStatus]);
 
     const handleAdd = () => {
-        if (!text.trim()) return toast.error('Mission Title is strictly required');
-        if (!dueDate || !dueTime) return toast.error('A precise Due Date and Time are strictly required');
+        const errors: Record<string, boolean> = {};
+        if (!text.trim()) { errors.text = true; toast.error('Mission Title is strictly required'); }
+        if (!dueDate || !dueTime) { errors.date = true; toast.error('A precise Due Date and Time are strictly required'); }
+        if (!assignedTo && !user?.id) { errors.assignedTo = true; toast.error('Task must be assigned to an active Agent'); }
 
         const combinedDueDate = new Date(`${dueDate}T${dueTime}`).getTime();
-        if (isNaN(combinedDueDate)) return toast.error('Invalid Date or Time format');
+        if (isNaN(combinedDueDate)) { errors.date = true; toast.error('Invalid Date or Time format'); }
 
-        if (!assignedTo && !user?.id) return toast.error('Task must be assigned to an active Agent');
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            return;
+        }
+        setFormErrors({});
 
         addTask({
             id: Math.random().toString(36).substr(2, 9),
@@ -125,7 +132,7 @@ export const Tasks = () => {
                             <input
                                 placeholder="Mission Title (e.g., Follow up with Mr. Khalil)"
                                 title="Task Title"
-                                className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                                className={`w-full bg-gray-50 dark:bg-zinc-800/50 border ${formErrors.text ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} rounded-xl p-4 text-gray-900 dark:text-white outline-none transition-all`}
                                 value={text}
                                 onChange={e => setText(e.target.value)}
                             />
@@ -142,7 +149,7 @@ export const Tasks = () => {
                                 <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Assignee</p>
                                 <select
                                     title="Assignee"
-                                    className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                                    className={`w-full bg-gray-50 dark:bg-zinc-800/50 border ${formErrors.assignedTo ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-3 rounded-xl text-sm outline-none text-gray-900 dark:text-white`}
                                     value={assignedTo}
                                     onChange={e => setAssignedTo(e.target.value)}
                                 >
@@ -160,11 +167,11 @@ export const Tasks = () => {
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Due Date</p>
-                                <input type="date" title="Due Date" className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                                <input type="date" title="Due Date" className={`w-full bg-gray-50 dark:bg-zinc-800/50 border ${formErrors.date ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-3 rounded-xl text-sm outline-none text-gray-900 dark:text-white`} value={dueDate} onChange={e => setDueDate(e.target.value)} />
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Time</p>
-                                <input type="time" title="Due Time" className="w-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 p-3 rounded-xl text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white" value={dueTime} onChange={e => setDueTime(e.target.value)} />
+                                <input type="time" title="Due Time" className={`w-full bg-gray-50 dark:bg-zinc-800/50 border ${formErrors.date ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-3 rounded-xl text-sm outline-none text-gray-900 dark:text-white`} value={dueTime} onChange={e => setDueTime(e.target.value)} />
                             </div>
                             <div className="space-y-1 col-span-2">
                                 <p className="text-[10px] font-bold text-gray-500 uppercase ml-2">Priority</p>
@@ -191,80 +198,95 @@ export const Tasks = () => {
 
             <div className="w-full overflow-x-auto scrollbar-hide">
                 <div className="space-y-4 min-w-[800px]">
-                    {visibleTasks.map(task => (
-                        <motion.div
-                            variants={item}
-                            key={task.id}
-                            onClick={() => setSelectedTask(task)}
-                            className={`group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 p-5 rounded-3xl flex items-center gap-5 transition-all hover:bg-gray-50 dark:hover:bg-[#2C2C2E] hover:border-blue-500/30 cursor-pointer shadow-sm ${task.status === 'Completed' ? 'opacity-60' : ''}`}
-                        >
-                            <div className="relative">
-                                {getStatusIcon(task.status)}
-                                {task.priority === 'High' && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                    {isDataLoading ? (
+                        [1, 2, 3, 4, 5].map((n) => (
+                            <div key={n} className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 p-5 rounded-3xl flex items-center gap-5 animate-pulse h-24">
+                                <div className="w-6 h-6 bg-gray-200 dark:bg-white/10 rounded-full" />
+                                <div className="flex-1 space-y-3">
+                                    <div className="h-4 bg-gray-200 dark:bg-white/10 rounded w-1/3" />
+                                    <div className="h-3 bg-gray-200 dark:bg-white/10 rounded w-1/4" />
+                                </div>
+                                <div className="w-20 h-8 bg-gray-200 dark:bg-white/10 rounded-xl" />
                             </div>
+                        ))
+                    ) : (
+                        <>
+                            {visibleTasks.map(task => (
+                                <motion.div
+                                    variants={item}
+                                    key={task.id}
+                                    onClick={() => setSelectedTask(task)}
+                                    className={`group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 p-5 rounded-3xl flex items-center gap-5 transition-all hover:bg-gray-50 dark:hover:bg-[#2C2C2E] hover:border-blue-500/30 cursor-pointer shadow-sm ${task.status === 'Completed' ? 'opacity-60' : ''}`}
+                                >
+                                    <div className="relative">
+                                        {getStatusIcon(task.status)}
+                                        {task.priority === 'High' && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                                    </div>
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className={`text-lg font-bold truncate ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-                                        {task.title}
-                                    </h3>
-                                    <div className="flex gap-2">
-                                        <span className="text-[10px] flex items-center gap-1 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded font-bold">
-                                            {getCategoryIcon(task.category)} {task.category}
-                                        </span>
-                                        {task.assignedTo !== user?.id && (
-                                            <span className="text-[10px] flex items-center gap-1 bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold">
-                                                <User size={10} /> {team.find(m => m.id === task.assignedTo)?.name || 'Agent'}
-                                            </span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className={`text-lg font-bold truncate ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
+                                                {task.title}
+                                            </h3>
+                                            <div className="flex gap-2">
+                                                <span className="text-[10px] flex items-center gap-1 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded font-bold">
+                                                    {getCategoryIcon(task.category)} {task.category}
+                                                </span>
+                                                {task.assignedTo !== user?.id && (
+                                                    <span className="text-[10px] flex items-center gap-1 bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold">
+                                                        <User size={10} /> {team.find(m => m.id === task.assignedTo)?.name || 'Agent'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 mt-1">
+                                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                <Clock size={12} />
+                                                <span>Due {new Date(task.dueDate).toLocaleDateString()} at {new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            {task.comments?.length > 0 && (
+                                                <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold">
+                                                    <Mail size={10} /> {task.comments.length} updates
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
+                                            title="View details"
+                                            className="p-2 text-gray-400 hover:text-blue-500 transition-colors touch-target"
+                                        >
+                                            <Eye size={18} />
+                                        </button>
+                                        {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); deleteTask(task.id); toast.success('Mission Aborted'); }}
+                                                title="Delete mission"
+                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors touch-target"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
                                         )}
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-4 mt-1">
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                        <Clock size={12} />
-                                        <span>Due {new Date(task.dueDate).toLocaleDateString()} at {new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                    {task.comments?.length > 0 && (
-                                        <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold">
-                                            <Mail size={10} /> {task.comments.length} updates
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                </motion.div>
+                            ))}
 
-                            <div className="flex items-center gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                                    title="View details"
-                                    className="p-2 text-gray-400 hover:text-blue-500 transition-colors touch-target"
-                                >
-                                    <Eye size={18} />
-                                </button>
-                                {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && (
+                            {visibleTasks.length === 0 && (
+                                <div className="text-center py-24 bg-white dark:bg-[#1C1C1E] rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
+                                    <CheckCircle className="mx-auto text-gray-200 dark:text-gray-800 mb-4" size={64} />
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">All Clear</h3>
+                                    <p className="text-gray-500 mt-2">No active missions for the current filter.</p>
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); deleteTask(task.id); toast.success('Mission Aborted'); }}
-                                        title="Delete mission"
-                                        className="p-2 text-gray-400 hover:text-red-500 transition-colors touch-target"
+                                        onClick={() => { setFilterStatus('All'); setShowAddForm(true); }}
+                                        className="mt-6 text-blue-500 font-bold hover:underline"
                                     >
-                                        <Trash2 size={18} />
+                                        Assign a new task
                                     </button>
-                                )}
-                            </div>
-                        </motion.div>
-                    ))}
-
-                    {visibleTasks.length === 0 && (
-                        <div className="text-center py-24 bg-white dark:bg-[#1C1C1E] rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
-                            <CheckCircle className="mx-auto text-gray-200 dark:text-gray-800 mb-4" size={64} />
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">All Clear</h3>
-                            <p className="text-gray-500 mt-2">No active missions for the current filter.</p>
-                            <button
-                                onClick={() => { setFilterStatus('All'); setShowAddForm(true); }}
-                                className="mt-6 text-blue-500 font-bold hover:underline"
-                            >
-                                Assign a new task
-                            </button>
-                        </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

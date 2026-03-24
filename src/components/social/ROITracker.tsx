@@ -71,7 +71,7 @@ export const ROITracker = () => {
                         {data.recent_posts.map((post: any) => (
                             <div key={post.id} className="flex gap-4 items-center">
                                 <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                                    <img src={post.thumbnail} className="w-full h-full object-cover" />
+                                    <img src={post.thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-bold text-sm capitalize">{post.platform} • {post.date}</p>

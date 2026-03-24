@@ -99,7 +99,7 @@ export const PlatformPreview = ({ platform, content }: PlatformPreviewProps) => 
 
                     <div className="flex flex-col gap-5 items-center">
                         <div className="w-10 h-10 rounded-full bg-white border border-white p-[1px] mb-2 relative">
-                            <img src="https://ui-avatars.com/api/?name=D+C&background=000&color=fff" className="w-full h-full rounded-full" />
+                            <img src="https://ui-avatars.com/api/?name=D+C&background=000&color=fff" alt="TikTok Profile" className="w-full h-full rounded-full" />
                             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold">+</div>
                         </div>
                         <div className="flex flex-col items-center gap-1">
@@ -135,7 +135,7 @@ export const PlatformPreview = ({ platform, content }: PlatformPreviewProps) => 
         <div className="bg-white dark:bg-[#2C2C2E] border border-gray-200 dark:border-white/10 rounded-xl p-6 max-w-sm mx-auto shadow-lg">
             <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                    <img src="https://ui-avatars.com/api/?name=D+Capital" className="w-full h-full" />
+                    <img src="https://ui-avatars.com/api/?name=D+Capital" alt="Profile avatar" className="w-full h-full" />
                 </div>
                 <div>
                     <p className="font-bold text-sm text-gray-900 dark:text-white">D-Capital Real Estate</p>

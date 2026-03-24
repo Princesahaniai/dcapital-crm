@@ -706,7 +706,7 @@ export const Settings = () => {
                             <button onClick={() => fileInput.current?.click()} className="bg-blue-500 text-white font-medium px-6 py-3 rounded-full flex items-center gap-2 hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20">
                                 <Upload size={18} /> Import
                             </button>
-                            <input type="file" ref={fileInput} className="hidden" accept=".json" onChange={handleImport} />
+                            <input type="file" title="Import Backup JSON" ref={fileInput} className="hidden" accept=".json" onChange={handleImport} />
                         </div>
                     </div>
 

@@ -44,7 +44,7 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ lead }) => {
         const fileExtension = file.name.split('.').pop();
         const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const fileName = `${Date.now()}_${safeName}`;
-        const storageRef = ref(storage, `leads/${lead.id}/documents/${fileName}`);
+        const storageRef = ref(storage, `lead_files/${lead.id}/${fileName}`);
 
         const uploadTask = uploadBytesResumable(storageRef, file);
 

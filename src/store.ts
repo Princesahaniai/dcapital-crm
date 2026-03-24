@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Lead, Property, Task, Activity, User, Notification, MessageTemplate } from './types';
+import type { Lead, Property, Task, Activity, User, MessageTemplate, ImportFile } from './types';
 import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 interface TeamMember extends User {
@@ -48,6 +48,9 @@ interface Store {
     rememberMe: boolean;
     isAuthLoading: boolean;
     passwordResetTokens: Record<string, { token: string; email: string; expires: number }>;
+    
+    importFiles: ImportFile[];
+    isDataLoading: boolean;
 
     // Auth Actions
     login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
@@ -96,6 +99,9 @@ interface Store {
     setNotifications: (notifications: Notification[]) => void;
     addFirestoreNotification: (userId: string, text: string) => void;
     importData: (data: any) => void;
+    addImportFile: (file: ImportFile) => void;
+    deleteBatch: (batchId: string) => Promise<void>;
+    bulkAssignFile: (batchId: string, agentId: string, agentName: string) => Promise<void>;
     resetSystem: () => void;
     resetLeads: () => void;
     resetProperties: () => void;
@@ -141,6 +147,8 @@ export const useStore = create<Store>()(
             notifications: [], // Production: Empty state
             auditLogs: [],
             messageTemplates: [],
+            importFiles: [],
+            isDataLoading: false,
 
             tradingRevenue: 0,
             saasRevenue: 0,
@@ -295,7 +303,7 @@ export const useStore = create<Store>()(
                 }
             },
 
-            resetPasswordRequest: (email) => { return true; },
+            resetPasswordRequest: (_email) => { return true; },
 
             logout: async () => {
                 await signOut(auth);
@@ -606,7 +614,7 @@ export const useStore = create<Store>()(
                         await addDoc(collection(db, 'audit_logs'), {
                             action: 'USER_INVITED',
                             performedBy: get().user?.email || 'system',
-                            performedByUid: get().user?.uid || 'system',
+                            performedByUid: get().user?.id || 'system',
                             targetUserEmail: normalizedEmail,
                             targetUserUid: uid,
                             details: { role: member.role, department: member.department },
@@ -618,7 +626,7 @@ export const useStore = create<Store>()(
 
                     // Update local state
                     set((state) => ({
-                        team: [...state.team, newMember as TeamMember]
+                        team: [...state.team, { ...newMember, id: uid } as unknown as TeamMember]
                     }));
 
                     console.log('[INVITE] ✅ Success! User can login immediately');
@@ -675,7 +683,7 @@ export const useStore = create<Store>()(
                 set({ notifications: [newNotif, ...state.notifications] });
                 // Persist to Firestore
                 if (state.user?.id) {
-                    const payload = { ...newNotif };
+                    const payload: any = { ...newNotif };
                     if (state.user.companyId) payload.companyId = state.user.companyId;
                     setDoc(doc(db, 'notifications', notifId), payload).catch(err => console.error('[SYNC] Notification write failed:', err));
                 }
@@ -1134,6 +1142,48 @@ export const useStore = create<Store>()(
             },
 
             importData: (data) => set({ leads: data.leads, properties: data.properties, tasks: data.tasks, activities: data.activities }),
+
+            addImportFile: (file) => {
+                const cmpId = get().user?.companyId;
+                const fileWithCompany = cmpId ? { ...file, companyId: cmpId } : file;
+                set((s) => ({ importFiles: [fileWithCompany, ...s.importFiles] }));
+                // Persist to Firestore so it's available cross-device
+                if (cmpId) {
+                    setDoc(doc(db, 'importFiles', file.id), fileWithCompany, { merge: true })
+                        .catch(err => console.error('[SYNC] importFile write failed:', err));
+                }
+            },
+            
+            deleteBatch: async (batchId) => {
+                const s = get();
+                const leadsToDelete = s.leads.filter(l => l.fileId === batchId);
+                const batch = writeBatch(db);
+                leadsToDelete.forEach(l => {
+                    batch.delete(doc(db, 'leads', l.id));
+                });
+                await batch.commit();
+                // Also remove the importFiles Firestore record
+                deleteDoc(doc(db, 'importFiles', batchId)).catch(err => console.error('[SYNC] importFile delete failed:', err));
+                set({ 
+                    leads: s.leads.filter(l => l.fileId !== batchId),
+                    importFiles: s.importFiles.filter(f => f.id !== batchId)
+                });
+                get().logAudit('DELETE_BATCH_FILE', undefined, { batchId, leadCount: leadsToDelete.length });
+            },
+            
+            bulkAssignFile: async (batchId, agentId, agentName) => {
+                const s = get();
+                const leadsToUpdate = s.leads.filter(l => l.fileId === batchId);
+                const batch = writeBatch(db);
+                leadsToUpdate.forEach(l => {
+                    batch.update(doc(db, 'leads', l.id), { assignedTo: agentId, assignedName: agentName });
+                });
+                await batch.commit();
+                
+                set({
+                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: agentId, assignedName: agentName } : l)
+                });
+            },
 
             resetSystem: async () => {
                 const cmpId = get().user?.companyId;

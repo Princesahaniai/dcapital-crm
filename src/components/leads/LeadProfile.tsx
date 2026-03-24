@@ -127,6 +127,7 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                 <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{lead.name}</h2>
                                 <div className="relative">
                                     <select
+                                        title="Change Lead Status"
                                         value={lead.status}
                                         onChange={async (e) => {
                                             const newStatus = e.target.value as any;
@@ -180,7 +181,7 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                         <button onClick={onEdit} className="p-3 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors font-bold flex items-center gap-2">
                             <Edit3 size={16} /> Edit
                         </button>
-                        <button onClick={onClose} className="p-3 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-xl text-gray-500 transition-colors">
+                        <button title="Close Lead Profile" onClick={onClose} className="p-3 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-xl text-gray-500 transition-colors">
                             <X size={20} />
                         </button>
                     </div>
@@ -308,6 +309,7 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                                 <div className="flex flex-col gap-2">
                                                     <label className="text-xs font-bold text-gray-500 uppercase">Select Target Property</label>
                                                     <select
+                                                        title="Select Target Property"
                                                         value={lead.propertyId || ''}
                                                         onChange={async (e) => {
                                                             const newPropId = e.target.value;
@@ -405,12 +407,37 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                 )}
 
                                 {activeTab === 'tasks' && (
-                                    <div className="text-center py-20 text-gray-500">
-                                        <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <CheckSquare size={24} />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No tasks yet</h3>
-                                        <p>This module is under construction.</p>
+                                    <div className="space-y-4">
+                                        {leadTasks.length === 0 ? (
+                                            <div className="text-center py-16 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                                <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <CheckSquare size={24} className="text-gray-400" />
+                                                </div>
+                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No tasks for this lead</h3>
+                                                <p className="text-sm text-gray-500">Create a task from the Tasks page linked to this lead.</p>
+                                            </div>
+                                        ) : (
+                                            leadTasks.map(task => {
+                                                const agent = team.find(m => m.id === task.assignedTo);
+                                                return (
+                                                    <div key={task.id} className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl p-5 flex items-center justify-between gap-4">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-bold text-gray-900 dark:text-white truncate">{task.title}</p>
+                                                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                                                <span className="flex items-center gap-1"><Calendar size={12} /> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</span>
+                                                                {agent && <span>→ {agent.name}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                                            task.status === 'Done' ? 'bg-green-500/10 text-green-500' :
+                                                            task.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500' :
+                                                            task.status === 'Overdue' ? 'bg-red-500/10 text-red-500' :
+                                                            'bg-gray-100 dark:bg-white/10 text-gray-500'
+                                                        }`}>{task.status}</span>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 )}
 

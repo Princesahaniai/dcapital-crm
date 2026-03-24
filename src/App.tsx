@@ -13,12 +13,14 @@ import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
 import { SocialStudio } from './pages/SocialStudio';
+import { BatchManager } from './pages/BatchManager';
 
 import { Trash } from './pages/Trash';
 import { MarketIntel } from './pages/MarketIntel';
 import { ClientPortal } from './pages/ClientPortal';
 import { SetPassword } from './pages/SetPassword';
 import { AuthDiagnostic } from './pages/AuthDiagnostic';
+import { GlobalTopBar } from './components/GlobalTopBar';
 import { useStore } from './store';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import toast, { Toaster } from 'react-hot-toast';
@@ -26,6 +28,7 @@ import PWAInstall from './components/PWAInstall';
 import { RegisterAgency } from './pages/RegisterAgency';
 import { SuperAdmin } from './pages/SuperAdmin';
 import { Paywall } from './pages/Paywall';
+import { Billing } from './pages/Billing';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const user = useStore((state) => state.user);
@@ -89,6 +92,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         <div className="flex safe-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white overflow-hidden transition-colors duration-300">
             <Sidebar />
             <div className="flex-1 relative h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-black">
+                <GlobalTopBar />
                 <CommandPalette />
                 <main className="flex-1 overflow-y-auto pb-32 md:pb-6 relative scrollbar-hide">
                     {children}
@@ -104,10 +108,24 @@ import { usePushNotifications } from './hooks/usePushNotifications';
 // ... (in App component)
 
 export default function App() {
-    // Global Auth Listener
+    // Global Auth Listener & Self-Healing Module Loader
     React.useEffect(() => {
         const unsubscribe = useStore.getState().subscribeToAuthChanges();
-        return () => unsubscribe();
+
+        // Detect Vite/Vercel dynamic import failures and force reload
+        const handleRejection = (event: PromiseRejectionEvent) => {
+            if (event.reason?.message?.includes('Failed to fetch dynamically imported module')) {
+                console.warn('Deployment shift detected. Reloading for latest OS version...');
+                // @ts-ignore - true is legacy but effective for forcing server fetch in some envs
+                window.location.reload(true);
+            }
+        };
+
+        window.addEventListener('unhandledrejection', handleRejection);
+        return () => {
+            unsubscribe();
+            window.removeEventListener('unhandledrejection', handleRejection);
+        };
     }, []);
 
     // Real-Time Sync (onSnapshot for leads, tasks, team)
@@ -115,6 +133,49 @@ export default function App() {
 
     // FCM Notification Token Registration
     usePushNotifications();
+
+    // 🔔 Premium Notification Chime
+    const notifications = useStore((state) => state.notifications);
+    const lastNotifCount = React.useRef(notifications.length);
+
+    React.useEffect(() => {
+        if (notifications.length > lastNotifCount.current) {
+            // Play a premium enterprise "Ping" using native oscillators
+            try {
+                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                
+                // High Ping
+                const osc1 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                gain1.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc1.connect(gain1);
+                gain1.connect(audioCtx.destination);
+                osc1.start();
+                osc1.stop(audioCtx.currentTime + 0.5);
+
+                // Lower Harmonizing Ping (Delayed 50ms)
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(1108.73, audioCtx.currentTime); // C#6
+                    gain2.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.start();
+                    osc2.stop(audioCtx.currentTime + 0.3);
+                }, 50);
+
+            } catch (err) {
+                console.warn('Audio alert failed:', err);
+            }
+        }
+        lastNotifCount.current = notifications.length;
+    }, [notifications.length]);
 
     return (
         <>
@@ -126,6 +187,8 @@ export default function App() {
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
+                <Route path="/prospects" element={<ProtectedRoute><Leads isProspectVault={true} /></ProtectedRoute>} />
+                <Route path="/batch-manager" element={<ProtectedRoute><BatchManager /></ProtectedRoute>} />
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
@@ -139,6 +202,7 @@ export default function App() {
                 <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
                 <Route path="/auth-diagnostic" element={<ProtectedRoute><AuthDiagnostic /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
                 <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
                 <Route path="/portal/:collectionId" element={<ClientPortal />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

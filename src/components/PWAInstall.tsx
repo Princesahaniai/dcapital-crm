@@ -57,6 +57,7 @@ export default function PWAInstall() {
                             </div>
                         </div>
                         <button
+                            title="Close Install Prompt"
                             onClick={() => setShowInstall(false)}
                             className="text-gray-400 hover:text-white"
                         >
@@ -76,6 +77,7 @@ export default function PWAInstall() {
             {isIOS && (
                 <div className="bg-gray-900/95 backdrop-blur-md border border-gray-800 rounded-2xl p-4 shadow-2xl mt-4 animate-in slide-in-from-bottom-20 duration-500 relative">
                     <button
+                        title="Close iOS Install Prompt"
                         onClick={() => setIsIOS(false)}
                         className="absolute top-2 right-2 text-gray-400 hover:text-white"
                     >

@@ -59,6 +59,7 @@ export function useRealtimeSync() {
                 if (isFirstSnapshot.current.leads) {
                     leads.forEach(l => knownLeadIds.current.add(l.id));
                     isFirstSnapshot.current.leads = false;
+                    useStore.setState({ isDataLoading: false });
                 } else {
                     snapshot.docChanges().forEach(change => {
                         if (change.type === 'added' && !knownLeadIds.current.has(change.doc.id)) {

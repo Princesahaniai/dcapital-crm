@@ -131,7 +131,7 @@ export const AutoPilot = () => {
                     {news.map((item, idx) => (
                         <div key={idx} className="bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden border border-gray-100 dark:border-white/5 hover:border-blue-500 transition-all cursor-pointer group" onClick={() => handleSelectNews(item)}>
                             <div className="h-48 overflow-hidden relative">
-                                <img src={item.urlToImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img src={item.urlToImage} alt={item.title || "News cover"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 <div className="absolute top-2 left-2 bg-black/50 backdrop-blur px-2 py-1 rounded text-xs font-bold text-white">
                                     {item.source.name}
                                 </div>
@@ -202,7 +202,7 @@ export const AutoPilot = () => {
                 <div className="max-w-4xl mx-auto">
                     <div className="bg-white dark:bg-[#1C1C1E] p-2 rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10">
                         {finalDesign ? (
-                            <img src={finalDesign} className="w-full rounded-2xl" />
+                            <img src={finalDesign} alt="Final Auto-Design Output" className="w-full rounded-2xl" />
                         ) : (
                             <div className="aspect-square bg-gray-100 flex items-center justify-center rounded-2xl">
                                 <RefreshCw className="animate-spin text-gray-400" size={40} />

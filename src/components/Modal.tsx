@@ -58,9 +58,11 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                             </button>
                         </div>
 
-                        {/* Body */}
-                        <div className="max-h-[80vh] overflow-y-auto scrollbar-hide">
-                            {children}
+                        {/* Body — pb-32 ensures Save buttons aren't hidden by mobile browser chrome */}
+                        <div className="max-h-[80vh] overflow-y-auto scrollbar-hide pb-8 md:pb-4">
+                            <div className="mobile-safe-bottom">
+                                {children}
+                            </div>
                         </div>
                     </motion.div>
                 </div>

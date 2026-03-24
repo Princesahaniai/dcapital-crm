@@ -216,7 +216,16 @@ export const generateLeadBrief = async (lead: Lead, assignedAgentName: string) =
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(80, 80, 80);
-    const noteLines = doc.splitTextToSize(lead.notes || 'No notes currently stored for this client.', pageWidth - 80);
+    const notesData = lead.notes;
+    let notesText = 'No notes currently stored for this client.';
+    if (notesData) {
+        if (Array.isArray(notesData) && notesData.length > 0) {
+            notesText = notesData.map((n: any) => typeof n === 'object' && n.text ? n.text : String(n)).join('\n');
+        } else if (typeof notesData === 'string' && notesData.trim() !== '') {
+            notesText = notesData;
+        }
+    }
+    const noteLines = doc.splitTextToSize(notesText, pageWidth - 80);
     doc.text(noteLines, 40, y);
 
     // FOOTER (BRANDING & CONTACT)

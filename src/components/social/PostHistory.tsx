@@ -46,7 +46,7 @@ export const PostHistory = () => {
                                         }`}>{post.status}</span>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button className="text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button title="More Options" className="text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <MoreHorizontal size={16} />
                                     </button>
                                 </td>

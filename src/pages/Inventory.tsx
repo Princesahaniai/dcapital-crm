@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/Pagination';
 import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link, Map, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -12,7 +14,7 @@ import { PropertyMap } from '../components/PropertyMap';
 import { generatePropertyBrochure } from '../utils/pdfGenerator';
 
 export const Inventory = () => {
-    const { properties, addProperty, updateProperty, deleteProperty, user } = useStore();
+    const { isDataLoading, properties, addProperty, updateProperty, deleteProperty, user } = useStore();
     const [search, setSearch] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'table' | 'map'>('grid');
     const [filterDev, setFilterDev] = useState('All');
@@ -55,6 +57,7 @@ export const Inventory = () => {
         sqft: 0
     };
     const [form, setForm] = useState<Partial<Property>>(initialForm);
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
     const [imagePreview, setImagePreview] = useState('');
 
     // Seed Data if Empty
@@ -140,10 +143,26 @@ export const Inventory = () => {
             return (b.createdAt || 0) - (a.createdAt || 0);
         });
 
+    // Paginate properties — 18 per page
+    const {
+        currentItems: paginatedProps,
+        currentPage, totalPages, totalItems, startIndex, endIndex,
+        goToPage, nextPage, prevPage
+    } = usePagination(filteredProps, 18);
+
     // CRUD Handlers
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.name || !form.price) return toast.error('Property name and price are required');
+
+        const errors: Record<string, boolean> = {};
+        if (!form.name?.trim()) { errors.name = true; toast.error('Property Name is strictly required'); }
+        if (!form.price || form.price <= 0) { errors.price = true; toast.error('A decidedly valid Price is strictly required'); }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            return;
+        }
+        setFormErrors({});
 
         // Ensure image has a value or default
         const finalImageUrl = form.imageUrl || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b91d?auto=format&fit=crop&q=80';
@@ -382,193 +401,215 @@ export const Inventory = () => {
             )}
 
             {/* MAP VIEW */}
-            {viewMode === 'map' && filteredProps.length > 0 && (
-                <div className="mb-8">
-                    <PropertyMap properties={filteredProps} />
-                </div>
-            )}
-
-            {/* GRID VIEW */}
-            {viewMode === 'grid' && filteredProps.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProps.map(p => (
-                        <motion.div
-                            key={p.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="group bg-[#1C1C1E] apple-glass border border-white/5 rounded-3xl overflow-hidden hover:border-amber-500/30 transition-all relative shadow-xl hover:shadow-2xl hover:shadow-amber-500/10"
-                        >
-                            <div className="h-64 relative overflow-hidden">
-                                <img
-                                    src={p.imageUrl}
-                                    alt={p.name}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                <div className={`absolute top-4 left-4 ${getDeveloperBadge(p.developer)} text-xs font-bold px-3 py-1.5 rounded-full shadow-lg`}>
-                                    {p.developer}
-                                </div>
-                                <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg ${p.status === 'Available' ? 'bg-green-500 text-black' :
-                                    p.status === 'Sold' ? 'bg-red-500 text-white' :
-                                        'bg-amber-500 text-black'
-                                    }`}>
-                                    {p.status}
-                                </div>
-                                <button
-                                    onClick={() => toggleCompare(p.id)}
-                                    title="Compare Property"
-                                    className={`absolute bottom-4 right-4 p-2.5 rounded-full backdrop-blur-md transition-all shadow-lg ${compareList.includes(p.id)
-                                        ? 'bg-amber-500 text-black scale-110'
-                                        : 'bg-black/50 text-white hover:bg-white hover:text-black'
-                                        }`}
-                                >
-                                    <BarChart2 size={16} />
-                                </button>
+            {isDataLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 mt-6">
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <div key={n} className="bg-[#1C1C1E] apple-glass border border-white/5 rounded-3xl overflow-hidden animate-pulse h-[400px]">
+                            <div className="h-64 bg-gray-200 dark:bg-white/10" />
+                            <div className="p-6 space-y-4">
+                                <div className="h-6 bg-gray-200 dark:bg-white/10 rounded w-3/4" />
+                                <div className="h-8 bg-gray-200 dark:bg-white/10 rounded w-1/2" />
                             </div>
-                            <div className="p-6">
-                                <div className="mb-3">
-                                    <h3 className="text-xl font-bold text-white mb-1 line-clamp-1">{p.name}</h3>
-                                    <p className="text-2xl font-mono font-bold bg-gradient-to-r from-amber-400 to-yellow-600 bg-clip-text text-transparent">
-                                        AED {(p.price || 0).toLocaleString()}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-gray-400 text-sm mb-4">
-                                    <MapPin size={14} className="text-amber-500" /> {p.location}
-                                </div>
-                                <div className="grid grid-cols-3 gap-3 py-4 border-t border-white/10">
-                                    <div className="flex flex-col items-center gap-1.5">
-                                        <BedDouble size={18} className="text-amber-500" />
-                                        <span className="text-xs text-gray-300 font-medium">{p.bedrooms} Beds</span>
-                                    </div>
-                                    <div className="flex flex-col items-center gap-1.5">
-                                        <Bath size={18} className="text-amber-500" />
-                                        <span className="text-xs text-gray-300 font-medium">{p.bathrooms} Baths</span>
-                                    </div>
-                                    <div className="flex flex-col items-center gap-1.5">
-                                        <Square size={18} className="text-amber-500" />
-                                        <span className="text-xs text-gray-300 font-medium">{(p.sqft || 0).toLocaleString()} sqft</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 mt-4">
-                                    <button
-                                        onClick={() => {
-                                            toast.success('Generating Brochure...');
-                                            generatePropertyBrochure(p, user?.name || 'Agent');
-                                        }}
-                                        title="Download PDF Brochure"
-                                        className="px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all border border-blue-500/20"
-                                    >
-                                        <FileText size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => openEdit(p)}
-                                        title="Edit Property"
-                                        className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-all border border-white/10"
-                                    >
-                                        <Edit size={14} className="inline mr-1" /> Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(p.id)}
-                                        title="Delete Property"
-                                        className="px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
-            )}
+            ) : (
+                <>
+                    {viewMode === 'map' && filteredProps.length > 0 && (
+                        <div className="mb-8">
+                            <PropertyMap properties={filteredProps} />
+                        </div>
+                    )}
 
-            {/* TABLE VIEW */}
-            {viewMode === 'table' && filteredProps.length > 0 && (
-                <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm">
-                    <table className="w-full text-left min-w-[1000px]">
-                        <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold">
-                            <tr>
-                                <th className="p-6">Property</th>
-                                <th className="p-6">Developer</th>
-                                <th className="p-6">Type</th>
-                                <th className="p-6">Price</th>
-                                <th className="p-6">Status</th>
-                                <th className="p-6">Features</th>
-                                <th className="p-6 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {filteredProps.map(p => (
-                                <tr key={p.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="p-6">
-                                        <div className="flex items-center gap-4">
-                                            <img src={p.imageUrl} className="w-16 h-16 rounded-xl object-cover shadow-lg" alt={p.name} />
-                                            <div>
-                                                <p className="font-bold text-white">{p.name}</p>
-                                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                                    <MapPin size={12} /> {p.location}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-6">
-                                        <span className={`${getDeveloperBadge(p.developer)} text-xs font-bold px-3 py-1 rounded-full`}>
+                    {/* GRID VIEW */}
+                    {viewMode === 'grid' && filteredProps.length > 0 && (
+                        <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {paginatedProps.map(p => (
+                                <motion.div
+                                    key={p.id}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="group bg-[#1C1C1E] apple-glass border border-white/5 rounded-3xl overflow-hidden hover:border-amber-500/30 transition-all relative shadow-xl hover:shadow-2xl hover:shadow-amber-500/10"
+                                >
+                                    <div className="h-64 relative overflow-hidden">
+                                        <img
+                                            src={p.imageUrl}
+                                            alt={p.name}
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                        <div className={`absolute top-4 left-4 ${getDeveloperBadge(p.developer)} text-xs font-bold px-3 py-1.5 rounded-full shadow-lg`}>
                                             {p.developer}
-                                        </span>
-                                    </td>
-                                    <td className="p-6 text-gray-300 font-medium">{p.type}</td>
-                                    <td className="p-6 text-amber-500 font-mono font-bold">AED {(p.price || 0).toLocaleString()}</td>
-                                    <td className="p-6">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.status === 'Available' ? 'bg-green-500/20 text-green-400' :
-                                            p.status === 'Sold' ? 'bg-red-500/20 text-red-400' :
-                                                'bg-amber-500/20 text-amber-400'
+                                        </div>
+                                        <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg ${p.status === 'Available' ? 'bg-green-500 text-black' :
+                                            p.status === 'Sold' ? 'bg-red-500 text-white' :
+                                                'bg-amber-500 text-black'
                                             }`}>
                                             {p.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-6 text-gray-400 text-sm">
-                                        {p.bedrooms} Bed · {p.bathrooms} Bath · {(p.sqft || 0).toLocaleString()} sqft
-                                    </td>
-                                    <td className="p-6 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                onClick={() => toggleCompare(p.id)}
-                                                title="Compare Property"
-                                                className={`p-2 rounded-lg transition-all ${compareList.includes(p.id) ? 'text-amber-500 bg-amber-500/10' : 'text-gray-500 hover:bg-white/5'
-                                                    }`}
-                                            >
-                                                <BarChart2 size={16} />
-                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => toggleCompare(p.id)}
+                                            title="Compare Property"
+                                            className={`absolute bottom-4 right-4 p-2.5 rounded-full backdrop-blur-md transition-all shadow-lg ${compareList.includes(p.id)
+                                                ? 'bg-amber-500 text-black scale-110'
+                                                : 'bg-black/50 text-white hover:bg-white hover:text-black'
+                                                }`}
+                                        >
+                                            <BarChart2 size={16} />
+                                        </button>
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="mb-3">
+                                            <h3 className="text-xl font-bold text-white mb-1 line-clamp-1">{p.name}</h3>
+                                            <p className="text-2xl font-mono font-bold bg-gradient-to-r from-amber-400 to-yellow-600 bg-clip-text text-transparent">
+                                                AED {(p.price || 0).toLocaleString()}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-gray-400 text-sm mb-4">
+                                            <MapPin size={14} className="text-amber-500" /> {p.location}
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3 py-4 border-t border-white/10">
+                                            <div className="flex flex-col items-center gap-1.5">
+                                                <BedDouble size={18} className="text-amber-500" />
+                                                <span className="text-xs text-gray-300 font-medium">{p.bedrooms} Beds</span>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-1.5">
+                                                <Bath size={18} className="text-amber-500" />
+                                                <span className="text-xs text-gray-300 font-medium">{p.bathrooms} Baths</span>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-1.5">
+                                                <Square size={18} className="text-amber-500" />
+                                                <span className="text-xs text-gray-300 font-medium">{(p.sqft || 0).toLocaleString()} sqft</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 mt-4">
                                             <button
                                                 onClick={() => {
                                                     toast.success('Generating Brochure...');
                                                     generatePropertyBrochure(p, user?.name || 'Agent');
                                                 }}
                                                 title="Download PDF Brochure"
-                                                className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"
+                                                className="px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all border border-blue-500/20"
                                             >
                                                 <FileText size={16} />
                                             </button>
                                             <button
                                                 onClick={() => openEdit(p)}
                                                 title="Edit Property"
-                                                className="p-2 rounded-lg text-gray-300 hover:bg-white/10 transition-all"
+                                                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-all border border-white/10"
                                             >
-                                                <Edit size={16} />
+                                                <Edit size={14} className="inline mr-1" /> Edit
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(p.id)}
                                                 title="Delete Property"
-                                                className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-all"
+                                                className="px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </motion.div>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
+                        </div>
+                        <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} startIndex={startIndex} endIndex={endIndex} onPageChange={goToPage} onNext={nextPage} onPrev={prevPage} />
+                        </>
+                    )}
+
+                    {/* TABLE VIEW */}
+                    {viewMode === 'table' && filteredProps.length > 0 && (
+                        <>
+                        <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm">
+                            <table className="w-full text-left min-w-[1000px]">
+                                <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold">
+                                    <tr>
+                                        <th className="p-6">Property</th>
+                                        <th className="p-6">Developer</th>
+                                        <th className="p-6">Type</th>
+                                        <th className="p-6">Price</th>
+                                        <th className="p-6">Status</th>
+                                        <th className="p-6">Features</th>
+                                        <th className="p-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {paginatedProps.map(p => (
+                                        <tr key={p.id} className="hover:bg-white/5 transition-colors">
+                                            <td className="p-6">
+                                                <div className="flex items-center gap-4">
+                                                    <img src={p.imageUrl} className="w-16 h-16 rounded-xl object-cover shadow-lg" alt={p.name} />
+                                                    <div>
+                                                        <p className="font-bold text-white">{p.name}</p>
+                                                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                                            <MapPin size={12} /> {p.location}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <span className={`${getDeveloperBadge(p.developer)} text-xs font-bold px-3 py-1 rounded-full`}>
+                                                    {p.developer}
+                                                </span>
+                                            </td>
+                                            <td className="p-6 text-gray-300 font-medium">{p.type}</td>
+                                            <td className="p-6 text-amber-500 font-mono font-bold">AED {(p.price || 0).toLocaleString()}</td>
+                                            <td className="p-6">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.status === 'Available' ? 'bg-green-500/20 text-green-400' :
+                                                    p.status === 'Sold' ? 'bg-red-500/20 text-red-400' :
+                                                        'bg-amber-500/20 text-amber-400'
+                                                    }`}>
+                                                    {p.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-6 text-gray-400 text-sm">
+                                                {p.bedrooms} Bed · {p.bathrooms} Bath · {(p.sqft || 0).toLocaleString()} sqft
+                                            </td>
+                                            <td className="p-6 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => toggleCompare(p.id)}
+                                                        title="Compare Property"
+                                                        className={`p-2 rounded-lg transition-all ${compareList.includes(p.id) ? 'text-amber-500 bg-amber-500/10' : 'text-gray-500 hover:bg-white/5'
+                                                            }`}
+                                                    >
+                                                        <BarChart2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            toast.success('Generating Brochure...');
+                                                            generatePropertyBrochure(p, user?.name || 'Agent');
+                                                        }}
+                                                        title="Download PDF Brochure"
+                                                        className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"
+                                                    >
+                                                        <FileText size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEdit(p)}
+                                                        title="Edit Property"
+                                                        className="p-2 rounded-lg text-gray-300 hover:bg-white/10 transition-all"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(p.id)}
+                                                        title="Delete Property"
+                                                        className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-all"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} startIndex={startIndex} endIndex={endIndex} onPageChange={goToPage} onNext={nextPage} onPrev={prevPage} />
+                        </>
+                    )}
+                </>
             )}
             <Modal
                 isOpen={showCompare}
@@ -638,8 +679,7 @@ export const Inventory = () => {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Property Name</label>
                             <input
-                                required
-                                className="w-full border border-gray-200 dark:border-white/10 rounded-xl p-4 outline-none focus:border-amber-500 transition-all font-sans"
+                                className={`w-full border ${formErrors.name ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-amber-500'} rounded-xl p-4 outline-none transition-all font-sans bg-gray-50 dark:bg-black/50 text-gray-900 dark:text-white`}
                                 value={form.name}
                                 onChange={e => setForm({ ...form, name: e.target.value })}
                                 placeholder="e.g. Penthouse 88"
@@ -664,10 +704,9 @@ export const Inventory = () => {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Price (AED)</label>
                             <input
-                                required
                                 title="Price in AED"
                                 type="number"
-                                className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-amber-500 transition-all font-sans"
+                                className={`w-full bg-gray-50 dark:bg-black/50 border ${formErrors.price ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-amber-500'} rounded-xl p-4 text-gray-900 dark:text-white outline-none transition-all font-sans`}
                                 value={form.price}
                                 onChange={e => setForm({ ...form, price: Number(e.target.value) })}
                             />

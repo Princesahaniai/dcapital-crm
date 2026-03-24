@@ -1,4 +1,3 @@
-import React from 'react';
 import { useStore } from '../store';
 import { Info, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

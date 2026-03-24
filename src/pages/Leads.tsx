@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
-import { Phone, Plus, Search, Trash2, Edit, FileDown, Upload, Download, Mail, Calendar, LayoutGrid, List } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/Pagination';
+import { Phone, Plus, Search, Trash2, Edit, FileDown, Upload, Download, Mail, Calendar, LayoutGrid, List, Clock, FolderOpen, X, Users, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
@@ -12,16 +14,18 @@ import { Modal } from '../components/Modal';
 import { LeadCard } from '../components/leads/LeadCard';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
-import { sendWhatsAppMessage } from '../utils/whatsappAPI';
-import type { Lead, GlobalSettings } from '../types';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { parseCSV, validateLead, transformRow } from '../utils/csvHelpers';
+import * as XLSX from 'xlsx';
+import type { Lead, GlobalSettings } from '../types';
+import { sendWhatsAppMessage, randomDelay } from '../utils/whatsappAPI';
 
-export const Leads = () => {
-    const { leads, team, addLead, addBulkLeads, updateLead, deleteLead, user, logAudit } = useStore();
+export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }) => {
+    const { isDataLoading, leads, team, addLead, addBulkLeads, addImportFile, updateLead, deleteLead, user, logAudit, importFiles, deleteBatch, bulkAssignFile } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
-    const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'board' | 'batch'>('list');
 
     // Initial Form State
     const initialForm: Partial<Lead> = {
@@ -37,6 +41,7 @@ export const Leads = () => {
         notes: ''
     };
     const [form, setForm] = useState(initialForm);
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -48,9 +53,17 @@ export const Leads = () => {
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
     const [broadcastTemplate, setBroadcastTemplate] = useState('new_project_launch');
 
+    // Import Management
+    const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+    const [importCategory, setImportCategory] = useState<'lead' | 'prospect'>(isProspectVault ? 'prospect' : 'lead');
+
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Viewing', 'Negotiation', 'Closed', 'Lost'];
 
     const [showTrash, setShowTrash] = useState(false);
+    const [showRecentOnly, setShowRecentOnly] = useState(false);
+    const [selectedFileForAssign, setSelectedFileForAssign] = useState<string | null>(null);
+    const [assignTarget, setAssignTarget] = useState('');
+    const [isDeletingBatch, setIsDeletingBatch] = useState<string | null>(null);
 
     const accessibleLeads = useMemo(() => getVisibleLeads(user, leads, team), [user, leads, team]);
 
@@ -67,7 +80,16 @@ export const Leads = () => {
         if (showTrash) {
             return lead.status === 'Trash';
         }
-        if (lead.status === 'Trash') return false; // Hide trash by default
+        if (isProspectVault) {
+            if (lead.status === 'Trash' || lead.category !== 'prospect') return false; // Show only active prospects
+        } else {
+            if (lead.status === 'Trash' || lead.category === 'prospect') return false; // Hide trash and prospects by default
+        }
+
+        if (showRecentOnly) {
+            const latestFileId = importFiles[0]?.id;
+            if (!latestFileId || lead.fileId !== latestFileId) return false;
+        }
 
         const matchesSearch = (lead.name || '').toLowerCase().includes((search || '').toLowerCase()) ||
             (lead.email || '').toLowerCase().includes((search || '').toLowerCase()) ||
@@ -76,14 +98,28 @@ export const Leads = () => {
         return matchesSearch && matchesStatus;
     });
 
+    // Paginate leads — 24 per page to prevent crashes on large datasets
+    const {
+        currentItems: paginatedLeads,
+        currentPage, totalPages, totalItems, startIndex, endIndex,
+        goToPage, nextPage, prevPage
+    } = usePagination(filteredLeads, 24);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         // Strict Validation
-        if (!form.name?.trim()) return toast.error('Lead Name is strictly required');
-        if (!form.phone?.trim() || form.phone.length < 8) return toast.error('A strictly valid Contact Phone is required');
-        if (!form.budget || form.budget <= 0) return toast.error('Mission Budget must be greater than 0');
-        if (!form.status) return toast.error('Pipeline State is required');
+        const errors: Record<string, boolean> = {};
+        if (!form.name?.trim()) { errors.name = true; toast.error('Lead Name is strictly required'); }
+        if (!form.phone?.trim() || form.phone.length < 8) { errors.phone = true; toast.error('A strictly valid Contact Phone is required'); }
+        if (!form.budget || form.budget <= 0) { errors.budget = true; toast.error('Mission Budget must be greater than 0'); }
+        if (!form.status) { errors.status = true; toast.error('Pipeline State is required'); }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            return;
+        }
+        setFormErrors({});
 
         if (isEditing && form.id) {
             updateLead(form.id, form);
@@ -133,17 +169,40 @@ export const Leads = () => {
         return agent ? agent.name : 'Unknown';
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setPendingImportFile(file);
+        setImportCategory(isProspectVault ? 'prospect' : 'lead');
+        e.target.value = ''; // Reset input
+    };
+
+    const processImport = async () => {
+        if (!pendingImportFile) return;
+        const file = pendingImportFile;
 
         setImporting(true);
+        setPendingImportFile(null);
         try {
-            const { parseCSV, validateLead } = await import('../utils/csvHelpers');
-            const { data, errors } = await parseCSV(file);
-
-            if (errors.length > 0) {
-                toast.error(`CSV Error: ${errors[0].message}`);
+            let data: any[] = [];
+            
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                const reader = new FileReader();
+                const fileData = await new Promise<ArrayBuffer>((resolve, reject) => {
+                    reader.onload = (e) => resolve(e.target?.result as ArrayBuffer);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                const workbook = XLSX.read(fileData);
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rawData = XLSX.utils.sheet_to_json(worksheet);
+                data = (rawData as Record<string, any>[]).map(transformRow);
+            } else {
+                const { data: csvData, errors } = await parseCSV(file);
+                if (errors.length > 0) {
+                    toast.error(`CSV Error: ${errors[0].message}`);
+                }
+                data = csvData;
             }
 
             const validLeads: Lead[] = [];
@@ -168,7 +227,10 @@ export const Leads = () => {
                         updatedAt: Date.now(),
                         lastContact: Date.now(),
                         commission: 0,
-                        commissionPaid: false
+                        commissionPaid: false,
+                        category: importCategory,
+                        fileId: '', // placeholder, will be updated shortly
+                        fileName: file.name
                     });
                 } else {
                     validationErrors++;
@@ -176,8 +238,24 @@ export const Leads = () => {
             });
 
             if (validLeads.length > 0) {
-                addBulkLeads(validLeads);
-                toast.success(`Imported ${validLeads.length} leads successfully!`);
+                const fileRecordId = Math.random().toString(36).substr(2, 9);
+                
+                // Track the file in the store
+                await addImportFile({
+                    id: fileRecordId,
+                    name: file.name,
+                    uploadDate: Date.now(),
+                    leadCount: validLeads.length,
+                    category: importCategory
+                });
+
+                // Attach fileId to all valid leads
+                const stampedLeads = validLeads.map(l => ({ ...l, fileId: fileRecordId }));
+
+                const result = await addBulkLeads(stampedLeads);
+                if (result.success > 0) {
+                    toast.success(`Imported ${result.success} leads successfully!`);
+                }
                 if (validationErrors > 0) {
                     toast.error(`${validationErrors} rows failed validation`);
                 }
@@ -185,11 +263,9 @@ export const Leads = () => {
                 toast.error('No valid leads found in file');
             }
 
-        } catch (error) {
-            toast.error('Failed to import CSV');
-        } finally {
+        } catch (error: any) {
+            toast.error('Import Failed: ' + (error.message || JSON.stringify(error)));
             setImporting(false);
-            e.target.value = '';
         }
     };
 
@@ -240,7 +316,7 @@ export const Leads = () => {
                 return;
             }
 
-            const confirmMsg = `Broadcast template '${broadcastTemplate}' to ${targetsWithPhones.length} leads safely?\n\nThis uses the Official API with a 2-second rate limit delay between each message.`;
+            const confirmMsg = `Broadcast template '${broadcastTemplate}' to ${targetsWithPhones.length} leads safely?\n\nThis uses the Official API with a RANDOM delay (5-12s) between each message to prevent number blocking. Expected time: ~${Math.round((targetsWithPhones.length * 8.5) / 60)} minutes.`;
             if (!confirm(confirmMsg)) {
                 toast.dismiss(loadingToastId);
                 setIsBroadcasting(false);
@@ -274,6 +350,7 @@ export const Leads = () => {
 
                 try {
                     await updateDoc(doc(db, 'leads', lead.id), {
+                        waStatus: result.success ? 'Sent' : 'Failed',
                         notes: arrayUnion({
                             text: systemNoteText,
                             author: 'System',
@@ -284,9 +361,9 @@ export const Leads = () => {
                     console.error('Failed to update lead timeline:', noteErr);
                 }
 
-                // Rate limiting specific to Meta policies
+                // Mimic human behavior with random delay
                 if (i < targetsWithPhones.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await randomDelay(5, 12);
                 }
             }
 
@@ -317,7 +394,7 @@ export const Leads = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
-                        LEADS <span className="text-blue-500 text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 bg-blue-500/10 rounded-full">Pipeline</span>
+                        {isProspectVault ? 'PROSPECTS' : 'LEADS'} <span className={`text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 rounded-full ${isProspectVault ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>{isProspectVault ? 'Vault' : 'Pipeline'}</span>
                     </h1>
                 </motion.div>
                 <div className="flex gap-2 flex-wrap">
@@ -345,28 +422,39 @@ export const Leads = () => {
                         <Download size={18} /> Export
                     </button>
                     <label className="bg-white dark:bg-[#1C1C1E] border border-gray-300 dark:border-white/20 text-gray-700 dark:text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-white/10 transition-all cursor-pointer">
-                        <Upload size={18} /> {importing ? 'Importing...' : 'Import CSV'}
-                        <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" disabled={importing} title="Upload CSV" />
+                        <Upload size={18} /> {importing ? 'Importing...' : 'Import Leads'}
+                        <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="hidden" disabled={importing} title="Upload Spreadsheet" />
                     </label>
                     <button onClick={openNew} className="bg-blue-500 dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 dark:hover:bg-gray-200 transition-all shadow-lg shadow-blue-500/20">
                         <Plus size={18} /> Add Lead
                     </button>
-                    <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                            title="List View"
-                        >
-                            <List size={18} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('board')}
-                            className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                            title="Board View"
-                        >
-                            <LayoutGrid size={18} />
-                        </button>
-                    </div>
+                    {!isProspectVault && (
+                        <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1">
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                title="List View"
+                            >
+                                <List size={18} />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('board')}
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                title="Board View"
+                            >
+                                <LayoutGrid size={18} />
+                            </button>
+                            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                <button
+                                    onClick={() => setViewMode('batch')}
+                                    className={`p-2.5 rounded-lg transition-all ${viewMode === 'batch' ? 'bg-blue-500 shadow-sm text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                    title="Batch Control"
+                                >
+                                    <FolderOpen size={18} />
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -386,6 +474,19 @@ export const Leads = () => {
                 </div>
 
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button
+                        onClick={() => setShowRecentOnly(!showRecentOnly)}
+                        className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${showRecentOnly ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/20'}`}
+                        title="Show Recent Uploads"
+                    >
+                        <Clock size={16} /> Recently Uploaded
+                        {showRecentOnly && importFiles[0] && (
+                            <span className="ml-1 max-w-[120px] truncate text-[10px] font-bold opacity-80 border border-white/30 px-2 py-0.5 rounded-full">
+                                {importFiles[0].name}
+                            </span>
+                        )}
+                    </button>
+                    <div className="w-px h-8 bg-gray-300 dark:bg-white/10 mx-2 self-center shrink-0"></div>
                     {statusTabs.map(tab => (
                         <button
                             key={tab}
@@ -401,87 +502,234 @@ export const Leads = () => {
                 </div>
             </div>
 
-            {/* KANBAN BOARD VIEW */}
-            {viewMode === 'board' && !showTrash && (
-                <KanbanBoard
-                    leads={filteredLeads}
-                    teamMap={teamMap}
-                    onSelectLead={(lead) => setSelectedLead(lead)}
-                    onMoveStage={(leadId, newStatus) => {
-                        updateLead(leadId, { status: newStatus });
-                        toast.success(`Lead moved to ${newStatus}`);
-                    }}
-                />
-            )}
-
-            {/* RESPONSIVE GRID VIEW (List Mode) */}
-            {(viewMode === 'list' || showTrash) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                    <AnimatePresence>
-                        {filteredLeads.map(lead => (
-                            <div key={lead.id}>
-                                {/* Mobile Optimized View */}
-                                <div className="md:hidden">
-                                    <motion.div
-                                        key={lead.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
-                                        onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                    >
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
-                                                <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                                                lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-                                                    lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-                                                        'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
-                                                }`}>
-                                                {lead.status}
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
-                                            </div>
-                                            <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
-                                                        {getAgentName(lead.assignedTo).charAt(0)}
-                                                    </div>
-                                                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
-                                            <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
-                                            <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                                                <Phone size={16} /> Call
-                                            </a>
-                                        </div>
-                                    </motion.div>
-                                </div>
-
-                                {/* Desktop Card View */}
-                                <div className="hidden md:block">
-                                    <LeadCard
-                                        lead={lead}
-                                        onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                        onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
-                                        onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
-                                        agentName={getAgentName(lead.assignedTo)}
-                                    />
-                                </div>
+            {isDataLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20 mt-6 px-4 md:px-0">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                        <div key={n} className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl border border-gray-100 dark:border-white/5 h-48 animate-pulse">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="bg-gray-200 dark:bg-white/10 h-6 w-1/2 rounded-xl"></div>
+                                <div className="bg-gray-200 dark:bg-white/10 h-6 w-1/4 rounded-xl"></div>
                             </div>
-                        ))}
-                    </AnimatePresence>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="bg-gray-100 dark:bg-black/20 h-10 rounded-2xl"></div>
+                                <div className="bg-gray-100 dark:bg-black/20 h-10 rounded-2xl"></div>
+                            </div>
+                            <div className="bg-gray-200 dark:bg-white/10 h-10 w-full rounded-xl mt-auto"></div>
+                        </div>
+                    ))}
                 </div>
+            ) : (
+                <>
+                    {/* BATCH CONTROL VIEW */}
+                    {viewMode === 'batch' && (
+                        <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm">
+                            <div className="p-6 border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-black/20 text-gray-900 dark:text-white">
+                                <h2 className="text-xl font-black flex items-center gap-2">
+                                    <FolderOpen className="text-blue-500" /> Batch Control
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">Manage, assign, or delete entire uploaded files instantly.</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">
+                                            <th className="p-4 pl-6">File Name</th>
+                                            <th className="p-4">Upload Date</th>
+                                            <th className="p-4">Lead Count</th>
+                                            <th className="p-4 pr-6 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {importFiles.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="p-8 text-center text-gray-500">
+                                                    <AlertTriangle className="mx-auto mb-2 text-gray-400" size={32} />
+                                                    <p className="font-bold">No file history found.</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            importFiles.map(file => (
+                                                <tr key={file.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                                                    <td className="p-4 pl-6">
+                                                        <p className="font-bold text-gray-900 dark:text-white truncate max-w-[200px] md:max-w-xs">{file.name}</p>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <p className="text-sm text-gray-500">{new Date(file.uploadDate).toLocaleString()}</p>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full">
+                                                            {file.leadCount} leads
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 pr-6">
+                                                        {selectedFileForAssign === file.id ? (
+                                                            <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2 animate-fade-in">
+                                                                <select
+                                                                    title="Select Agent"
+                                                                    className="w-full sm:w-auto bg-white dark:bg-black border border-blue-200 dark:border-blue-500/30 rounded-lg p-2 text-sm text-gray-900 dark:text-white outline-none"
+                                                                    value={assignTarget}
+                                                                    onChange={e => setAssignTarget(e.target.value)}
+                                                                >
+                                                                    <option value="">Choose Agent...</option>
+                                                                    {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                                                </select>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (!assignTarget) return toast.error('Select an agent');
+                                                                            const agentName = team.find(m => m.id === assignTarget)?.name || 'Unknown';
+                                                                            bulkAssignFile(file.id, assignTarget, agentName);
+                                                                            toast.success(`✅ ${file.leadCount} leads assigned to ${agentName}`);
+                                                                            setSelectedFileForAssign(null);
+                                                                            setAssignTarget('');
+                                                                        }}
+                                                                        className="bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+                                                                    >
+                                                                        Confirm
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { setSelectedFileForAssign(null); setAssignTarget(''); }}
+                                                                        className="bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 text-gray-700 dark:text-gray-300 text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => { setSelectedFileForAssign(file.id); setAssignTarget(''); }}
+                                                                    className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                                                    disabled={file.leadCount === 0}
+                                                                >
+                                                                    <Users size={14} /> Assign File
+                                                                </button>
+                                                                <button
+                                                                    disabled={isDeletingBatch === file.id || file.leadCount === 0}
+                                                                    onClick={async () => {
+                                                                        if (!confirm(`⚠️ CRITICAL WARNING\n\nPermanently delete ALL ${file.leadCount} leads from "${file.name}"?\n\nThis CANNOT be undone.`)) return;
+                                                                        setIsDeletingBatch(file.id);
+                                                                        try {
+                                                                            await deleteBatch(file.id);
+                                                                            toast.success(`🗑️ "${file.name}" and ${file.leadCount} leads permanently deleted.`);
+                                                                        } catch {
+                                                                            toast.error('Delete failed. Please try again.');
+                                                                        } finally {
+                                                                            setIsDeletingBatch(null);
+                                                                        }
+                                                                    }}
+                                                                    className="bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                    {isDeletingBatch === file.id ? 'Deleting...' : 'Delete File'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* KANBAN BOARD VIEW */}
+                    {viewMode === 'board' && !showTrash && (
+                        <KanbanBoard
+                            leads={filteredLeads}
+                            teamMap={teamMap}
+                            onSelectLead={(lead) => setSelectedLead(lead)}
+                            onMoveStage={(leadId, newStatus) => {
+                                updateLead(leadId, { status: newStatus });
+                                toast.success(`Lead moved to ${newStatus}`);
+                            }}
+                        />
+                    )}
+
+                    {/* RESPONSIVE GRID VIEW (List Mode) */}
+                    {(viewMode === 'list' || showTrash) && (
+                        <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-4">
+                            <AnimatePresence>
+                                {paginatedLeads.map(lead => (
+                                    <div key={lead.id}>
+                                        {/* Mobile Optimized View */}
+                                        <div className="md:hidden">
+                                            <motion.div
+                                                key={lead.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
+                                                onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                            >
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
+                                                        <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
+                                                        lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                                            lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+                                                                'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
+                                                        }`}>
+                                                        {lead.status}
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                                    <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
+                                                        <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
+                                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+                                                                {getAgentName(lead.assignedTo).charAt(0)}
+                                                            </div>
+                                                            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
+                                                    <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
+                                                    <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                                                        <Phone size={16} /> Call
+                                                    </a>
+                                                </div>
+                                            </motion.div>
+                                        </div>
+
+                                        {/* Desktop Card View */}
+                                        <div className="hidden md:block">
+                                            <LeadCard
+                                                lead={lead}
+                                                onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                                onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
+                                                onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
+                                                agentName={getAgentName(lead.assignedTo)}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </AnimatePresence>
+                        </div>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={totalItems}
+                            startIndex={startIndex}
+                            endIndex={endIndex}
+                            onPageChange={goToPage}
+                            onNext={nextPage}
+                            onPrev={prevPage}
+                        />
+                        </>
+                    )}
+                </>
             )}
             <AnimatePresence>
                 {selectedLead && !isEditing && !isMeetingModalOpen && !isEmailModalOpen && (
@@ -514,15 +762,15 @@ export const Leads = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Full Name</label>
-                            <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mission Target Name" title="Name" />
+                            <input className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.name ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mission Target Name" title="Name" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Contact Phone</label>
-                            <input className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+971..." title="Phone" />
+                            <input className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.phone ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+971..." title="Phone" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Current Value (AED)</label>
-                            <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} placeholder="Target Value" title="Budget" />
+                            <input type="number" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.budget ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} placeholder="Target Value" title="Budget" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Max Budget (AED)</label>
@@ -545,7 +793,7 @@ export const Leads = () => {
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Pipeline State</label>
-                            <select title="Status" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}>
+                            <select title="Status" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.status ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}>
                                 {statusTabs.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
@@ -613,6 +861,53 @@ export const Leads = () => {
                         >
                             <MessageSquareShare size={20} />
                             {isBroadcasting ? 'Broadcasting...' : 'Launch WhatsApp Broadcast'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* IMPORT CONFIGURATION MODAL */}
+            <Modal isOpen={!!pendingImportFile} onClose={() => setPendingImportFile(null)} title="Import Configuration">
+                <div className="p-6 space-y-6">
+                    <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-xl flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                            <Upload size={24} />
+                        </div>
+                        <div>
+                            <p className="font-bold text-gray-900 dark:text-white truncate max-w-[200px] md:max-w-xs">{pendingImportFile?.name}</p>
+                            <p className="text-xs text-gray-500 uppercase tracking-wider">{(pendingImportFile?.size || 0) / 1024 > 1024 ? ((pendingImportFile?.size || 0) / 1024 / 1024).toFixed(2) + ' MB' : ((pendingImportFile?.size || 0) / 1024).toFixed(2) + ' KB'}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">Where should these contacts go?</p>
+                        
+                        <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${importCategory === 'lead' ? 'border-blue-500 bg-blue-500/5' : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'}`}>
+                            <input type="radio" value="lead" checked={importCategory === 'lead'} onChange={() => setImportCategory('lead')} className="mt-1" />
+                            <div>
+                                <p className="font-bold text-gray-900 dark:text-white">High Value Leads</p>
+                                <p className="text-xs text-gray-500 mt-1">Add to the main Pipeline. Visible in the Dashboard. For incoming marketing leads, referrals, and active buyers.</p>
+                            </div>
+                        </label>
+
+                        <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${importCategory === 'prospect' ? 'border-amber-500 bg-amber-500/5' : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'}`}>
+                            <input type="radio" value="prospect" checked={importCategory === 'prospect'} onChange={() => setImportCategory('prospect')} className="mt-1" />
+                            <div>
+                                <p className="font-bold text-amber-600 dark:text-amber-500">Cold Prospects (Prospect Vault)</p>
+                                <p className="text-xs text-gray-500 mt-1">Send to the isolated Prospect Vault. Keep the main pipeline clean. For cold calling data, purchased lists, and raw prospects.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className="flex gap-4 pt-4 mt-6">
+                        <button type="button" onClick={() => setPendingImportFile(null)} className="px-6 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl transition-all">Cancel</button>
+                        <button
+                            type="button"
+                            className={`flex-1 py-4 font-bold rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all text-white ${importCategory === 'lead' ? 'bg-blue-500 shadow-blue-500/30 hover:bg-blue-600' : 'bg-amber-500 shadow-amber-500/30 hover:bg-amber-600'}`}
+                            onClick={processImport}
+                        >
+                            <Download size={20} />
+                            Deploy to {importCategory === 'lead' ? 'Pipeline' : 'Vault'}
                         </button>
                     </div>
                 </div>

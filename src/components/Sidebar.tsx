@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords, Activity, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords, Activity, ShieldAlert, CreditCard, FolderArchive, Database } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -89,6 +89,7 @@ export const Sidebar = () => {
                             <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
                             <NavItem to="/market-intel" icon={Activity} label="Market Intel" />
                             <NavItem to="/leads" icon={Users} label="Leads Engine" />
+                            <NavItem to="/prospects" icon={FolderArchive} label="Prospect Vault" />
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />
                             <NavItem to="/tasks" icon={CheckSquare} label="Mission Control" />
                             <NavItem to="/calendar" icon={Calendar} label="Calendar" />
@@ -106,7 +107,13 @@ export const Sidebar = () => {
                                 <NavItem to="/reports" icon={BarChart3} label="Reports & Analytics" />
                             )}
                             {(user?.role === 'ceo' || user?.role === 'admin') && (
-                                <NavItem to="/settings" icon={Settings} label="System Settings" />
+                                <>
+                                    <NavItem to="/settings" icon={Settings} label="System Settings" />
+                                    <NavItem to="/batch-manager" icon={Database} label="Batch Manager" />
+                                </>
+                            )}
+                            {user?.role === 'ceo' && (
+                                <NavItem to="/billing" icon={CreditCard} label="Billing & Plans" />
                             )}
                             <NavItem to="/trash" icon={Trash2} label="Trash" />
                             {user?.isSuperAdmin && (

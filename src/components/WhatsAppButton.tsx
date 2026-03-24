@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, ChevronDown, Check } from 'lucide-react';
 import { useStore } from '../store';
 import { logWhatsApp } from '../services/activityLog';
+import toast from 'react-hot-toast';
 
 interface WhatsAppButtonProps {
     phone: string;
@@ -39,7 +40,12 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phone, name, lea
         // Log activity
         logWhatsApp(leadId, user?.id || 'unknown', user?.name || 'Unknown');
 
-        // Open WhatsApp
+        if (!phone) {
+            toast.error("Lead has no phone number");
+            setIsOpen(false);
+            return;
+        }
+
         // Remove special chars from phone for the link
         let cleanPhone = phone.replace(/[^0-9]/g, '');
 

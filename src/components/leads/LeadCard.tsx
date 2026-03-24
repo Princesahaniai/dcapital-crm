@@ -41,19 +41,24 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
             layout
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ y: -4, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" }}
-            className="group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl p-5 cursor-pointer relative overflow-hidden shadow-sm hover:border-blue-500/30 transition-all duration-300"
+            whileHover={{ 
+                y: -6, 
+                scale: 1.01,
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.2)" 
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl p-5 cursor-pointer relative overflow-hidden shadow-sm hover:border-blue-500/40 transition-all duration-300"
             onClick={onClick}
         >
             {/* Top Row: User Info & Badge */}
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20 relative">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20 relative group-hover:scale-110 transition-transform duration-300">
                         {lead.name.charAt(0)}
                         <FollowUpAlert lead={lead} compact />
                     </div>
                     <div className="max-w-[120px]">
-                        <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg">{lead.name}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg group-hover:text-blue-500 transition-colors">{lead.name}</h3>
                         <div className="flex items-center gap-2">
                             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${scoreData.color} font-bold`}>
                                 {scoreData.label} {scoreData.score}
@@ -61,11 +66,20 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                         </div>
                     </div>
                 </div>
-                <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${lead.status === 'New' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                    lead.status === 'Closed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                        lead.status === 'Lost' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                            'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10'}`}>
-                    {lead.status === 'Trash' ? 'DELETED' : lead.status}
+                <div className="flex items-center gap-2">
+                    <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border shadow-sm ${lead.status === 'New' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                        lead.status === 'Closed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                            lead.status === 'Lost' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10'}`}>
+                        {lead.status === 'Trash' ? 'DELETED' : lead.status}
+                    </div>
+                    {lead.waStatus && (
+                        <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 shadow-sm ${lead.waStatus === 'Delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                            lead.waStatus === 'Sent' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                            WA: {lead.waStatus}
+                        </div>
+                    )}
                 </div>
             </div>
 

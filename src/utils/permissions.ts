@@ -150,8 +150,8 @@ export const getVisibleLeads = (user: User | null, allLeads: Lead[], teamMembers
  * Check if user has higher or equal role level than target role
  */
 export const hasRoleLevel = (user: User | null, minRole: keyof typeof ROLE_LEVELS): boolean => {
-    if (!user) return false;
-    return ROLE_LEVELS[user.role] >= ROLE_LEVELS[minRole];
+    if (!user || !(user.role in ROLE_LEVELS)) return false;
+    return ROLE_LEVELS[user.role as keyof typeof ROLE_LEVELS] >= ROLE_LEVELS[minRole];
 };
 
 /**
