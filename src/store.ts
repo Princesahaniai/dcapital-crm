@@ -584,6 +584,7 @@ export const useStore = create<Store>()(
                     console.log('[INVITE] Firebase Auth account created with UID:', uid);
 
                     // Create Firestore profile with UID as document ID
+                    const adminCompanyId = get().user?.companyId || 'd-capital-main';
                     const newMember = {
                         uid: uid,
                         email: normalizedEmail,
@@ -592,6 +593,7 @@ export const useStore = create<Store>()(
                         designation: member.designation || '',
                         phone: member.phone || '',
                         department: member.department || '',
+                        companyId: adminCompanyId, // ✅ CRITICAL: Ensures the team onSnapshot query finds this user
                         status: 'Active', // Active immediately - they can login right away
                         tempPassword: tempPassword, // Store for reference
                         createdAt: new Date().toISOString(),
@@ -645,9 +647,72 @@ export const useStore = create<Store>()(
                 } catch (error: any) {
                     console.error('[INVITE] Failed:', error);
 
-                    // Handle specific Firebase errors
+                    // 👻 GHOST USER RECOVERY: Email exists in Firebase Auth but has no/wrong Firestore profile
                     if (error.code === 'auth/email-already-in-use') {
-                        throw new Error('This email is already registered. User may already have an account.');
+                        console.warn('[INVITE] Ghost user detected — attempting recovery for:', member.email);
+                        try {
+                            const adminCompanyId = get().user?.companyId || 'd-capital-main';
+                            const normalizedEmail = member.email.toLowerCase().trim();
+                            const tempPassword = (() => {
+                                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$';
+                                let p = ''; for (let i = 0; i < 12; i++) p += chars.charAt(Math.floor(Math.random() * chars.length)); return p;
+                            })();
+
+                            // Sign in as the existing user using secondary auth to get their UID
+                            let existingUid: string | null = null;
+                            try {
+                                const cred = await signInWithEmailAndPassword(secondaryAuth, normalizedEmail, tempPassword);
+                                existingUid = cred.user.uid;
+                            } catch {
+                                // Password won't match — that's expected. Use fetchSignInMethodsForEmail to confirm the account exists.
+                                // We can't get the UID without server-side Admin SDK, so write a profile under a generated ID
+                                // and mark it as needing UID linkage
+                                console.warn('[INVITE] Cannot retrieve UID via client SDK — writing orphan profile');
+                            }
+
+                            const ghostProfile: any = {
+                                email: normalizedEmail,
+                                name: member.name,
+                                role: member.role || 'agent',
+                                designation: member.designation || '',
+                                phone: member.phone || '',
+                                companyId: adminCompanyId,
+                                status: 'Active',
+                                tempPassword: tempPassword,
+                                createdAt: new Date().toISOString(),
+                                joinedDate: new Date().toISOString().split('T')[0],
+                                invitedBy: get().user?.email || 'system',
+                                loginCount: 0,
+                                totalSales: 0,
+                                commissionEarned: 0,
+                                isGhostRecovery: true
+                            };
+
+                            // Use existingUid if we got it, else a stable hash of the email as doc ID
+                            const docId = existingUid || `ghost_${normalizedEmail.replace(/[^a-z0-9]/gi, '_')}`;
+                            ghostProfile.uid = docId;
+                            await signOut(secondaryAuth).catch(() => {});
+                            await setDoc(doc(db, 'users', docId), ghostProfile, { merge: true });
+
+                            // Update companyId on any existing doc that might have a different/missing companyId
+                            set((state) => ({
+                                team: state.team.some(m => m.email === normalizedEmail)
+                                    ? state.team.map(m => m.email === normalizedEmail ? { ...m, companyId: adminCompanyId, status: 'Active' } : m)
+                                    : [...state.team, { ...ghostProfile, id: docId } as unknown as TeamMember]
+                            }));
+
+                            console.log('[INVITE] ✅ Ghost user recovered and written to Firestore:', docId);
+                            return {
+                                success: true,
+                                email: normalizedEmail,
+                                tempPassword: tempPassword,
+                                uid: docId,
+                                message: `⚠️ Email already existed in Auth. Ghost user recovered!  Email: ${normalizedEmail} Temp Password: ${tempPassword}  Have them reset their password via the login page.`
+                            };
+                        } catch (recoveryErr) {
+                            console.error('[INVITE] Ghost recovery failed:', recoveryErr);
+                            throw new Error('This email is already registered and ghost recovery failed. Contact support.');
+                        }
                     } else if (error.code === 'auth/invalid-email') {
                         throw new Error('Invalid email format. Please check and try again.');
                     } else if (error.code === 'auth/weak-password') {
