@@ -249,7 +249,7 @@ export const useStore = create<Store>()(
                                 role: userProfile.role || 'agent',
                                 isSuperAdmin,
                                 subscriptionStatus: userProfile.subscriptionStatus || 'active',
-                                companyId: userProfile.companyId
+                                companyId: userProfile.companyId || 'd-capital-main'
                             } as any,
                             loginTimestamp: Date.now(),
                             rememberMe
@@ -411,7 +411,7 @@ export const useStore = create<Store>()(
                                 // Allow Master Admins specifically
                                 if (user.email === 'princesahani.work@gmail.com' || user.email === 'ajay@dcapitalrealestate.com') {
                                     set({
-                                        user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
+                                        user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo', companyId: 'd-capital-main' } as any,
                                         loginTimestamp: Date.now(),
                                         rememberMe: true,
                                         isAuthLoading: false
@@ -790,6 +790,10 @@ export const useStore = create<Store>()(
                 leadIds.forEach(leadId => {
                     updateDoc(doc(db, 'leads', leadId), { assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() }).catch(err => console.error('[SYNC] Lead assign failed:', err));
                 });
+                // 🔔 Push a real Firestore notification so the agent's bell rings in real-time
+                const count = leadIds.length;
+                get().addFirestoreNotification(agentId, `📋 ${count} new lead${count > 1 ? 's' : ''} assigned to you by ${get().user?.name || 'Admin'}`);
+                get().logAudit('ASSIGN_LEADS', agentId, { leadIds, agentName });
             },
 
             addQuickNote: (leadId, note) => {

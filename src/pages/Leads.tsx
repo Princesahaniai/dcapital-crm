@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/Pagination';
-import { Phone, Plus, Search, Trash2, Edit, FileDown, Upload, Download, Mail, Calendar, LayoutGrid, List, Clock, FolderOpen, X, Users, AlertTriangle } from 'lucide-react';
+import { Phone, Plus, Search, Trash2, FileDown, Upload, Download, LayoutGrid, List, Clock, FolderOpen, Users, AlertTriangle, CheckSquare, Square, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
@@ -14,7 +14,7 @@ import { Modal } from '../components/Modal';
 import { LeadCard } from '../components/leads/LeadCard';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { parseCSV, validateLead, transformRow } from '../utils/csvHelpers';
 import * as XLSX from 'xlsx';
@@ -64,6 +64,38 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     const [selectedFileForAssign, setSelectedFileForAssign] = useState<string | null>(null);
     const [assignTarget, setAssignTarget] = useState('');
     const [isDeletingBatch, setIsDeletingBatch] = useState<string | null>(null);
+
+    // Bulk selection state
+    const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+    const toggleLeadSelection = (id: string) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const bulkDeleteLeads = async () => {
+        if (selectedLeadIds.size === 0) return;
+        if (!confirm(`⚠️ Permanently delete ${selectedLeadIds.size} selected leads? This CANNOT be undone.`)) return;
+        setIsBulkDeleting(true);
+        try {
+            const batch = writeBatch(db);
+            selectedLeadIds.forEach(id => batch.delete(doc(db, 'leads', id)));
+            await batch.commit();
+            // Remove from local state via the store setter
+            const currentLeads = useStore.getState().leads;
+            useStore.getState().setLeads(currentLeads.filter(l => !selectedLeadIds.has(l.id)));
+            toast.success(`🗑️ ${selectedLeadIds.size} leads permanently deleted`);
+            setSelectedLeadIds(new Set());
+        } catch (err) {
+            toast.error('Bulk delete failed. Please try again.');
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    };
 
     const accessibleLeads = useMemo(() => getVisibleLeads(user, leads, team), [user, leads, team]);
 
@@ -486,6 +518,27 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                             </span>
                         )}
                     </button>
+                    {/* Select All – only for CEO/Admin */}
+                    {(user?.role === 'ceo' || user?.role === 'admin') && viewMode === 'list' && !showTrash && (
+                        <button
+                            onClick={() => {
+                                if (selectedLeadIds.size === paginatedLeads.length) {
+                                    setSelectedLeadIds(new Set());
+                                } else {
+                                    setSelectedLeadIds(new Set(paginatedLeads.map(l => l.id)));
+                                }
+                            }}
+                            className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
+                                selectedLeadIds.size > 0
+                                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/25'
+                                    : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                            }`}
+                            title="Select All Leads"
+                        >
+                            {selectedLeadIds.size > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
+                            {selectedLeadIds.size > 0 ? `${selectedLeadIds.size} Selected` : 'Select'}
+                        </button>
+                    )}
                     <div className="w-px h-8 bg-gray-300 dark:bg-white/10 mx-2 self-center shrink-0"></div>
                     {statusTabs.map(tab => (
                         <button
@@ -661,9 +714,24 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                                 key={lead.id}
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden"
+                                                className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border transition-all relative overflow-hidden ${
+                                                    selectedLeadIds.has(lead.id)
+                                                        ? 'border-red-400 dark:border-red-500 ring-2 ring-red-400/30'
+                                                        : 'border-gray-100 dark:border-white/5'
+                                                }`}
                                                 onClick={() => { setSelectedLead(lead); openEdit(lead); }}
                                             >
+                                                {/* Checkbox overlay for admins */}
+                                                {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                                    <button
+                                                        className="absolute top-3 right-3 z-10 p-1"
+                                                        onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                    >
+                                                        {selectedLeadIds.has(lead.id)
+                                                            ? <CheckSquare size={18} className="text-red-500" />
+                                                            : <Square size={18} className="text-gray-300 dark:text-gray-600" />}
+                                                    </button>
+                                                )}
                                                 <div className="flex justify-between items-start mb-3">
                                                     <div>
                                                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
@@ -704,14 +772,26 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                         </div>
 
                                         {/* Desktop Card View */}
-                                        <div className="hidden md:block">
-                                            <LeadCard
-                                                lead={lead}
-                                                onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                                onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
-                                                onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
-                                                agentName={getAgentName(lead.assignedTo)}
-                                            />
+                                        <div className="hidden md:block relative">
+                                            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                                <button
+                                                    className="absolute top-3 left-3 z-10 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                >
+                                                    {selectedLeadIds.has(lead.id)
+                                                        ? <CheckSquare size={18} className="text-red-500 opacity-100" />
+                                                        : <Square size={18} className="text-gray-400" />}
+                                                </button>
+                                            )}
+                                            <div className={selectedLeadIds.has(lead.id) ? 'ring-2 ring-red-400/50 rounded-3xl' : ''}>
+                                                <LeadCard
+                                                    lead={lead}
+                                                    onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                                    onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
+                                                    onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
+                                                    agentName={getAgentName(lead.assignedTo)}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -921,6 +1001,37 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             >
                 <Plus size={28} />
             </motion.button>
+
+            {/* BULK DELETE ACTION BAR */}
+            <AnimatePresence>
+                {selectedLeadIds.size > 0 && (
+                    <motion.div
+                        initial={{ y: 80, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 80, opacity: 0 }}
+                        className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10 dark:border-gray-200"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Zap size={16} className="text-red-400 dark:text-red-500" />
+                            <span className="font-bold text-sm">{selectedLeadIds.size} lead{selectedLeadIds.size > 1 ? 's' : ''} selected</span>
+                        </div>
+                        <button
+                            onClick={() => setSelectedLeadIds(new Set())}
+                            className="text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-gray-900 transition-colors"
+                        >
+                            Clear
+                        </button>
+                        <button
+                            onClick={bulkDeleteLeads}
+                            disabled={isBulkDeleting}
+                            className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg shadow-red-500/30 transition-all disabled:opacity-60"
+                        >
+                            <Trash2 size={16} />
+                            {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div >
     );
 };
