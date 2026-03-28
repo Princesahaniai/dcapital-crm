@@ -850,11 +850,11 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Current Value (AED)</label>
-                            <input type="number" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.budget ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.budget ?? ''} onChange={e => setForm({ ...form, budget: e.target.value === '' ? ('' as any) : Number(e.target.value) })} placeholder="Target Value (AED)" title="Budget" />
+                            <input type="text" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.budget ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.budget} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setForm({ ...form, budget: val === '' ? ('' as any) : Number(val) }); }} placeholder="Target Value (AED)" title="Budget" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Max Budget (AED)</label>
-                            <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.maxBudget ?? ''} onChange={e => setForm({ ...form, maxBudget: e.target.value === '' ? ('' as any) : Number(e.target.value) })} placeholder="Maximum Match Budget (AED)" title="Max Budget" />
+                            <input type="text" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.maxBudget} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setForm({ ...form, maxBudget: val === '' ? ('' as any) : Number(val) }); }} placeholder="Maximum Match Budget (AED)" title="Max Budget" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Target Location</label>
@@ -881,7 +881,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Assigned Agent</label>
                             <select title="Assignee" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
                                 <option value={user?.id}>Me ({user?.name})</option>
-                                {team.filter(t => t.id !== user?.id).map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
+                                {team.filter(t => t.status === 'Active' && t.id !== user?.id).map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
                             </select>
                         </div>
                     </div>

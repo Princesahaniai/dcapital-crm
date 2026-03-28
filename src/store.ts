@@ -749,9 +749,22 @@ export const useStore = create<Store>()(
                 });
                 // Firestore write-through
                 const updatedData = { ...data, updatedAt: Date.now() };
+                const oldLead = get().leads.find(l => l.id === id);
+
+                // 📝 THE HOME-TO-HOME TRACKER: Log assignment if it changed
+                if (data.assignedTo && data.assignedTo !== oldLead?.assignedTo) {
+                    const newAgentName = get().team.find(m => m.id === data.assignedTo)?.name || 'Unknown Agent';
+                    (updatedData as any).historyLog = arrayUnion({
+                        date: new Date().toISOString(),
+                        action: 'Assigned',
+                        fromName: get().user?.name || 'System',
+                        toName: newAgentName
+                    });
+                }
+
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
                 // 🔔 INSTRUCTION 3: If lead is being reassigned, notify the new agent immediately
-                if (data.assignedTo) {
+                if (data.assignedTo && data.assignedTo !== oldLead?.assignedTo) {
                     const lead = get().leads.find(l => l.id === id);
                     get().addFirestoreNotification(
                         data.assignedTo,
@@ -799,7 +812,18 @@ export const useStore = create<Store>()(
                 });
                 // Sync each assigned lead to Firestore so the agent's onSnapshot query picks them up
                 leadIds.forEach(leadId => {
-                    updateDoc(doc(db, 'leads', leadId), { assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() }).catch(err => console.error('[SYNC] Lead assign failed:', err));
+                    const historyEntry = {
+                        date: new Date().toISOString(),
+                        action: 'Assigned',
+                        fromName: get().user?.name || 'System',
+                        toName: agentName
+                    };
+                    updateDoc(doc(db, 'leads', leadId), { 
+                        assignedTo: agentId, 
+                        assignedName: agentName, 
+                        updatedAt: Date.now(),
+                        historyLog: arrayUnion(historyEntry)
+                    }).catch(err => console.error('[SYNC] Lead assign failed:', err));
                 });
                 // 🔔 Push a real Firestore notification so the agent's bell rings in real-time
                 const count = leadIds.length;
@@ -848,13 +872,23 @@ export const useStore = create<Store>()(
                 updateDoc(doc(db, 'notifications', id), { read: true }).catch(err => console.error('[SYNC] Notification read failed:', err));
             },
 
-            clearNotifications: () => {
+            clearNotifications: async () => {
                 const state = get();
+                const notifsToDelete = [...state.notifications];
                 set({ notifications: [] });
-                // Delete all from Firestore
-                state.notifications.forEach(n => {
-                    deleteDoc(doc(db, 'notifications', n.id)).catch(err => console.error('[SYNC] Notification delete failed:', err));
-                });
+
+                // BULLETPROOF NOTIFICATIONS: Execute a writeBatch
+                if (notifsToDelete.length === 0) return;
+                try {
+                    const batch = writeBatch(db);
+                    notifsToDelete.forEach(n => {
+                        batch.delete(doc(db, 'notifications', n.id));
+                    });
+                    await batch.commit();
+                    console.log('[SYNC] ✅ writeBatch successfully cleared notifications.');
+                } catch (err) {
+                    console.error('[SYNC] writeBatch notification clear failed:', err);
+                }
             },
 
             addProperty: (p) => {

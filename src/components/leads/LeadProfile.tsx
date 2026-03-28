@@ -98,7 +98,21 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
     // Mock Data Helpers (Replace with real data later)
     const assignedAgent = team.find(m => m.id === lead.assignedTo);
     const leadTasks = tasks.filter(t => t.leadId === lead.id);
-    const leadActivities = activities.filter(a => a.leadId === lead.id);
+    let leadActivities = activities.filter(a => a.leadId === lead.id);
+
+    // 📝 THE HOME-TO-HOME TRACKER: Inject assignment logs into the visual timeline
+    if (lead.historyLog && Array.isArray(lead.historyLog)) {
+        const assignmentActivities = lead.historyLog.map((log: any, index: number) => ({
+            id: `history-${index}-${Date.now()}`,
+            leadId: lead.id,
+            userId: 'system',
+            userName: 'System Audit',
+            description: `Lead reassigned from ${log.fromName} to ${log.toName}`,
+            type: 'System',
+            timestamp: new Date(log.date).getTime()
+        }));
+        leadActivities = [...leadActivities, ...assignmentActivities];
+    }
 
     const tabs: { id: Tab; label: string; icon: any }[] = [
         { id: 'overview', label: 'Overview', icon: User },
@@ -429,7 +443,7 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
                                                             </div>
                                                         </div>
                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
-                                                            task.status === 'Done' ? 'bg-green-500/10 text-green-500' :
+                                                            task.status === 'Completed' ? 'bg-green-500/10 text-green-500' :
                                                             task.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500' :
                                                             task.status === 'Overdue' ? 'bg-red-500/10 text-red-500' :
                                                             'bg-gray-100 dark:bg-white/10 text-gray-500'

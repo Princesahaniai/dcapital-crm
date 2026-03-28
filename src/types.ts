@@ -58,6 +58,7 @@ export interface Lead {
     propertyId?: string;
     commission?: number;
     commissionPaid?: boolean;
+    historyLog?: any[];
     deletedAt?: number;
     targetLocation?: string;
     maxBudget?: number;
