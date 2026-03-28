@@ -880,8 +880,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         <div className="space-y-1 md:col-span-2">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Assigned Agent</label>
                             <select title="Assignee" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
-                                <option value={user?.id}>Me ({user?.name})</option>
-                                {team.filter(t => t.status === 'Active' && t.id !== user?.id).map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
+                                {team.map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
                             </select>
                         </div>
                     </div>

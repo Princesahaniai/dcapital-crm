@@ -26,21 +26,12 @@ export const canViewAllLeads = (user: User | null): boolean => {
 export const canViewLead = (user: User | null, lead: Lead, teamMembers: User[] = []): boolean => {
     if (!user) return false;
 
-    // CEO and Admin can see everything
-    if (user.role === 'ceo' || user.role === 'admin') return true;
+    // CEO, Admin, and Manager can see everything
+    if (user.role === 'ceo' || user.role === 'admin' || user.role === 'manager') return true;
 
     // Agents can only see their own leads
     if (user.role === 'agent') {
         return lead.assignedTo === user.id;
-    }
-
-    // Managers can see their own leads + their team's leads
-    if (user.role === 'manager') {
-        if (lead.assignedTo === user.id) return true;
-
-        // Check if lead is assigned to one of their team members
-        const myTeam = teamMembers.filter(m => m.managerId === user.id);
-        return myTeam.some(member => member.id === lead.assignedTo);
     }
 
     return false;
@@ -122,25 +113,14 @@ export const getVisibleTeamMembers = (user: User | null, allMembers: User[]): Us
 export const getVisibleLeads = (user: User | null, allLeads: Lead[], teamMembers: User[] = []): Lead[] => {
     if (!user) return [];
 
-    // CEO and Admin see all leads
-    if (user.role === 'ceo' || user.role === 'admin') {
+    // CEO, Admin, and Manager see all leads
+    if (user.role === 'ceo' || user.role === 'admin' || user.role === 'manager') {
         return allLeads;
     }
 
     // Agents see only their own leads
     if (user.role === 'agent') {
         return allLeads.filter(lead => lead.assignedTo === user.id);
-    }
-
-    // Managers see their leads + their team's leads
-    if (user.role === 'manager') {
-        const myTeamIds = teamMembers
-            .filter(m => m.managerId === user.id)
-            .map(m => m.id);
-
-        return allLeads.filter(lead =>
-            lead.assignedTo === user.id || myTeamIds.includes(lead.assignedTo || '')
-        );
     }
 
     return [];

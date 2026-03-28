@@ -149,8 +149,7 @@ export const BatchManager = () => {
                             onChange={(e) => setSelectedAgentId(e.target.value)}
                         >
                             <option value="">-- Ensure you click an agent --</option>
-                            <option value={user?.id}>Me ({user?.name})</option>
-                            {team.filter(t => t.status === 'Active' && t.id !== user?.id).map(m => (
+                            {team.map(m => (
                                 <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
                             ))}
                         </select>
