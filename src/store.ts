@@ -392,6 +392,13 @@ export const useStore = create<Store>()(
                                 const normalizedEmail = (user.email || '').toLowerCase().trim();
                                 const isSuperAdmin = normalizedEmail === 'admin@dcapitalrealestate.com';
 
+                                // 🛡️ INSTRUCTION 5: Fallback companyId for ALL users
+                                const resolvedCompanyId = userProfile.companyId || 'd-capital-main';
+                                if (!userProfile.companyId) {
+                                    console.warn('[AUTH] No companyId on profile — defaulting to d-capital-main');
+                                    // Silently patch the Firestore doc so next login is clean
+                                    setDoc(doc(db, 'users', user.uid), { companyId: 'd-capital-main' }, { merge: true }).catch(() => {});
+                                }
                                 set({
                                     user: {
                                         id: user.uid,
@@ -400,7 +407,7 @@ export const useStore = create<Store>()(
                                         role: userProfile.role || 'agent',
                                         isSuperAdmin,
                                         subscriptionStatus: userProfile.subscriptionStatus || 'active',
-                                        companyId: userProfile.companyId
+                                        companyId: resolvedCompanyId
                                     } as any,
                                     loginTimestamp: Date.now(),
                                     rememberMe: true,
@@ -448,7 +455,8 @@ export const useStore = create<Store>()(
             updateProfile: (name, email) => set((s) => ({ user: s.user ? { ...s.user, name, email } : null })),
 
             addLead: (l) => {
-                const cmpId = get().user?.companyId;
+                // 🛡️ INSTRUCTION 5: Always use fallback companyId
+                const cmpId = get().user?.companyId || 'd-capital-main';
                 const leadWithCompany = { ...l, companyId: cmpId };
 
                 set((s) => {
@@ -457,19 +465,12 @@ export const useStore = create<Store>()(
                 });
 
                 // Fire-and-forget Firestore write
-                if (cmpId) {
-                    setDoc(doc(db, 'leads', l.id), leadWithCompany, { merge: true }).catch(err => console.error('[SYNC] Lead write failed:', err));
-                } else {
-                    console.error('[SYNC] Blocked: No Company ID found for Lead');
-                }
+                setDoc(doc(db, 'leads', l.id), leadWithCompany, { merge: true }).catch(err => console.error('[SYNC] Lead write failed:', err));
             },
 
             addBulkLeads: (newLeads) => {
-                const cmpId = get().user?.companyId;
-                if (!cmpId) {
-                    console.error('[SYNC] Blocked: No Company ID found for Bulk Import');
-                    return { success: 0, failed: newLeads.length };
-                }
+                // 🛡️ INSTRUCTION 5: Always use fallback companyId — never block imports
+                const cmpId = get().user?.companyId || 'd-capital-main';
 
                 const stampedLeads = newLeads.map(l => ({ ...l, companyId: cmpId }));
 
@@ -749,6 +750,14 @@ export const useStore = create<Store>()(
                 // Firestore write-through
                 const updatedData = { ...data, updatedAt: Date.now() };
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
+                // 🔔 INSTRUCTION 3: If lead is being reassigned, notify the new agent immediately
+                if (data.assignedTo) {
+                    const lead = get().leads.find(l => l.id === id);
+                    get().addFirestoreNotification(
+                        data.assignedTo,
+                        `📋 You have been assigned a new lead: ${lead?.name || 'Unknown'} by ${get().user?.name || 'Admin'}`
+                    );
+                }
                 get().logAudit('UPDATE_LEAD', undefined, { leadId: id, updates: data });
             },
 

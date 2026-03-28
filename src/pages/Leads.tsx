@@ -32,8 +32,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         name: '',
         email: '',
         phone: '',
-        budget: 0,
-        maxBudget: 0,
+        budget: '' as any,
+        maxBudget: '' as any,
         targetLocation: '',
         status: 'New',
         source: 'Instagram',
@@ -850,11 +850,11 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Current Value (AED)</label>
-                            <input type="number" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.budget ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} placeholder="Target Value" title="Budget" />
+                            <input type="number" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.budget ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.budget ?? ''} onChange={e => setForm({ ...form, budget: e.target.value === '' ? ('' as any) : Number(e.target.value) })} placeholder="Target Value (AED)" title="Budget" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Max Budget (AED)</label>
-                            <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.maxBudget || ''} onChange={e => setForm({ ...form, maxBudget: Number(e.target.value) })} placeholder="Maximum Match Budget" title="Max Budget" />
+                            <input type="number" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.maxBudget ?? ''} onChange={e => setForm({ ...form, maxBudget: e.target.value === '' ? ('' as any) : Number(e.target.value) })} placeholder="Maximum Match Budget (AED)" title="Max Budget" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Target Location</label>
