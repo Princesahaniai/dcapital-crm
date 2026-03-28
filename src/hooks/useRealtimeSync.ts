@@ -39,9 +39,14 @@ export function useRealtimeSync() {
 
         // ─── LEADS LISTENER ─────────────────────────────────────
         try {
-            const leadsQuery = user.role === 'agent'
-                ? query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id))
-                : query(collection(db, 'leads'), where('companyId', '==', cmpId));
+            // 🛡️ MANAGER TRACKING OVERRIDE: Managers, CEOs, and Admins must query ALL leads within their company.
+            // Only agents are restricted to filtering by assignedTo at the query level.
+            const userRole = (user.role || '').toLowerCase();
+            const isManagerOrAbove = userRole === 'manager' || userRole === 'ceo' || userRole === 'admin';
+            
+            const leadsQuery = isManagerOrAbove
+                ? query(collection(db, 'leads'), where('companyId', '==', cmpId))
+                : query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id));
 
             const unsubLeads = onSnapshot(leadsQuery, { includeMetadataChanges: true }, (snapshot) => {
                 const fromCache = snapshot.metadata.fromCache;

@@ -102,21 +102,32 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
 
     // 📝 THE HOME-TO-HOME TRACKER: Inject assignment logs into the visual timeline
     if (lead.historyLog && Array.isArray(lead.historyLog)) {
-        const assignmentActivities = lead.historyLog.map((log: any, index: number) => ({
-            id: `history-${index}-${Date.now()}`,
-            leadId: lead.id,
-            userId: 'system',
-            userName: 'System Audit',
-            description: `Lead reassigned from ${log.fromName} to ${log.toName}`,
-            type: 'System',
-            timestamp: new Date(log.date).getTime()
-        }));
-        leadActivities = [...leadActivities, ...assignmentActivities];
+        const mappedActivities = lead.historyLog.map((log: any, index: number) => {
+            let desc = log.action || 'System Update';
+            if (log.fromName && log.toName) {
+                 desc = `Lead reassigned from ${log.fromName} to ${log.toName}`;
+            } else if (log.action === 'Assigned' && log.toName) {
+                 desc = `Lead assigned to ${log.toName}`;
+            }
+            if (log.notes) {
+                 desc += ` - Notes: ${log.notes}`;
+            }
+            return {
+                id: `history-${index}-${log.date || Date.now()}`,
+                leadId: lead.id,
+                userId: 'system',
+                userName: log.byName || log.fromName || 'System Audit',
+                description: desc,
+                type: 'System',
+                timestamp: new Date(log.date || Date.now()).getTime()
+            };
+        });
+        leadActivities = [...leadActivities, ...mappedActivities];
     }
 
     const tabs: { id: Tab; label: string; icon: any }[] = [
         { id: 'overview', label: 'Overview', icon: User },
-        { id: 'history', label: 'History', icon: Clock },
+        { id: 'history', label: 'Lead History & Updates', icon: Clock },
         { id: 'documents', label: 'Documents', icon: Paperclip },
         { id: 'tasks', label: 'Tasks', icon: CheckSquare },
         { id: 'notes', label: 'Notes', icon: FileText },

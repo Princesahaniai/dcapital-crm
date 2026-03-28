@@ -1,6 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Phone, Mail, MoreHorizontal, Trash2, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Phone, Mail, MoreHorizontal, Trash2, Zap, MessageSquare, X, Send } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { StageIndicator } from './StageIndicator';
 import { WhatsAppButton } from '../WhatsAppButton';
 import type { Lead } from '../../types';
@@ -18,8 +19,20 @@ interface LeadCardProps {
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDelete, agentName = 'Unassigned' }) => {
-    const { user, toggleSmartNurture } = useStore();
+    const { user, toggleSmartNurture, addQuickNote, updateLead } = useStore();
     const scoreData = calculateLeadScore(lead);
+    const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
+    const [quickNote, setQuickNote] = useState('');
+
+    const handleQuickNoteSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!quickNote.trim()) return;
+        addQuickNote(lead.id, quickNote.trim());
+        setQuickNote('');
+        setIsQuickLogOpen(false);
+        toast.success('Quick note saved');
+    };
 
     const stopProp = (e: React.MouseEvent, action: () => void) => {
         e.stopPropagation();
@@ -47,7 +60,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.2)" 
             }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="group bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl p-5 cursor-pointer relative overflow-hidden shadow-sm hover:border-blue-500/40 transition-all duration-300"
+            className={`group bg-white dark:bg-[#1C1C1E] border ${
+                lead.status === 'New' && (Date.now() - (lead.createdAt || Date.now())) > 86400000 
+                    ? 'border-red-500 shadow-red-500/50 shadow-lg ring-1 ring-red-500/30' 
+                    : 'border-gray-200 dark:border-white/5 shadow-sm'
+            } rounded-3xl p-5 cursor-pointer relative overflow-hidden hover:border-blue-500/40 transition-all duration-300`}
             onClick={onClick}
         >
             {/* Top Row: User Info & Badge */}
@@ -111,6 +128,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} compact />
 
                 <button
+                    onClick={(e) => stopProp(e, () => setIsQuickLogOpen(true))}
+                    title="Quick Note"
+                    aria-label="Quick Note"
+                    className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors shadow-sm"
+                >
+                    <MessageSquare size={16} />
+                </button>
+
+                <button
                     onClick={(e) => stopProp(e, () => toggleSmartNurture(lead.id))}
                     title={lead.smartNurture ? 'Disable Smart Nurture' : 'Enable Smart Nurture'}
                     aria-label="Toggle Smart Nurture"
@@ -168,6 +194,73 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                     <MoreHorizontal size={18} />
                 </button>
             </div>
+
+            {lead.category === 'prospect' && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        updateLead(lead.id, { category: 'lead', status: 'New' });
+                        toast.success('Promoted to real Lead!');
+                    }}
+                    className="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-xl text-[11px] tracking-[0.2em] transition-colors shadow-lg shadow-green-500/20"
+                >
+                    P R O M O T E   T O   L E A D
+                </button>
+            )}
+
+            {/* Quick Log Modal Overlay */}
+            <AnimatePresence>
+                {isQuickLogOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute inset-0 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-md z-20 flex flex-col p-5 rounded-3xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <MessageSquare size={16} className="text-blue-500" /> Quick Note
+                            </h4>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setIsQuickLogOpen(false); }}
+                                title="Close Quick Note"
+                                aria-label="Close"
+                                className="p-1.5 bg-gray-100 dark:bg-white/10 rounded-full text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleQuickNoteSubmit} className="flex flex-col h-full flex-1">
+                            <textarea
+                                autoFocus
+                                value={quickNote}
+                                onChange={(e) => setQuickNote(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="Log call outcome, agent follow-up..."
+                                className="w-full flex-1 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none mb-3 transition-colors shadow-inner"
+                            />
+                            <div className="flex justify-end gap-2 mt-auto">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setIsQuickLogOpen(false); }}
+                                    className="px-4 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    onClick={(e) => e.stopPropagation()}
+                                    disabled={!quickNote.trim()}
+                                    className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 transition-all"
+                                >
+                                    <Send size={14} /> Save Log
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

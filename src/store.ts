@@ -459,6 +459,20 @@ export const useStore = create<Store>()(
                 const cmpId = get().user?.companyId || 'd-capital-main';
                 const leadWithCompany = { ...l, companyId: cmpId };
 
+                // 🛡️ DEDUPLICATION ENGINE
+                const state = get();
+                const normalizePhone = (p: string) => p ? p.replace(/\D/g, '') : '';
+                const incomingPhone = normalizePhone(l.phone || '');
+                
+                if (incomingPhone.length > 5) {
+                    const duplicate = state.leads.find(existing => normalizePhone(existing.phone || '') === incomingPhone);
+                    if (duplicate) {
+                        toast.error(`Duplicate lead detected (${l.phone || incomingPhone}). Note added instead.`);
+                        state.addQuickNote(duplicate.id, `Duplicate import attempted on ${new Date().toLocaleDateString()}`);
+                        return; // 🛑 Block creation
+                    }
+                }
+
                 set((s) => {
                     if (s.leads.some(existing => existing.id === l.id)) return {};
                     return { leads: [leadWithCompany, ...s.leads] };
@@ -471,16 +485,43 @@ export const useStore = create<Store>()(
             addBulkLeads: (newLeads) => {
                 // 🛡️ INSTRUCTION 5: Always use fallback companyId — never block imports
                 const cmpId = get().user?.companyId || 'd-capital-main';
+                const state = get();
+                const normalizePhone = (p: string) => p ? p.replace(/\D/g, '') : '';
+                
+                const validLeads: any[] = [];
+                let failedCount = 0;
+                const seenPhonesInBatch = new Set<string>();
 
-                const stampedLeads = newLeads.map(l => ({ ...l, companyId: cmpId }));
+                newLeads.forEach(l => {
+                    const incomingPhone = normalizePhone(l.phone || '');
+                    
+                    if (incomingPhone.length > 5) {
+                        // Check global store for duplicates
+                        const duplicateGlobal = state.leads.find(existing => normalizePhone(existing.phone || '') === incomingPhone);
+                        if (duplicateGlobal) {
+                            state.addQuickNote(duplicateGlobal.id, `Duplicate import attempted on ${new Date().toLocaleDateString()}`);
+                            failedCount++;
+                            return; // 🛑 Skip this duplicate
+                        }
+                        
+                        // Check batch for internal duplicates
+                        if (seenPhonesInBatch.has(incomingPhone)) {
+                            failedCount++;
+                            return; // 🛑 Skip batch duplicate
+                        }
+                        seenPhonesInBatch.add(incomingPhone);
+                    }
+                    
+                    validLeads.push({ ...l, companyId: cmpId });
+                });
 
-                set((s) => ({ leads: [...stampedLeads, ...s.leads] }));
+                set((s) => ({ leads: [...validLeads, ...s.leads] }));
 
-                // Batch write to Firestore
-                stampedLeads.forEach(l => {
+                // Batch write valid leads
+                validLeads.forEach(l => {
                     setDoc(doc(db, 'leads', l.id), l, { merge: true }).catch(err => console.error('[SYNC] Bulk lead write failed:', err));
                 });
-                return { success: stampedLeads.length, failed: 0 };
+                return { success: validLeads.length, failed: failedCount };
             },
 
             fetchTeam: async () => {
@@ -709,6 +750,7 @@ export const useStore = create<Store>()(
             },
 
             updateLead: (id, data) => {
+                const currentUser = get().user;
                 set((s) => {
                     const oldLead = s.leads.find(l => l.id === id);
                     if (!oldLead) return s;
@@ -742,7 +784,14 @@ export const useStore = create<Store>()(
                     }
 
                     return {
-                        leads: s.leads.map(l => l.id === id ? { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() } : l),
+                        leads: s.leads.map(l => {
+                            if (l.id !== id) return l;
+                            const newLeadData: any = { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() };
+                            if (data.assignedTo && data.assignedTo !== oldLead.assignedTo) {
+                                newLeadData.delegatedBy = currentUser?.id || 'system';
+                            }
+                            return newLeadData;
+                        }),
                         team: newTeam,
                         notifications: newNotifications
                     };
@@ -760,6 +809,9 @@ export const useStore = create<Store>()(
                         fromName: get().user?.name || 'System',
                         toName: newAgentName
                     });
+                    
+                    // 🛡️ INSTRUCTION 2: DELEGATION TRACKER LOGIC
+                    (updatedData as any).delegatedBy = get().user?.id || 'system';
                 }
 
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
@@ -798,10 +850,11 @@ export const useStore = create<Store>()(
             },
 
             assignLeads: (leadIds, agentId, agentName) => {
+                const currentUserId = get().user?.id || 'system';
                 set((s) => {
                     const count = leadIds.length;
                     return {
-                        leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, updatedAt: Date.now() } : l),
+                        leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, delegatedBy: currentUserId, updatedAt: Date.now() } : l),
                         notifications: [{
                             id: Math.random().toString(36).substr(2, 9),
                             text: `📋 ${count} Leads Assigned to ${agentName}`,
@@ -810,7 +863,9 @@ export const useStore = create<Store>()(
                         }, ...s.notifications]
                     };
                 });
-                // Sync each assigned lead to Firestore so the agent's onSnapshot query picks them up
+                // Sync each assigned lead using a writeBatch to ensure notifications and history sync simultaneously
+                const batch = writeBatch(db);
+                
                 leadIds.forEach(leadId => {
                     const historyEntry = {
                         date: new Date().toISOString(),
@@ -818,16 +873,28 @@ export const useStore = create<Store>()(
                         fromName: get().user?.name || 'System',
                         toName: agentName
                     };
-                    updateDoc(doc(db, 'leads', leadId), { 
+                    const leadRef = doc(db, 'leads', leadId);
+                    batch.update(leadRef, { 
                         assignedTo: agentId, 
-                        assignedName: agentName, 
+                        assignedName: agentName,
+                        delegatedBy: currentUserId,
                         updatedAt: Date.now(),
                         historyLog: arrayUnion(historyEntry)
-                    }).catch(err => console.error('[SYNC] Lead assign failed:', err));
+                    });
                 });
-                // 🔔 Push a real Firestore notification so the agent's bell rings in real-time
+                
+                // 🔔 Push a real Firestore notification securely so the agent's bell rings in real-time
                 const count = leadIds.length;
-                get().addFirestoreNotification(agentId, `📋 ${count} new lead${count > 1 ? 's' : ''} assigned to you by ${get().user?.name || 'Admin'}`);
+                const notificationRef = doc(collection(db, `users/${agentId}/notifications`));
+                batch.set(notificationRef, {
+                    text: `📋 ${count} new lead${count > 1 ? 's' : ''} assigned to you by ${get().user?.name || 'Admin'}`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'assignment'
+                });
+                
+                batch.commit().catch(err => console.error('[SYNC] Lead assignment batch failed:', err));
+                
                 get().logAudit('ASSIGN_LEADS', agentId, { leadIds, agentName });
             },
 

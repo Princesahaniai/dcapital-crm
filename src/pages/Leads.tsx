@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/Pagination';
-import { Phone, Plus, Search, Trash2, FileDown, Upload, Download, LayoutGrid, List, Clock, FolderOpen, Users, AlertTriangle, CheckSquare, Square, Zap } from 'lucide-react';
+import { Phone, Plus, Search, Trash2, FileDown, Upload, Download, LayoutGrid, List, Clock, FolderOpen, Users, User, AlertTriangle, CheckSquare, Square, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
@@ -61,6 +61,12 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
 
     const [showTrash, setShowTrash] = useState(false);
     const [showRecentOnly, setShowRecentOnly] = useState(false);
+    const [showDelegatedOnly, setShowDelegatedOnly] = useState(false);
+    const [showAssignedToMe, setShowAssignedToMe] = useState(false);
+    const [showCustomLocation, setShowCustomLocation] = useState(false);
+    
+    const STANDARD_LOCATIONS = ["Downtown Dubai", "Dubai Marina", "Palm Jumeirah", "Jumeirah Village Circle (JVC)", "Business Bay", "Dubai Creek Harbour", "Dubai Hills Estate", "Emaar Beachfront", "Bluewaters Island"];
+    
     const [selectedFileForAssign, setSelectedFileForAssign] = useState<string | null>(null);
     const [assignTarget, setAssignTarget] = useState('');
     const [isDeletingBatch, setIsDeletingBatch] = useState<string | null>(null);
@@ -123,6 +129,14 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             if (!latestFileId || lead.fileId !== latestFileId) return false;
         }
 
+        if (showDelegatedOnly) {
+            if ((lead as any).delegatedBy !== user?.id) return false;
+        }
+
+        if (showAssignedToMe) {
+            if (lead.assignedTo !== user?.id) return false;
+        }
+
         const matchesSearch = (lead.name || '').toLowerCase().includes((search || '').toLowerCase()) ||
             (lead.email || '').toLowerCase().includes((search || '').toLowerCase()) ||
             (lead.phone && lead.phone.includes(search));
@@ -165,7 +179,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                 lastContact: Date.now(),
                 commission: 0,
                 commissionPaid: false,
-                status: form.status || 'New'
+                status: form.status || 'New',
+                category: isProspectVault ? 'prospect' : 'lead'
             } as Lead);
             toast.success('Lead Added');
         }
@@ -182,6 +197,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
 
     const openEdit = (lead: Lead) => {
         setForm(lead);
+        setShowCustomLocation(lead.targetLocation ? !STANDARD_LOCATIONS.includes(lead.targetLocation) : false);
         setIsEditing(true);
         setShowModal(true);
     };
@@ -191,6 +207,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             ...initialForm,
             assignedTo: user?.id || ''
         });
+        setShowCustomLocation(false);
         setIsEditing(false);
         setShowModal(true);
     };
@@ -518,6 +535,24 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                             </span>
                         )}
                     </button>
+                    {(user?.role === 'manager' || user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'agent') && (
+                        <button
+                            onClick={() => setShowAssignedToMe(!showAssignedToMe)}
+                            className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${showAssignedToMe ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-500/20'}`}
+                            title="Show leads assigned to me"
+                        >
+                            <User size={16} /> Assigned to Me
+                        </button>
+                    )}
+                    {(user?.role === 'manager' || user?.role === 'ceo' || user?.role === 'admin') && (
+                        <button
+                            onClick={() => setShowDelegatedOnly(!showDelegatedOnly)}
+                            className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${showDelegatedOnly ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-500 hover:bg-purple-100 dark:hover:bg-purple-500/20'}`}
+                            title="Show leads I delegated"
+                        >
+                            <Users size={16} /> Delegated by Me
+                        </button>
+                    )}
                     {/* Select All – only for CEO/Admin */}
                     {(user?.role === 'ceo' || user?.role === 'admin') && viewMode === 'list' && !showTrash && (
                         <button
@@ -858,18 +893,28 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Target Location</label>
-                            <select title="Target Location" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.targetLocation || ''} onChange={e => setForm({ ...form, targetLocation: e.target.value })}>
+                            <select title="Target Location" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={showCustomLocation ? 'Other' : (form.targetLocation || '')} onChange={e => {
+                                if (e.target.value === 'Other') {
+                                    setShowCustomLocation(true);
+                                    setForm({ ...form, targetLocation: '' });
+                                } else {
+                                    setShowCustomLocation(false);
+                                    setForm({ ...form, targetLocation: e.target.value });
+                                }
+                            }}>
                                 <option value="">Select Location</option>
-                                <option value="Downtown Dubai">Downtown Dubai</option>
-                                <option value="Dubai Marina">Dubai Marina</option>
-                                <option value="Palm Jumeirah">Palm Jumeirah</option>
-                                <option value="Jumeirah Village Circle (JVC)">Jumeirah Village Circle (JVC)</option>
-                                <option value="Business Bay">Business Bay</option>
-                                <option value="Dubai Creek Harbour">Dubai Creek Harbour</option>
-                                <option value="Dubai Hills Estate">Dubai Hills Estate</option>
-                                <option value="Emaar Beachfront">Emaar Beachfront</option>
-                                <option value="Bluewaters Island">Bluewaters Island</option>
+                                {STANDARD_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                <option value="Other">Other (Specify)</option>
                             </select>
+                            {showCustomLocation && (
+                                <input 
+                                    type="text" 
+                                    className="w-full mt-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" 
+                                    placeholder="Type custom location..." 
+                                    value={form.targetLocation || ''} 
+                                    onChange={e => setForm({ ...form, targetLocation: e.target.value })} 
+                                />
+                            )}
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Pipeline State</label>
