@@ -65,23 +65,69 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 lead.status === 'New' && (Date.now() - (lead.createdAt || Date.now())) > 86400000 
                     ? 'border-red-500 shadow-red-500/50 shadow-lg ring-1 ring-red-500/30' 
                     : 'border-gray-200 dark:border-white/5 shadow-sm'
-            } rounded-3xl p-5 cursor-pointer relative overflow-hidden hover:border-blue-500/40 transition-all duration-300`}
+            } rounded-2xl cursor-pointer relative overflow-hidden hover:border-blue-500/40 transition-all duration-300
+              /* Mobile list-row */ flex flex-row items-center gap-3 p-3
+              /* Desktop card */   sm:flex-col sm:rounded-3xl sm:p-5 sm:block`}
             onClick={onClick}
         >
-            {/* Top Row: User Info & Badge */}
-            <div className="flex justify-between items-start mb-4">
+            {/* ── SHARED: Avatar (always visible) ── */}
+            <div className="relative shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
+                    {lead.name.charAt(0)}
+                    <FollowUpAlert lead={lead} compact />
+                </div>
+            </div>
+
+            {/* ── SHARED: Name + score (always visible) ── */}
+            <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 dark:text-white truncate text-sm sm:text-lg group-hover:text-blue-500 transition-colors leading-tight">
+                    {lead.name}
+                </h3>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${scoreData.color} font-bold`}>
+                    {scoreData.label} {scoreData.score}
+                </span>
+            </div>
+
+            {/* ── MOBILE ONLY: Status badge (centred in list row) ── */}
+            <div className={`sm:hidden shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border shadow-sm ${
+                lead.status === 'New'    ? 'bg-blue-500/10  text-blue-500  border-blue-500/20'  :
+                lead.status === 'Closed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                lead.status === 'Lost'   ? 'bg-red-500/10   text-red-500   border-red-500/20'   :
+                                          'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10'
+            }`}>
+                {lead.status === 'Trash' ? 'DEL' : lead.status}
+            </div>
+
+            {/* ── MOBILE ONLY: Compact action strip ── */}
+            <div className="sm:hidden shrink-0 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} compact />
+                <button
+                    onClick={(e) => stopProp(e, handleCall)}
+                    title="Call Lead" aria-label="Call Lead"
+                    className="p-2 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                    <Phone size={15} />
+                </button>
+                <button
+                    onClick={onEdit}
+                    title="More Options" aria-label="More Options"
+                    className="p-2 rounded-xl text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                    <MoreHorizontal size={15} />
+                </button>
+            </div>
+
+            {/* ════════════════════════════════════════════════════════════
+                DESKTOP ONLY — everything below is hidden on mobile
+            ════════════════════════════════════════════════════════════ */}
+
+            {/* Top Row: identical badges (desktop) */}
+            <div className="hidden sm:flex justify-between items-start mt-3 mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20 relative group-hover:scale-110 transition-transform duration-300">
-                        {lead.name.charAt(0)}
-                        <FollowUpAlert lead={lead} compact />
-                    </div>
+                    {/* avatar already rendered above — hidden on desktop via sm:hidden on shared one? 
+                        No — we re-render just the badge section for desktop. Avatar is shared. */}
                     <div className="max-w-[120px]">
-                        <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg group-hover:text-blue-500 transition-colors">{lead.name}</h3>
-                        <div className="flex items-center gap-2">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${scoreData.color} font-bold`}>
-                                {scoreData.label} {scoreData.score}
-                            </span>
-                        </div>
+                        {/* name & score already rendered in shared block */}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -101,8 +147,8 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 </div>
             </div>
 
-            {/* Middle Row: Stats */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
+            {/* Middle Row: Stats (desktop only) */}
+            <div className="hidden sm:grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl border border-gray-100 dark:border-white/5 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/10 transition-colors">
                     <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
                     <p className="text-sm font-black text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
@@ -118,20 +164,19 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 </div>
             </div>
 
-            {/* Pipeline Indicator */}
-            <div className="mb-4">
+            {/* Pipeline Indicator (desktop only) */}
+            <div className="hidden sm:block mb-4">
                 <StageIndicator currentStage={lead.status} compact />
                 <FollowUpAlert lead={lead} />
             </div>
 
-            {/* Bottom: Quick Actions */}
-            <div className="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5">
+            {/* Bottom: Full Quick Actions (desktop only) */}
+            <div className="hidden sm:flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5">
                 <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} compact />
 
                 <button
                     onClick={(e) => stopProp(e, () => setIsQuickLogOpen(true))}
-                    title="Quick Note"
-                    aria-label="Quick Note"
+                    title="Quick Note" aria-label="Quick Note"
                     className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors shadow-sm"
                 >
                     <MessageSquare size={16} />
@@ -148,8 +193,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 <button
                     onClick={(e) => stopProp(e, handleCall)}
-                    title="Call Lead"
-                    aria-label="Call Lead"
+                    title="Call Lead" aria-label="Call Lead"
                     className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <Phone size={16} />
@@ -157,8 +201,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 <button
                     onClick={(e) => stopProp(e, handleEmail)}
-                    title="Email Lead"
-                    aria-label="Email Lead"
+                    title="Email Lead" aria-label="Email Lead"
                     className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <Mail size={16} />
@@ -170,16 +213,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                     <button
                         onClick={onDelete}
                         className="p-2.5 rounded-xl bg-green-50 dark:bg-green-900/10 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors"
-                        title="Restore Lead"
-                        aria-label="Restore Lead"
+                        title="Restore Lead" aria-label="Restore Lead"
                     >
                         <Trash2 size={16} className="rotate-180" />
                     </button>
                 ) : (
                     <button
                         onClick={onDelete}
-                        title="Delete Lead"
-                        aria-label="Delete Lead"
+                        title="Delete Lead" aria-label="Delete Lead"
                         className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
                     >
                         <Trash2 size={16} />
@@ -188,8 +229,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 <button
                     onClick={(e) => stopProp(e, () => onHistory(e))}
-                    title="View Tracking History"
-                    aria-label="History"
+                    title="View Tracking History" aria-label="History"
                     className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-500 transition-colors"
                 >
                     <Clock size={16} />
@@ -198,14 +238,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                 <div className="flex-1"></div>
                 <button
                     onClick={onEdit}
-                    title="More Options"
-                    aria-label="More Options"
+                    title="More Options" aria-label="More Options"
                     className="p-2.5 rounded-xl text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     <MoreHorizontal size={18} />
                 </button>
             </div>
 
+            {/* Promote button */}
             {lead.category === 'prospect' && (
                 <button
                     onClick={(e) => {
@@ -235,8 +275,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                             </h4>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setIsQuickLogOpen(false); }}
-                                title="Close Quick Note"
-                                aria-label="Close"
+                                title="Close Quick Note" aria-label="Close"
                                 className="p-1.5 bg-gray-100 dark:bg-white/10 rounded-full text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                             >
                                 <X size={14} />
