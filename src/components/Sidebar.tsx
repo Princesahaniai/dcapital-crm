@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, Swords, ShieldAlert, CreditCard, FolderArchive, Database } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,7 +31,7 @@ export const Sidebar = () => {
 
     return (
         <>
-            {/* 🍔 Mobile Hamburger Button — fixed top-left, only visible on mobile */}
+            {/* Mobile Hamburger Button */}
             <button
                 onClick={() => setMobileOpen(true)}
                 className="fixed top-4 left-4 z-[100] md:hidden w-11 h-11 bg-[#1C1C1E] border border-white/10 rounded-xl flex items-center justify-center text-white shadow-xl shadow-black/50 hover:border-amber-500/30 active:scale-95 transition-all"
@@ -53,7 +53,7 @@ export const Sidebar = () => {
                 )}
             </AnimatePresence>
 
-            {/* Sidebar — fixed on mobile (slides in/out), static on desktop */}
+            {/* Sidebar */}
             <div
                 className={`fixed md:relative top-0 left-0 bottom-0 w-72 sidebar-glass flex flex-col h-screen z-[105]
                     transform transition-transform duration-300 ease-out
@@ -167,7 +167,7 @@ export const Sidebar = () => {
                                             className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
                                         >
                                             <LogOut size={16} />
-                                            <span>Sign Out Intelligence</span>
+                                            <span>Sign Out</span>
                                         </button>
                                     </div>
                                 </motion.div>
