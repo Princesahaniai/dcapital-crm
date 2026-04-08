@@ -289,18 +289,34 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             data.forEach((row: any) => {
                 const validation = validateLead(row);
                 if (validation.isValid) {
+                    // Build initial historyLog from any Remarks/Notes/Comments/Message column
+                    const initialHistory: any[] = [];
+                    if (row._remark) {
+                        initialHistory.push({
+                            id: Math.random().toString(36).substr(2, 9),
+                            text: row._remark,
+                            author: 'Import',
+                            authorName: 'CSV Import',
+                            timestamp: Date.now(),
+                            type: 'note',
+                        });
+                    }
+
                     validLeads.push({
                         id: Math.random().toString(36).substr(2, 9),
                         name: row.Name,
                         email: row.Email,
                         phone: String(row.Phone),
                         source: row.Source || 'Import',
-                        budget: parseInt(row.Budget) || 0,
-                        maxBudget: parseInt(row.MaxBudget) || 0,
+                        // transformRow already returns clean numbers — no parseInt needed
+                        budget: typeof row.Budget === 'number' ? row.Budget : (parseInt(row.Budget) || 0),
+                        maxBudget: typeof row.MaxBudget === 'number' ? row.MaxBudget : (parseInt(row.MaxBudget) || 0),
                         targetLocation: row.TargetLocation || '',
                         status: (row.Status as Lead['status']) || 'New',
                         assignedTo: user?.id || '',
-                        notes: row.Notes || '',
+                        // notes kept as plain text fallback; historyLog is the source of truth
+                        notes: row._remark ? [{ text: row._remark, author: 'Import', timestamp: Date.now() }] : [],
+                        historyLog: initialHistory,
                         createdAt: Date.now(),
                         updatedAt: Date.now(),
                         lastContact: Date.now(),
