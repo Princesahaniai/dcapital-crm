@@ -77,7 +77,6 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     const [showDelegatedOnly, setShowDelegatedOnly] = useState(false);
     // Default ON: every user sees only their own leads when they first log in
     const [showAssignedToMe, setShowAssignedToMe] = useState(true);
-    const [activeFilter, setActiveFilter] = useState('Assigned to Me');
     const [showCustomLocation, setShowCustomLocation] = useState(false);
     
     const STANDARD_LOCATIONS = ["Downtown Dubai", "Dubai Marina", "Palm Jumeirah", "Jumeirah Village Circle (JVC)", "Business Bay", "Dubai Creek Harbour", "Dubai Hills Estate", "Emaar Beachfront", "Bluewaters Island"];
@@ -127,6 +126,13 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         if (user) map[user.id] = user.name;
         return map;
     }, [team, user]);
+
+    // 🔒 BRUTE-FORCE ROLE FILTER — must be declared BEFORE filteredLeads
+    const finalDisplayLeads = leads.filter(lead => {
+        if (user?.role === 'ceo' || user?.role === 'admin') return true;
+        if (user?.role === 'manager') return lead.assignedTo === user?.id || (lead as any).delegatedBy === user?.id;
+        return lead.assignedTo === user?.id;
+    });
 
     const filteredLeads = finalDisplayLeads.filter(lead => {
         // Trash Logic
@@ -481,11 +487,6 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         link.click();
     };
 
-    const finalDisplayLeads = leads.filter(lead => {
-        if (user.role === 'CEO' || user.role === 'Admin') return true;
-        if (user.role === 'Manager') return lead.assignedTo === user.uid || lead.delegatedBy === user.uid;
-        return lead.assignedTo === user.uid;
-    });
 
     return (
         <div className="p-4 md:p-8 pt-16 md:pt-8 bg-gray-50 dark:bg-black w-full overflow-x-hidden max-w-full">
