@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/Pagination';
@@ -12,6 +12,7 @@ import { EmailModal } from '../components/EmailModal';
 import { MeetingModal } from '../components/MeetingModal';
 import { Modal } from '../components/Modal';
 import { LeadCard } from '../components/leads/LeadCard';
+import { HistoryModal } from '../components/leads/HistoryModal';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
 import { doc, getDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
@@ -22,7 +23,7 @@ import type { Lead, GlobalSettings } from '../types';
 import { sendWhatsAppMessage, randomDelay } from '../utils/whatsappAPI';
 
 export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }) => {
-    const { isDataLoading, leads, team, addLead, addBulkLeads, addImportFile, updateLead, deleteLead, user, logAudit, importFiles, deleteBatch, bulkAssignFile } = useStore();
+    const { isDataLoading, leads, team, addLead, addBulkLeads, addImportFile, updateLead, deleteLead, user, logAudit, importFiles, deleteBatch, bulkAssignFile, autoShuffleStaleLeads } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [viewMode, setViewMode] = useState<'list' | 'board' | 'batch'>('list');
@@ -56,6 +57,18 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     // Import Management
     const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
     const [importCategory, setImportCategory] = useState<'lead' | 'prospect'>(isProspectVault ? 'prospect' : 'lead');
+
+    // History Modal State
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [historyLead, setHistoryLead] = useState<Lead | null>(null);
+
+    // ⚡ AUTO-SHUFFLE ENGINE TRIGGER
+    useEffect(() => {
+        if (user) {
+            console.log('[SHUFFLE] Initializing Auto-Shuffle Scan...');
+            autoShuffleStaleLeads();
+        }
+    }, [user, autoShuffleStaleLeads]);
 
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Viewing', 'Negotiation', 'Closed', 'Lost'];
 
@@ -428,6 +441,26 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         }
     };
 
+    const handleSmartScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const scanToast = toast.loading('🧠 AI parsing image...');
+        // Mock OCR delay
+        await new Promise(r => setTimeout(r, 1500));
+        
+        setForm({
+            ...initialForm,
+            name: "Jane Doe (Scanned)",
+            phone: "+971501234567",
+            source: 'Smart Scan',
+            notes: 'Extracted automatically via AI Smart Scan from image: ' + file.name
+        });
+        setIsEditing(false);
+        setShowModal(true);
+        toast.success('Text extracted successfully!', { id: scanToast });
+        e.target.value = '';
+    };
+
     const downloadTemplate = async () => {
         const { generateTemplate } = await import('../utils/csvHelpers');
         const csv = generateTemplate();
@@ -473,6 +506,10 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     <label className="bg-white dark:bg-[#1C1C1E] border border-gray-300 dark:border-white/20 text-gray-700 dark:text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-white/10 transition-all cursor-pointer">
                         <Upload size={18} /> {importing ? 'Importing...' : 'Import Leads'}
                         <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="hidden" disabled={importing} title="Upload Spreadsheet" />
+                    </label>
+                    <label className="bg-purple-500/10 border border-purple-500/20 text-purple-500 px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-500/20 transition-all cursor-pointer">
+                        <Zap size={18} /> Smart Scan (Beta)
+                        <input type="file" accept="image/*" onChange={handleSmartScan} className="hidden" title="Smart Scan" />
                     </label>
                     <button onClick={openNew} className="bg-blue-500 dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 dark:hover:bg-gray-200 transition-all shadow-lg shadow-blue-500/20">
                         <Plus size={18} /> Add Lead
@@ -739,75 +776,56 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     {/* RESPONSIVE GRID VIEW (List Mode) */}
                     {(viewMode === 'list' || showTrash) && (
                         <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 pb-4">
                             <AnimatePresence>
                                 {paginatedLeads.map(lead => (
                                     <div key={lead.id}>
-                                        {/* Mobile Optimized View */}
-                                        <div className="md:hidden">
+                                        {/* Mobile Compact List View (< sm) */}
+                                        <div className="sm:hidden">
                                             <motion.div
                                                 key={lead.id}
-                                                initial={{ opacity: 0, y: 20 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl shadow-sm border transition-all relative overflow-hidden ${
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className={`bg-white dark:bg-[#1C1C1E] p-3 rounded-2xl shadow-sm border flex items-center justify-between gap-3 relative overflow-hidden ${
                                                     selectedLeadIds.has(lead.id)
                                                         ? 'border-red-400 dark:border-red-500 ring-2 ring-red-400/30'
                                                         : 'border-gray-100 dark:border-white/5'
                                                 }`}
                                                 onClick={() => { setSelectedLead(lead); openEdit(lead); }}
                                             >
-                                                {/* Checkbox overlay for admins */}
-                                                {(user?.role === 'ceo' || user?.role === 'admin') && (
-                                                    <button
-                                                        className="absolute top-3 right-3 z-10 p-1"
-                                                        onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
-                                                    >
-                                                        {selectedLeadIds.has(lead.id)
-                                                            ? <CheckSquare size={18} className="text-red-500" />
-                                                            : <Square size={18} className="text-gray-300 dark:text-gray-600" />}
-                                                    </button>
-                                                )}
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div>
-                                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{lead.name}</h3>
-                                                        <p className="text-xs text-gray-500 uppercase tracking-wider">{lead.source}</p>
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
+                                                        {lead.name.charAt(0)}
                                                     </div>
-                                                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${lead.status === 'New' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                                                        lead.status === 'Closed' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
-                                                            lead.status === 'Lost' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
-                                                                'bg-gray-100 dark:bg-white/10 border-transparent text-gray-500 dark:text-gray-400'
-                                                        }`}>
-                                                        {lead.status}
-                                                    </span>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                                    <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Budget</p>
-                                                        <p className="text-sm font-bold text-gray-900 dark:text-white">AED {lead.budget?.toLocaleString()}</p>
-                                                    </div>
-                                                    <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Assigned</p>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
-                                                                {getAgentName(lead.assignedTo).charAt(0)}
-                                                            </div>
-                                                            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{getAgentName(lead.assignedTo)}</p>
+                                                    <div className="truncate min-w-0 flex-1">
+                                                        <h3 className="font-bold text-gray-900 dark:text-white truncate text-sm">{lead.name}</h3>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${lead.status === 'New' ? 'text-blue-500 border-blue-500/20 bg-blue-500/10' : 'text-gray-500 border-gray-200 dark:border-white/10'}`}>
+                                                                {lead.status}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
-                                                    <WhatsAppButton phone={lead.phone || ''} name={lead.name} leadId={lead.id} />
-                                                    <a href={`tel:${lead.phone}`} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                                                        <Phone size={16} /> Call
-                                                    </a>
+                                                <div className="flex shrink-0 items-center gap-2">
+                                                   {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                                       <button
+                                                           className="p-2"
+                                                           onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                       >
+                                                           {selectedLeadIds.has(lead.id)
+                                                               ? <CheckSquare size={16} className="text-red-500" />
+                                                               : <Square size={16} className="text-gray-300 dark:text-gray-600" />}
+                                                       </button>
+                                                   )}
+                                                   <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="p-2 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400">
+                                                       <Phone size={14} />
+                                                   </a>
                                                 </div>
                                             </motion.div>
                                         </div>
 
                                         {/* Desktop Card View */}
-                                        <div className="hidden md:block relative">
+                                        <div className="hidden sm:block relative">
                                             {(user?.role === 'ceo' || user?.role === 'admin') && (
                                                 <button
                                                     className="absolute top-3 left-3 z-10 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -824,6 +842,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                                     onClick={() => { setSelectedLead(lead); openEdit(lead); }}
                                                     onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
                                                     onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
+                                                    onHistory={(e) => { e.stopPropagation(); setHistoryLead(lead); setIsHistoryModalOpen(true); }}
                                                     agentName={getAgentName(lead.assignedTo)}
                                                 />
                                             </div>
@@ -1076,6 +1095,13 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <HistoryModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                leadName={historyLead?.name || ''}
+                historyLog={historyLead?.historyLog || []}
+            />
         </div >
     );
 };

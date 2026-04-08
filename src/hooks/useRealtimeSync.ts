@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { collection, query, where, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, or, type Unsubscribe } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useStore } from '../store';
 import toast from 'react-hot-toast';
@@ -42,11 +42,19 @@ export function useRealtimeSync() {
             // 🛡️ MANAGER TRACKING OVERRIDE: Managers, CEOs, and Admins must query ALL leads within their company.
             // Only agents are restricted to filtering by assignedTo at the query level.
             const userRole = (user.role || '').toLowerCase();
-            const isManagerOrAbove = userRole === 'manager' || userRole === 'ceo' || userRole === 'admin';
+            let leadsQuery;
             
-            const leadsQuery = isManagerOrAbove
-                ? query(collection(db, 'leads'), where('companyId', '==', cmpId))
-                : query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id));
+            if (userRole === 'ceo' || userRole === 'admin') {
+                leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId));
+            } else if (userRole === 'manager') {
+                leadsQuery = query(
+                    collection(db, 'leads'), 
+                    where('companyId', '==', cmpId),
+                    or(where('assignedTo', '==', user.id), where('delegatedBy', '==', user.id))
+                );
+            } else {
+                leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id));
+            }
 
             const unsubLeads = onSnapshot(leadsQuery, { includeMetadataChanges: true }, (snapshot) => {
                 const fromCache = snapshot.metadata.fromCache;

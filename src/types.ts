@@ -84,6 +84,7 @@ export interface Lead {
     category?: 'lead' | 'prospect';
     fileId?: string;
     fileName?: string;
+    delegatedBy?: string; // Tracks the user who assigned the lead
 }
 
 export interface ImportFile {

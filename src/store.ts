@@ -129,6 +129,7 @@ interface Store {
     // AI Lead Scoring & Nurture
     calculateLeadScore: (lead: ExtendedLead) => 'A' | 'B' | 'C';
     toggleSmartNurture: (leadId: string) => void;
+    autoShuffleStaleLeads: () => Promise<void>;
 }
 
 export const useStore = create<Store>()(
@@ -1326,7 +1327,72 @@ export const useStore = create<Store>()(
 
             resetLeads: () => set({ leads: [] }),
 
-            resetProperties: () => set({ properties: [] })
+            resetProperties: () => set({ properties: [] }),
+
+            autoShuffleStaleLeads: async () => {
+                const s = get();
+                const now = Date.now();
+                const threshold = 48 * 60 * 60 * 1000;
+                
+                const staleLeads = s.leads.filter(l => {
+                    const lastUpdate = l.updatedAt || l.createdAt || 0;
+                    return (
+                        (now - lastUpdate) > threshold &&
+                        l.status !== 'Negotiation' &&
+                        l.status !== 'Closed' &&
+                        l.status !== 'Trash' &&
+                        l.assignedTo &&
+                        l.delegatedBy &&
+                        l.assignedTo !== l.delegatedBy
+                    );
+                });
+
+                if (staleLeads.length === 0) return;
+
+                console.log(`[SHUFFLE] Found ${staleLeads.length} stale leads. Reassigning...`);
+                const batch = writeBatch(db);
+                
+                const updatedLeads = s.leads.map(l => {
+                    const staleMatch = staleLeads.find(sl => sl.id === l.id);
+                    if (staleMatch) {
+                        const managerId = l.delegatedBy!;
+                        const managerName = s.team.find(m => m.id === managerId)?.name || 'Manager';
+                        
+                        const historyEntry = {
+                            date: new Date().toISOString(),
+                            action: 'SYSTEM ACTION',
+                            fromName: 'System',
+                            toName: managerName,
+                            note: 'Auto-reassigned to Manager due to 48 hours of inactivity.'
+                        };
+
+                        batch.update(doc(db, 'leads', l.id), {
+                            assignedTo: managerId,
+                            assignedName: managerName,
+                            updatedAt: now,
+                            historyLog: arrayUnion(historyEntry)
+                        });
+                        
+                        return { 
+                            ...l, 
+                            assignedTo: managerId, 
+                            assignedName: managerName, 
+                            updatedAt: now, 
+                            historyLog: [...(l.historyLog || []), historyEntry] 
+                        };
+                    }
+                    return l;
+                });
+
+                try {
+                    await batch.commit();
+                    set({ leads: updatedLeads as ExtendedLead[] });
+                    toast.success(`⚡ Auto-Shuffle: ${staleLeads.length} stale lead(s) reassigned to Manager.`);
+                    get().logAudit('AUTO_SHUFFLE_LEADS', undefined, { count: staleLeads.length });
+                } catch (error) {
+                    console.error('[SHUFFLE] Batch update failed:', error);
+                }
+            }
         }),
         {
             name: 'dcapital-ultimate-db',

@@ -35,11 +35,13 @@ export const Team = () => {
     }, [showAuditModal]);
 
     const isAdmin = user?.role === 'ceo' || user?.role === 'admin';
+    const isManagerOrAbove = isAdmin || user?.role === 'manager';
 
     const handleInvite = async (formData: any) => {
         try {
             const result = await addTeamMember({
-                ...formData
+                ...formData,
+                ...(user?.role === 'manager' && { managerId: user.id, role: 'agent' })
             } as any);
 
             // Display credentials to admin
@@ -153,29 +155,33 @@ export const Team = () => {
                     <h1 className="text-3xl font-bold tracking-tight text-white">Team Access</h1>
                     <p className="text-zinc-400 mt-1">Manage your organization members</p>
                 </div>
-                {isAdmin && (
+                {isManagerOrAbove && (
                     <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                        <button
-                            onClick={exportWPSPayroll}
-                            className="bg-green-500/10 text-green-500 border border-green-500/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-500 hover:text-black transition-colors"
-                        >
-                            <Download className="w-5 h-5" />
-                            Export WPS Payroll
-                        </button>
-                        <button
-                            onClick={() => setShowAuditModal(true)}
-                            className="bg-zinc-800 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"
-                        >
-                            <Clock className="w-5 h-5" />
-                            Audit Logs
-                        </button>
-                        <button
-                            onClick={() => setShowBroadcastModal(true)}
-                            className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-500 hover:text-white transition-colors"
-                        >
-                            <Megaphone className="w-5 h-5" />
-                            CEO Broadcast
-                        </button>
+                        {isAdmin && (
+                            <>
+                                <button
+                                    onClick={exportWPSPayroll}
+                                    className="bg-green-500/10 text-green-500 border border-green-500/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-500 hover:text-black transition-colors"
+                                >
+                                    <Download className="w-5 h-5" />
+                                    Export WPS Payroll
+                                </button>
+                                <button
+                                    onClick={() => setShowAuditModal(true)}
+                                    className="bg-zinc-800 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"
+                                >
+                                    <Clock className="w-5 h-5" />
+                                    Audit Logs
+                                </button>
+                                <button
+                                    onClick={() => setShowBroadcastModal(true)}
+                                    className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-500 hover:text-white transition-colors"
+                                >
+                                    <Megaphone className="w-5 h-5" />
+                                    CEO Broadcast
+                                </button>
+                            </>
+                        )}
                         <button
                             onClick={() => setShowInviteModal(true)}
                             className="bg-[#D4AF37] text-black px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#B8962F] transition-colors"
@@ -338,7 +344,7 @@ export const Team = () => {
                                 </button>
                             </div>
                         ) : (
-                            <InviteForm onInvite={handleInvite} onClose={() => setShowInviteModal(false)} />
+                            <InviteForm onInvite={handleInvite} onClose={() => setShowInviteModal(false)} isManager={user?.role === 'manager'} />
                         )}
                     </motion.div>
                 </div>
@@ -429,7 +435,7 @@ export const Team = () => {
     );
 };
 
-const InviteForm = ({ onInvite, onClose }: any) => {
+const InviteForm = ({ onInvite, onClose, isManager }: any) => {
     const [form, setForm] = useState({ name: '', email: '', role: 'agent', designation: '', phone: '' });
 
     return (
@@ -468,10 +474,11 @@ const InviteForm = ({ onInvite, onClose }: any) => {
                             className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white focus:border-[#D4AF37] outline-none transition-colors"
                             value={form.role}
                             onChange={e => setForm({ ...form, role: e.target.value })}
+                            disabled={isManager}
                         >
                             <option value="agent">Agent</option>
-                            <option value="manager">Manager</option>
-                            <option value="admin">Admin</option>
+                            {!isManager && <option value="manager">Manager</option>}
+                            {!isManager && <option value="admin">Admin</option>}
                         </select>
                     </div>
                     <div>

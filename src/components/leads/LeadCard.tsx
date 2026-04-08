@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mail, MoreHorizontal, Trash2, Zap, MessageSquare, X, Send } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, Trash2, Zap, MessageSquare, X, Send, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { StageIndicator } from './StageIndicator';
 import { WhatsAppButton } from '../WhatsAppButton';
@@ -15,10 +15,11 @@ interface LeadCardProps {
     onClick: () => void;
     onEdit: (e: React.MouseEvent) => void;
     onDelete: (e: React.MouseEvent) => void;
+    onHistory: (e: React.MouseEvent) => void;
     agentName?: string;
 }
 
-export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDelete, agentName = 'Unassigned' }) => {
+export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDelete, onHistory, agentName = 'Unassigned' }) => {
     const { user, toggleSmartNurture, addQuickNote, updateLead } = useStore();
     const scoreData = calculateLeadScore(lead);
     const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
@@ -167,7 +168,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
 
                 {lead.status === 'Trash' ? (
                     <button
-                        onClick={onDelete} // This will trigger restore if parent handles it, or updated logic in Leads.tsx
+                        onClick={onDelete}
                         className="p-2.5 rounded-xl bg-green-50 dark:bg-green-900/10 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors"
                         title="Restore Lead"
                         aria-label="Restore Lead"
@@ -184,6 +185,16 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onEdit, onDel
                         <Trash2 size={16} />
                     </button>
                 )}
+
+                <button
+                    onClick={(e) => stopProp(e, () => onHistory(e))}
+                    title="View Tracking History"
+                    aria-label="History"
+                    className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-500 transition-colors"
+                >
+                    <Clock size={16} />
+                </button>
+
                 <div className="flex-1"></div>
                 <button
                     onClick={onEdit}
