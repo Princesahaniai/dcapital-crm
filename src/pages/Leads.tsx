@@ -506,13 +506,90 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
 
     return (
         <div className="p-4 md:p-8 pt-16 md:pt-8 bg-gray-50 dark:bg-black w-full overflow-x-hidden max-w-full">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                    <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
-                        {isProspectVault ? 'PROSPECTS' : 'LEADS'} <span className={`text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 rounded-full ${isProspectVault ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>{isProspectVault ? 'Vault' : 'Pipeline'}</span>
+                    <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight">
+                        {isProspectVault ? 'PROSPECTS' : 'LEADS'}{' '}
+                        <span className={`text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 rounded-full ${isProspectVault ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                            {isProspectVault ? 'Vault' : 'Pipeline'}
+                        </span>
                     </h1>
                 </motion.div>
-                <div className="flex gap-2 flex-wrap">
+
+                {/* ── MOBILE TOOLBAR ROW ─────────────────────────────────── */}
+                {/* On mobile, collapse all actions into one scrollable icon row so nothing overlaps */}
+                <div className="flex md:hidden items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {/* View modes */}
+                    {!isProspectVault && (
+                        <div className="flex shrink-0 bg-gray-100 dark:bg-white/5 rounded-xl p-1 gap-0.5">
+                            <button onClick={() => setViewMode('list')} title="List View"
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                                <List size={18} />
+                            </button>
+                            <button onClick={() => setViewMode('board')} title="Board View"
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                                <LayoutGrid size={18} />
+                            </button>
+                            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                <button onClick={() => setViewMode('batch')} title="Batch Control"
+                                    className={`p-2.5 rounded-lg transition-all ${viewMode === 'batch' ? 'bg-blue-500 shadow-sm text-white' : 'text-gray-400'}`}>
+                                    <FolderOpen size={18} />
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Trash toggle */}
+                    <button onClick={() => setShowTrash(!showTrash)} title={showTrash ? 'Show Active' : 'Show Trash'}
+                        className={`shrink-0 p-2.5 rounded-xl transition-colors ${showTrash ? 'bg-red-50 text-red-500 dark:bg-red-900/20' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400'}`}>
+                        <Trash2 size={18} />
+                    </button>
+
+                    {/* Download template */}
+                    <button onClick={downloadTemplate} title="Download Template"
+                        className="shrink-0 p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 transition-colors">
+                        <FileDown size={18} />
+                    </button>
+
+                    {/* Export */}
+                    <button onClick={handleExport} title="Export CSV"
+                        className="shrink-0 p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 transition-colors">
+                        <Download size={18} />
+                    </button>
+
+                    {/* Import */}
+                    <label className="shrink-0 p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 transition-colors cursor-pointer" title="Import Leads">
+                        <Upload size={18} />
+                        <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="hidden" disabled={importing} title="Upload Spreadsheet" />
+                    </label>
+
+                    {/* Smart Scan */}
+                    <label className="shrink-0 p-2.5 rounded-xl bg-purple-500/10 text-purple-500 transition-colors cursor-pointer" title="AI Smart Scan">
+                        <Zap size={18} />
+                        <input type="file" accept="image/*" onChange={handleSmartScan} className="hidden" title="Smart Scan" />
+                    </label>
+
+                    {/* Add Lead — primary CTA */}
+                    <button onClick={openNew}
+                        className="shrink-0 flex items-center gap-1.5 bg-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                        <Plus size={16} /> Add
+                    </button>
+
+                    {/* WhatsApp broadcast — CEO/admin only */}
+                    {(user?.role === 'ceo' || user?.role === 'admin' || user?.email?.includes('admin')) && (
+                        <button onClick={() => setShowBroadcastModal(true)} disabled={isBroadcasting} title="Bulk WhatsApp"
+                            className={`shrink-0 p-2.5 rounded-xl transition-all ${
+                                isBroadcasting
+                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                                    : 'bg-[#E3FFEB] text-[#00A843] border border-[#00A843]/30'
+                            }`}>
+                            <MessageSquareShare size={18} />
+                        </button>
+                    )}
+                </div>
+
+                {/* ── DESKTOP TOOLBAR ROW ────────────────────────────────── */}
+                <div className="hidden md:flex items-center gap-2 flex-wrap">
                     <button onClick={downloadTemplate} title="Download Template" className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors">
                         <FileDown size={20} />
                     </button>
@@ -529,7 +606,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     <button
                         onClick={() => setShowTrash(!showTrash)}
                         className={`p-3 rounded-xl transition-colors ${showTrash ? 'bg-red-50 text-red-500 dark:bg-red-900/20' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white'}`}
-                        title={showTrash ? "Show Active Leads" : "Show Trash"}
+                        title={showTrash ? 'Show Active Leads' : 'Show Trash'}
                     >
                         <Trash2 size={20} />
                     </button>
@@ -549,26 +626,20 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     </button>
                     {!isProspectVault && (
                         <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1">
-                            <button
-                                onClick={() => setViewMode('list')}
+                            <button onClick={() => setViewMode('list')}
                                 className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                                title="List View"
-                            >
+                                title="List View">
                                 <List size={18} />
                             </button>
-                            <button
-                                onClick={() => setViewMode('board')}
+                            <button onClick={() => setViewMode('board')}
                                 className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                                title="Board View"
-                            >
+                                title="Board View">
                                 <LayoutGrid size={18} />
                             </button>
                             {(user?.role === 'ceo' || user?.role === 'admin') && (
-                                <button
-                                    onClick={() => setViewMode('batch')}
+                                <button onClick={() => setViewMode('batch')}
                                     className={`p-2.5 rounded-lg transition-all ${viewMode === 'batch' ? 'bg-blue-500 shadow-sm text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                                    title="Batch Control"
-                                >
+                                    title="Batch Control">
                                     <FolderOpen size={18} />
                                 </button>
                             )}

@@ -55,7 +55,7 @@ export const Sidebar = () => {
 
             {/* Sidebar */}
             <div
-                className={`fixed md:relative top-0 left-0 bottom-0 w-72 sidebar-glass flex flex-col h-screen z-[105]
+                className={`fixed md:relative top-0 left-0 bottom-0 w-72 sidebar-glass flex flex-col h-[100dvh] z-[105]
                     transform transition-transform duration-300 ease-out
                     ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
                     md:translate-x-0`}
@@ -82,10 +82,11 @@ export const Sidebar = () => {
                 </div>
 
                 {/* NAVIGATION */}
-                <nav className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2 space-y-8">
-                    <div>
-                        <p className="px-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Main Menu</p>
-                        <div className="space-y-1">
+                <nav className="flex-1 overflow-y-auto scrollbar-hide py-3">
+                    {/* Main Menu */}
+                    <div className="mx-3 mb-3 p-2 rounded-2xl bg-gray-50/50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5">
+                        <p className="px-3 pt-1 pb-3 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Main Menu</p>
+                        <div className="flex flex-col gap-0.5">
                             <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
                             <NavItem to="/leads" icon={Users} label="Leads Engine" />
                             <NavItem to="/prospects" icon={FolderArchive} label="Prospect Vault" />
@@ -96,9 +97,10 @@ export const Sidebar = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <p className="px-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Administration</p>
-                        <div className="space-y-1">
+                    {/* Administration */}
+                    <div className="mx-3 p-2 rounded-2xl bg-gray-50/50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5">
+                        <p className="px-3 pt-1 pb-3 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Administration</p>
+                        <div className="flex flex-col gap-0.5">
                             {(user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') && (
                                 <NavItem to="/team" icon={Shield} label="Access Control" />
                             )}
