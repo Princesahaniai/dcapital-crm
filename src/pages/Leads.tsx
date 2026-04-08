@@ -75,7 +75,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     const [showTrash, setShowTrash] = useState(false);
     const [showRecentOnly, setShowRecentOnly] = useState(false);
     const [showDelegatedOnly, setShowDelegatedOnly] = useState(false);
-    const [showAssignedToMe, setShowAssignedToMe] = useState(false);
+    // Default ON: every user sees only their own leads when they first log in
+    const [showAssignedToMe, setShowAssignedToMe] = useState(true);
     const [showCustomLocation, setShowCustomLocation] = useState(false);
     
     const STANDARD_LOCATIONS = ["Downtown Dubai", "Dubai Marina", "Palm Jumeirah", "Jumeirah Village Circle (JVC)", "Business Bay", "Dubai Creek Harbour", "Dubai Hills Estate", "Emaar Beachfront", "Bluewaters Island"];
@@ -146,8 +147,16 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             if ((lead as any).delegatedBy !== user?.id) return false;
         }
 
-        if (showAssignedToMe) {
-            if (lead.assignedTo !== user?.id) return false;
+        // 🔒 PRIVACY FILTER — "Assigned to Me"
+        //   CEO / Admin: skip this filter — they have unrestricted access
+        //   Agent: ALWAYS enforce (Firestore already restricts at query level, this is a UI safety net)
+        //   Manager / others: respect the toggle
+        const isCeoOrAdmin = user?.role === 'ceo' || user?.role === 'admin';
+        const isAgent = user?.role === 'agent';
+        if (!isCeoOrAdmin) {
+            if (isAgent || showAssignedToMe) {
+                if (lead.assignedTo !== user?.id) return false;
+            }
         }
 
         const matchesSearch = (lead.name || '').toLowerCase().includes((search || '').toLowerCase()) ||

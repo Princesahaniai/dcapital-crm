@@ -37,23 +37,32 @@ export function useRealtimeSync() {
             console.warn('[REALTIME] ⚠️ No companyId on user — using fallback d-capital-main');
         }
 
-        // ─── LEADS LISTENER ─────────────────────────────────────
+        // ─── LEADS LISTENER — STRICT RBAC ───────────────────────
+        // 🔒 Privacy rules (enforced at the Firestore query level):
+        //   CEO / Admin  → full company collection, no extra where clauses
+        //   Manager      → only leads where assignedTo === uid OR delegatedBy === uid
+        //   Agent (else) → only leads where assignedTo === uid (hard restriction)
         try {
-            // 🛡️ MANAGER TRACKING OVERRIDE: Managers, CEOs, and Admins must query ALL leads within their company.
-            // Only agents are restricted to filtering by assignedTo at the query level.
             const userRole = (user.role || '').toLowerCase();
             let leadsQuery;
-            
+
             if (userRole === 'ceo' || userRole === 'admin') {
+                // CEO & Admin: unrestricted — fetch entire company lead collection
                 leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId));
             } else if (userRole === 'manager') {
+                // Manager: own assigned leads UNION leads they delegated out
                 leadsQuery = query(
-                    collection(db, 'leads'), 
+                    collection(db, 'leads'),
                     where('companyId', '==', cmpId),
                     or(where('assignedTo', '==', user.id), where('delegatedBy', '==', user.id))
                 );
             } else {
-                leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId), where('assignedTo', '==', user.id));
+                // Agent (or any unknown role): strictly only their own assigned leads
+                leadsQuery = query(
+                    collection(db, 'leads'),
+                    where('companyId', '==', cmpId),
+                    where('assignedTo', '==', user.id)
+                );
             }
 
             const unsubLeads = onSnapshot(leadsQuery, { includeMetadataChanges: true }, (snapshot) => {
