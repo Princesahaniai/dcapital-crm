@@ -241,7 +241,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         const errors: Record<string, boolean> = {};
         if (!form.name?.trim()) { errors.name = true; toast.error('Lead Name is strictly required'); }
         if (!form.phone?.trim() || form.phone.length < 8) { errors.phone = true; toast.error('A strictly valid Contact Phone is required'); }
-        if (!form.budget || form.budget <= 0) { errors.budget = true; toast.error('Mission Budget must be greater than 0'); }
+        // Budget is OPTIONAL — default to 0 if blank, never block the user
         if (!form.status) { errors.status = true; toast.error('Pipeline State is required'); }
 
         if (Object.keys(errors).length > 0) {
@@ -363,9 +363,19 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                 const validation = validateLead(row);
                 if (validation.isValid) {
                     // ── Resolve AssignedTo ────────────────────────────────────────────────────
-                    // 'Unassigned' / empty / no match → ALWAYS fall back to current user's UID.
-                    // Firestore security rules require a non-empty, valid UID in this field.
-                    const assignedToRaw = String(row.AssignedTo || '').trim();
+                    // Triple safety net: read rawRow directly FIRST (catches 'Assined ' with
+                    // trailing space and typo that resolveHeader / applyRawOverrides may miss),
+                    // then fall through to applyRawOverrides result, then to current user.
+                    const assignedToRaw = String(
+                        rawRow['Assined ']  ||   // ← EXACT header in user's Google Sheet
+                        rawRow['Assined']   ||   // typo without trailing space
+                        rawRow['Assigned '] ||   // correct spelling + trailing space
+                        rawRow['Assigned']  ||   // correct spelling
+                        rawRow['Owner']     ||   // alternate CRM header
+                        rawRow['Agent']     ||   // another alternate
+                        row.AssignedTo      ||   // from applyRawOverrides / transformRow
+                        ''
+                    ).trim();
                     const isUnassigned =
                         !assignedToRaw ||
                         assignedToRaw.toLowerCase() === 'unassigned' ||
@@ -385,12 +395,23 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     // Hard safety net — never let an empty string reach Firestore
                     if (!resolvedAssignedTo) resolvedAssignedTo = user?.id || 'unassigned';
 
-                    // ── Build Operational Intel string ────────────────────────────────────────
-                    // row._remark is pre-built by csvHelpers as:
-                    //   "Source: X | Form: Y | Channel: Z | Labels: W\nRemark text"
-                    // We store this verbatim into the "notes" (Operational Intel) field
-                    // so the user can read it in the lead detail panel.
-                    const operationalIntel = row._remark || row.Notes || '';
+                    // ── Build Operational Intel string (inline raw-row pass) ─────────────────
+                    // Read rawRow directly as the final safety net so Remarks, Form, Source
+                    // and Channel are physically impossible to drop.
+                    const _rawRemarks = String(rawRow['Remarks'] || rawRow['Remark'] || rawRow['Comments'] || '').trim();
+                    const _rawForm    = String(rawRow['Form']    || '').trim();
+                    const _rawSource  = String(rawRow['Source']  || '').trim();
+                    const _rawChannel = String(rawRow['Channel'] || '').trim();
+                    const _rawLabels  = String(rawRow['Labels']  || '').trim();
+                    const _intelParts: string[] = [];
+                    if (_rawSource)  _intelParts.push(`Source: ${_rawSource}`);
+                    if (_rawForm)    _intelParts.push(`Form: ${_rawForm}`);
+                    if (_rawChannel) _intelParts.push(`Channel: ${_rawChannel}`);
+                    if (_rawLabels)  _intelParts.push(`Labels: ${_rawLabels}`);
+                    if (_rawRemarks) _intelParts.push(`Remarks: ${_rawRemarks}`);
+                    const operationalIntel = _intelParts.length > 0
+                        ? _intelParts.join(' | ')
+                        : (row._remark || row.Notes || '');
 
                     // ── historyLog entry ─────────────────────────────────────────────────────
                     const initialHistory: any[] = [];
