@@ -57,6 +57,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     // Import Management
     const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
     const [importCategory, setImportCategory] = useState<'lead' | 'prospect'>(isProspectVault ? 'prospect' : 'lead');
+    /** Pre-parsed preview rows (first 5) shown in the Import modal before the user confirms */
+    const [previewRows, setPreviewRows] = useState<any[]>([]);
 
     // History Modal State
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -247,12 +249,31 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         return agent ? agent.name : 'Unknown';
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         setPendingImportFile(file);
         setImportCategory(isProspectVault ? 'prospect' : 'lead');
-        e.target.value = ''; // Reset input
+        setPreviewRows([]);
+        e.target.value = ''; // Reset input early so re-picking same file works
+
+        // Pre-parse for the preview table — runs async, does NOT block modal opening
+        try {
+            let rows: any[] = [];
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                const fileData = await file.arrayBuffer();
+                const workbook = XLSX.read(fileData);
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rawData = XLSX.utils.sheet_to_json(worksheet);
+                rows = (rawData as Record<string, any>[]).map(transformRow);
+            } else {
+                const { data } = await parseCSV(file);
+                rows = data;
+            }
+            setPreviewRows(rows.slice(0, 5));
+        } catch {
+            // Preview failed silently — import will still work fine
+        }
     };
 
     const processImport = async () => {
@@ -289,24 +310,42 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             data.forEach((row: any) => {
                 const validation = validateLead(row);
                 if (validation.isValid) {
-                    // ── Resolve AssignedTo: match CSV agent name against team roster ──
+                    // ── Resolve AssignedTo ────────────────────────────────────────────────────
+                    // 'Unassigned' / empty / no match → ALWAYS fall back to current user's UID.
+                    // Firestore security rules require a non-empty, valid UID in this field.
+                    const assignedToRaw = String(row.AssignedTo || '').trim();
+                    const isUnassigned =
+                        !assignedToRaw ||
+                        assignedToRaw.toLowerCase() === 'unassigned' ||
+                        assignedToRaw.toLowerCase() === 'none' ||
+                        assignedToRaw === '-';
                     let resolvedAssignedTo = user?.id || '';
-                    if (row.AssignedTo) {
-                        const needle = String(row.AssignedTo).trim().toLowerCase();
+                    if (!isUnassigned) {
+                        const needle = assignedToRaw.toLowerCase();
                         const matched = team.find(m =>
                             m.name.toLowerCase() === needle ||
                             m.name.toLowerCase().includes(needle) ||
-                            (m.email && m.email.toLowerCase() === needle)
+                            (m.email && m.email.toLowerCase() === needle) ||
+                            m.id === assignedToRaw // direct Firestore UID match
                         );
                         if (matched) resolvedAssignedTo = matched.id;
                     }
+                    // Hard safety net — never let an empty string reach Firestore
+                    if (!resolvedAssignedTo) resolvedAssignedTo = user?.id || 'unassigned';
 
-                    // ── Build historyLog entry from Remarks/Notes/Comments column ──
+                    // ── Build Operational Intel string ────────────────────────────────────────
+                    // row._remark is pre-built by csvHelpers as:
+                    //   "Source: X | Form: Y | Channel: Z | Labels: W\nRemark text"
+                    // We store this verbatim into the "notes" (Operational Intel) field
+                    // so the user can read it in the lead detail panel.
+                    const operationalIntel = row._remark || row.Notes || '';
+
+                    // ── historyLog entry ─────────────────────────────────────────────────────
                     const initialHistory: any[] = [];
-                    if (row._remark) {
+                    if (operationalIntel) {
                         initialHistory.push({
                             id: Math.random().toString(36).substr(2, 9),
-                            text: row._remark,
+                            text: operationalIntel,
                             author: 'Import',
                             authorName: 'CSV Import',
                             timestamp: Date.now(),
@@ -316,27 +355,29 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
 
                     validLeads.push({
                         id: Math.random().toString(36).substr(2, 9),
-                        name: row.Name,
-                        email: row.Email,
-                        phone: String(row.Phone),
+                        name:  row.Name  || '',
+                        email: row.Email || '',
+                        phone: String(row.Phone || ''),
+                        // source column preserved separately for filtering/display
                         source: row.Source || 'Import',
-                        // transformRow already returns clean numbers — no parseInt needed
-                        budget: typeof row.Budget === 'number' ? row.Budget : (parseInt(row.Budget) || 0),
+                        budget:    typeof row.Budget    === 'number' ? row.Budget    : (parseInt(row.Budget)    || 0),
                         maxBudget: typeof row.MaxBudget === 'number' ? row.MaxBudget : (parseInt(row.MaxBudget) || 0),
                         targetLocation: row.TargetLocation || '',
                         status: (row.Status as Lead['status']) || 'New',
+                        // assignedTo is always a valid UID — never empty, never 'Unassigned'
                         assignedTo: resolvedAssignedTo,
-                        // notes = plain string for the Operational Intel textarea
-                        notes: row._remark || '',
+                        // notes = Operational Intel textarea — contains the full intel string
+                        // (Source, Form, Channel, Labels, Remarks all combined by csvHelpers)
+                        notes: operationalIntel,
                         historyLog: initialHistory,
-                        createdAt: Date.now(),
-                        updatedAt: Date.now(),
+                        createdAt:   Date.now(),
+                        updatedAt:   Date.now(),
                         lastContact: Date.now(),
                         commission: 0,
                         commissionPaid: false,
                         category: importCategory,
-                        fileId: '', // placeholder, will be updated shortly
-                        fileName: file.name
+                        fileId:   '', // stamped below after the file record is created
+                        fileName: file.name,
                     });
                 } else {
                     validationErrors++;
@@ -1185,38 +1226,108 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
 
             {/* IMPORT CONFIGURATION MODAL */}
             <Modal isOpen={!!pendingImportFile} onClose={() => setPendingImportFile(null)} title="Import Configuration">
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-5">
+
+                    {/* ── File info ─────────────────────────────────────────────────────── */}
                     <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-xl flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
                             <Upload size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="font-bold text-gray-900 dark:text-white truncate max-w-[200px] md:max-w-xs">{pendingImportFile?.name}</p>
                             <p className="text-xs text-gray-500 uppercase tracking-wider">{(pendingImportFile?.size || 0) / 1024 > 1024 ? ((pendingImportFile?.size || 0) / 1024 / 1024).toFixed(2) + ' MB' : ((pendingImportFile?.size || 0) / 1024).toFixed(2) + ' KB'}</p>
                         </div>
                     </div>
 
+                    {/* ── Category picker ───────────────────────────────────────────────── */}
                     <div className="space-y-3">
                         <p className="text-sm font-bold text-gray-900 dark:text-white">Where should these contacts go?</p>
-                        
                         <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${importCategory === 'lead' ? 'border-blue-500 bg-blue-500/5' : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'}`}>
                             <input type="radio" value="lead" checked={importCategory === 'lead'} onChange={() => setImportCategory('lead')} className="mt-1" />
                             <div>
                                 <p className="font-bold text-gray-900 dark:text-white">High Value Leads</p>
-                                <p className="text-xs text-gray-500 mt-1">Add to the main Pipeline. Visible in the Dashboard. For incoming marketing leads, referrals, and active buyers.</p>
+                                <p className="text-xs text-gray-500 mt-1">Add to the main Pipeline. For incoming marketing leads, referrals, and active buyers.</p>
                             </div>
                         </label>
-
                         <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${importCategory === 'prospect' ? 'border-amber-500 bg-amber-500/5' : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'}`}>
                             <input type="radio" value="prospect" checked={importCategory === 'prospect'} onChange={() => setImportCategory('prospect')} className="mt-1" />
                             <div>
                                 <p className="font-bold text-amber-600 dark:text-amber-500">Cold Prospects (Prospect Vault)</p>
-                                <p className="text-xs text-gray-500 mt-1">Send to the isolated Prospect Vault. Keep the main pipeline clean. For cold calling data, purchased lists, and raw prospects.</p>
+                                <p className="text-xs text-gray-500 mt-1">Send to the Prospect Vault. For cold calling data, purchased lists, and raw prospects.</p>
                             </div>
                         </label>
                     </div>
 
-                    <div className="flex gap-4 pt-4 mt-6">
+                    {/* ── DATA PREVIEW TABLE ────────────────────────────────────────────── */}
+                    {previewRows.length > 0 ? (
+                        <div className="space-y-2">
+                            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
+                                Data Preview — first {previewRows.length} rows detected
+                            </p>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-white/10">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+                                            <th className="p-2 pl-3 font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">Name</th>
+                                            <th className="p-2 font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">Phone</th>
+                                            <th className="p-2 font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">Agent</th>
+                                            <th className="p-2 pr-3 font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">Extracted Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {previewRows.map((row, i) => {
+                                            const rawOwner = String(row.AssignedTo || '').trim();
+                                            const isUnassignedOwner =
+                                                !rawOwner ||
+                                                rawOwner.toLowerCase() === 'unassigned' ||
+                                                rawOwner.toLowerCase() === 'none' ||
+                                                rawOwner === '-';
+                                            let agentLabel = `${user?.name || 'You'} (fallback)`;
+                                            let agentResolved = false;
+                                            if (!isUnassignedOwner) {
+                                                const needle = rawOwner.toLowerCase();
+                                                const matched = team.find(m =>
+                                                    m.name.toLowerCase() === needle ||
+                                                    m.name.toLowerCase().includes(needle) ||
+                                                    (m.email && m.email.toLowerCase() === needle) ||
+                                                    m.id === rawOwner
+                                                );
+                                                if (matched) { agentLabel = matched.name; agentResolved = true; }
+                                                else agentLabel = `${rawOwner} → fallback`;
+                                            }
+                                            const intel = (row._remark || row.Notes || '').trim();
+                                            return (
+                                                <tr key={i} className="border-b border-gray-100 dark:border-white/5 last:border-0 hover:bg-gray-50 dark:hover:bg-white/3 transition-colors">
+                                                    <td className="p-2 pl-3 text-gray-900 dark:text-white font-medium max-w-[110px] truncate">{row.Name || <span className="text-gray-400 italic">—</span>}</td>
+                                                    <td className="p-2 text-gray-500 dark:text-gray-400 whitespace-nowrap font-mono">{row.Phone || '—'}</td>
+                                                    <td className="p-2 whitespace-nowrap">
+                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                            agentResolved
+                                                                ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+                                                                : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                                                        }`}>{agentLabel}</span>
+                                                    </td>
+                                                    <td className="p-2 pr-3 text-gray-500 dark:text-gray-400 max-w-[180px] truncate">
+                                                        {intel
+                                                            ? intel.length > 70 ? intel.substring(0, 70) + '…' : intel
+                                                            : <span className="italic text-gray-300 dark:text-gray-600">None</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p className="text-[10px] text-gray-400 text-center">🟢 Green = agent matched · 🟡 Amber = falls back to you</p>
+                        </div>
+                    ) : (
+                        <div className="text-center py-3 text-xs text-gray-400 italic">Parsing file for preview…</div>
+                    )}
+
+                    {/* ── Action buttons ────────────────────────────────────────────────── */}
+                    <div className="flex gap-4 pt-2">
                         <button type="button" onClick={() => setPendingImportFile(null)} className="px-6 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl transition-all">Cancel</button>
                         <button
                             type="button"
