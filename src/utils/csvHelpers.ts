@@ -377,6 +377,32 @@ export const parseCSV = (file: File): Promise<{ data: any[]; errors: any[] }> =>
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CSV RAW PARSER — rows returned with ORIGINAL headers (no transformation)
+// Use when the caller needs explicit lookup of typo / non-standard headers.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const parseCSVRaw = (file: File): Promise<{ data: Record<string, any>[]; errors: any[] }> => {
+    return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            // Keep headers EXACTLY as they exist in the file — no trim, no normalisation.
+            // This preserves 'Assined ' (trailing space + typo) and other non-standard headers.
+            transformHeader: (header: string) => header,
+            complete: (results: ParseResult<any>) => {
+                resolve({
+                    data: results.data as Record<string, any>[],
+                    errors: results.errors,
+                });
+            },
+            error: (error: Error) => {
+                reject(error);
+            },
+        });
+    });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 

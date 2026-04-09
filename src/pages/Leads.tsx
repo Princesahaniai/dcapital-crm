@@ -17,10 +17,62 @@ import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
 import { doc, getDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { parseCSV, validateLead, transformRow } from '../utils/csvHelpers';
+import { parseCSV, parseCSVRaw, validateLead, transformRow } from '../utils/csvHelpers';
 import * as XLSX from 'xlsx';
 import type { Lead, GlobalSettings } from '../types';
 import { sendWhatsAppMessage, randomDelay } from '../utils/whatsappAPI';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPLICIT RAW COLUMN EXTRACTOR
+// Runs AFTER transformRow to catch non-standard / misspelled headers that
+// the fuzzy resolver missed. Reads the original raw row directly.
+// e.g. 'Assined ' (trailing space + typo) is the literal header in the user's
+// Google Sheet — resolveHeader will never match it, so we read it explicitly.
+// ─────────────────────────────────────────────────────────────────────────────
+const applyRawOverrides = (
+    rawRow: Record<string, any>,
+    row: Record<string, any>
+): Record<string, any> => {
+    // AssignedTo — try every known spelling / typo / trailing-space variant
+    const explicitAssigned = String(
+        rawRow['Assined ']  ||   // ← exact header in user's Google Sheet (typo + trailing space)
+        rawRow['Assined']   ||   // typo without trailing space
+        rawRow['Assigned '] ||   // correct spelling + trailing space
+        rawRow['Assigned']  ||   // correct spelling
+        rawRow['Owner']     ||   // alternate CRM header
+        rawRow['Agent']     ||   // another alternate
+        row.AssignedTo      ||
+        ''
+    ).trim();
+
+    // Text content columns — try multiple spellings
+    const explicitRemarks = String(
+        rawRow['Remarks'] || rawRow['Remark'] || rawRow['Comments'] || ''
+    ).trim();
+    const explicitForm    = String(rawRow['Form']    || '').trim();
+    const explicitSource  = String(rawRow['Source']  || row.Source || '').trim();
+    const explicitChannel = String(rawRow['Channel'] || '').trim();
+    const explicitLabels  = String(rawRow['Labels']  || '').trim();
+
+    // Build the Operational Intel string — every custom column combined, zero data dropped
+    const intelParts: string[] = [];
+    if (explicitSource && explicitSource !== 'Import') intelParts.push(`Source: ${explicitSource}`);
+    if (explicitForm)    intelParts.push(`Form: ${explicitForm}`);
+    if (explicitChannel) intelParts.push(`Channel: ${explicitChannel}`);
+    if (explicitLabels)  intelParts.push(`Labels: ${explicitLabels}`);
+    if (explicitRemarks) intelParts.push(`Remarks: ${explicitRemarks}`);
+    const operationalIntel = intelParts.length > 0
+        ? intelParts.join(' | ')
+        : (row._remark || row.Notes || '');
+
+    return {
+        ...row,
+        AssignedTo: explicitAssigned || row.AssignedTo || '',
+        _remark:    operationalIntel,
+        Notes:      operationalIntel,
+        Source:     explicitSource || row.Source || 'Import',
+    };
+};
 
 export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }) => {
     const { isDataLoading, leads, team, addLead, addBulkLeads, addImportFile, updateLead, deleteLead, user, logAudit, importFiles, deleteBatch, bulkAssignFile, autoShuffleStaleLeads } = useStore();
@@ -257,18 +309,18 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         setPreviewRows([]);
         e.target.value = ''; // Reset input early so re-picking same file works
 
-        // Pre-parse for the preview table — runs async, does NOT block modal opening
+        // Pre-parse for the preview table — two-pass: raw parse → transform → explicit override
         try {
             let rows: any[] = [];
             if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
                 const fileData = await file.arrayBuffer();
                 const workbook = XLSX.read(fileData);
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rawData = XLSX.utils.sheet_to_json(worksheet);
-                rows = (rawData as Record<string, any>[]).map(transformRow);
+                const rawData = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
+                rows = rawData.map(rawRow => applyRawOverrides(rawRow, transformRow(rawRow)));
             } else {
-                const { data } = await parseCSV(file);
-                rows = data;
+                const { data: rawData } = await parseCSVRaw(file);
+                rows = rawData.map(rawRow => applyRawOverrides(rawRow, transformRow(rawRow)));
             }
             setPreviewRows(rows.slice(0, 5));
         } catch {
@@ -283,31 +335,31 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         setImporting(true);
         setPendingImportFile(null);
         try {
-            let data: any[] = [];
-            
+            // ── Parse RAW rows — original headers preserved for explicit column lookup ──
+            // CRITICAL: parseCSVRaw keeps 'Assined ' (typo+space), 'Remarks', 'Form' etc.
+            // intact so applyRawOverrides can read them directly before they are lost.
+            let rawRows: Record<string, any>[] = [];
+
             if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                const reader = new FileReader();
-                const fileData = await new Promise<ArrayBuffer>((resolve, reject) => {
-                    reader.onload = (e) => resolve(e.target?.result as ArrayBuffer);
-                    reader.onerror = reject;
-                    reader.readAsArrayBuffer(file);
-                });
+                const fileData = await file.arrayBuffer();
                 const workbook = XLSX.read(fileData);
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rawData = XLSX.utils.sheet_to_json(worksheet);
-                data = (rawData as Record<string, any>[]).map(transformRow);
+                rawRows = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
             } else {
-                const { data: csvData, errors } = await parseCSV(file);
+                const { data: csvData, errors } = await parseCSVRaw(file);
                 if (errors.length > 0) {
                     toast.error(`CSV Error: ${errors[0].message}`);
                 }
-                data = csvData;
+                rawRows = csvData;
             }
 
             const validLeads: Lead[] = [];
             let validationErrors = 0;
 
-            data.forEach((row: any) => {
+            rawRows.forEach((rawRow: Record<string, any>) => {
+                // Two-pass: fuzzy transform → explicit raw override
+                // applyRawOverrides catches 'Assined ', 'Remarks', 'Form', 'Source'
+                const row = applyRawOverrides(rawRow, transformRow(rawRow));
                 const validation = validateLead(row);
                 if (validation.isValid) {
                     // ── Resolve AssignedTo ────────────────────────────────────────────────────
