@@ -492,52 +492,73 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         e.target.value = '';
         const scanToast = toast.loading('🧠 AI scanning image — please wait...');
         try {
-            // Dynamically import Tesseract so it doesn't bloat the initial bundle
-            const Tesseract = await import('tesseract.js');
-            const { data: { text } } = await Tesseract.recognize(file, 'eng');
+            // Use Gemini Vision (already in package.json via @google/generative-ai)
+            const { GoogleGenerativeAI } = await import('@google/generative-ai');
+            const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+            if (!apiKey) throw new Error('VITE_GEMINI_API_KEY not configured');
 
-            const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-            // Phone: grab the first sequence that looks like a phone number
-            const phoneMatch = text.match(/(\+?[\d][\d\s\-().]{6,18}[\d])/);
-            const phone = phoneMatch ? phoneMatch[0].replace(/[^\d+]/g, '') : '';
+            // Convert image file to base64
+            const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
 
-            // Email
-            const emailMatch = text.match(/[\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,}/);
-            const email = emailMatch ? emailMatch[0] : '';
+            const result = await model.generateContent([
+                {
+                    inlineData: {
+                        mimeType: file.type || 'image/jpeg',
+                        data: base64,
+                    },
+                },
+                'Extract contact information from this image. ' +
+                'Return ONLY a raw JSON object (no markdown, no code fences) with these exact keys: ' +
+                '{"name":"","phone":"","email":"","notes":""}. ' +
+                'Fill in any contact info visible. Leave a field as empty string if not found.',
+            ]);
 
-            // Name heuristic: first line that looks like 2–4 capitalised words with no digits
-            const nameLine = lines.find((l: string) =>
-                /^[A-Z][a-zA-Z]/.test(l) &&
-                l.split(' ').length >= 1 &&
-                l.split(' ').length <= 5 &&
-                !l.match(/\d/)
-            ) || '';
+            const responseText = result.response.text().trim();
+            let extracted: { name?: string; phone?: string; email?: string; notes?: string } = {};
+            try {
+                // Strip any accidental markdown fences
+                const clean = responseText
+                    .replace(/^```json\n?/i, '')
+                    .replace(/^```\n?/i, '')
+                    .replace(/\n?```$/i, '')
+                    .trim();
+                extracted = JSON.parse(clean);
+            } catch {
+                extracted = {};
+            }
 
             setForm({
                 ...initialForm,
-                name:   nameLine,
-                phone:  phone,
-                email:  email,
+                name:   extracted.name  || '',
+                phone:  extracted.phone || '',
+                email:  extracted.email || '',
                 source: 'Smart Scan',
-                notes:  text.trim()
-                    ? `Scanned from: ${file.name}\n\n${text.trim()}`
-                    : `Scanned from: ${file.name} — no text detected`,
+                notes:  extracted.notes
+                    ? `Scanned from: ${file.name}\n\n${extracted.notes}`
+                    : `Scanned from: ${file.name}`,
             });
             setIsEditing(false);
             setShowModal(true);
-            toast.success('✅ Text extracted — review & save.', { id: scanToast });
+            toast.success('✅ AI extracted contact info — review & save.', { id: scanToast });
         } catch (err) {
-            console.error('[SmartScan] Tesseract error:', err);
-            // Open a blank form — never insert dummy/hardcoded data
+            console.error('[SmartScan] Gemini Vision error:', err);
+            // Open a blank form — NEVER insert hardcoded/dummy data
             setForm({
                 ...initialForm,
                 source: 'Smart Scan',
-                notes:  `Smart Scan attempted from: ${file.name}. OCR failed — please fill in details manually.`,
+                notes:  `Smart Scan attempted from: ${file.name}. AI extraction failed — please fill in details manually.`,
             });
             setIsEditing(false);
             setShowModal(true);
-            toast.error('OCR failed. Fill in details manually.', { id: scanToast });
+            toast.error('AI scan failed. Fill in details manually.', { id: scanToast });
         }
     };
 
