@@ -289,7 +289,19 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             data.forEach((row: any) => {
                 const validation = validateLead(row);
                 if (validation.isValid) {
-                    // Build initial historyLog from any Remarks/Notes/Comments/Message column
+                    // ── Resolve AssignedTo: match CSV agent name against team roster ──
+                    let resolvedAssignedTo = user?.id || '';
+                    if (row.AssignedTo) {
+                        const needle = String(row.AssignedTo).trim().toLowerCase();
+                        const matched = team.find(m =>
+                            m.name.toLowerCase() === needle ||
+                            m.name.toLowerCase().includes(needle) ||
+                            (m.email && m.email.toLowerCase() === needle)
+                        );
+                        if (matched) resolvedAssignedTo = matched.id;
+                    }
+
+                    // ── Build historyLog entry from Remarks/Notes/Comments column ──
                     const initialHistory: any[] = [];
                     if (row._remark) {
                         initialHistory.push({
@@ -313,9 +325,9 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         maxBudget: typeof row.MaxBudget === 'number' ? row.MaxBudget : (parseInt(row.MaxBudget) || 0),
                         targetLocation: row.TargetLocation || '',
                         status: (row.Status as Lead['status']) || 'New',
-                        assignedTo: user?.id || '',
-                        // notes kept as plain text fallback; historyLog is the source of truth
-                        notes: row._remark ? [{ text: row._remark, author: 'Import', timestamp: Date.now() }] : [],
+                        assignedTo: resolvedAssignedTo,
+                        // notes = plain string for the Operational Intel textarea
+                        notes: row._remark || '',
                         historyLog: initialHistory,
                         createdAt: Date.now(),
                         updatedAt: Date.now(),
@@ -476,21 +488,57 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     const handleSmartScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const scanToast = toast.loading('🧠 AI parsing image...');
-        // Mock OCR delay
-        await new Promise(r => setTimeout(r, 1500));
-        
-        setForm({
-            ...initialForm,
-            name: "Jane Doe (Scanned)",
-            phone: "+971501234567",
-            source: 'Smart Scan',
-            notes: 'Extracted automatically via AI Smart Scan from image: ' + file.name
-        });
-        setIsEditing(false);
-        setShowModal(true);
-        toast.success('Text extracted successfully!', { id: scanToast });
+        // Reset input early so re-selecting the same file works
         e.target.value = '';
+        const scanToast = toast.loading('🧠 AI scanning image — please wait...');
+        try {
+            // Dynamically import Tesseract so it doesn't bloat the initial bundle
+            const Tesseract = await import('tesseract.js');
+            const { data: { text } } = await Tesseract.recognize(file, 'eng');
+
+            const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
+
+            // Phone: grab the first sequence that looks like a phone number
+            const phoneMatch = text.match(/(\+?[\d][\d\s\-().]{6,18}[\d])/);
+            const phone = phoneMatch ? phoneMatch[0].replace(/[^\d+]/g, '') : '';
+
+            // Email
+            const emailMatch = text.match(/[\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,}/);
+            const email = emailMatch ? emailMatch[0] : '';
+
+            // Name heuristic: first line that looks like 2–4 capitalised words with no digits
+            const nameLine = lines.find((l: string) =>
+                /^[A-Z][a-zA-Z]/.test(l) &&
+                l.split(' ').length >= 1 &&
+                l.split(' ').length <= 5 &&
+                !l.match(/\d/)
+            ) || '';
+
+            setForm({
+                ...initialForm,
+                name:   nameLine,
+                phone:  phone,
+                email:  email,
+                source: 'Smart Scan',
+                notes:  text.trim()
+                    ? `Scanned from: ${file.name}\n\n${text.trim()}`
+                    : `Scanned from: ${file.name} — no text detected`,
+            });
+            setIsEditing(false);
+            setShowModal(true);
+            toast.success('✅ Text extracted — review & save.', { id: scanToast });
+        } catch (err) {
+            console.error('[SmartScan] Tesseract error:', err);
+            // Open a blank form — never insert dummy/hardcoded data
+            setForm({
+                ...initialForm,
+                source: 'Smart Scan',
+                notes:  `Smart Scan attempted from: ${file.name}. OCR failed — please fill in details manually.`,
+            });
+            setIsEditing(false);
+            setShowModal(true);
+            toast.error('OCR failed. Fill in details manually.', { id: scanToast });
+        }
     };
 
     const downloadTemplate = async () => {
@@ -517,27 +565,9 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                 </motion.div>
 
                 {/* ── MOBILE TOOLBAR ROW ─────────────────────────────────── */}
-                {/* On mobile, collapse all actions into one scrollable icon row so nothing overlaps */}
-                <div className="flex md:hidden items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {/* View modes */}
-                    {!isProspectVault && (
-                        <div className="flex shrink-0 bg-gray-100 dark:bg-white/5 rounded-xl p-1 gap-0.5">
-                            <button onClick={() => setViewMode('list')} title="List View"
-                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                                <List size={18} />
-                            </button>
-                            <button onClick={() => setViewMode('board')} title="Board View"
-                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                                <LayoutGrid size={18} />
-                            </button>
-                            {(user?.role === 'ceo' || user?.role === 'admin') && (
-                                <button onClick={() => setViewMode('batch')} title="Batch Control"
-                                    className={`p-2.5 rounded-lg transition-all ${viewMode === 'batch' ? 'bg-blue-500 shadow-sm text-white' : 'text-gray-400'}`}>
-                                    <FolderOpen size={18} />
-                                </button>
-                            )}
-                        </div>
-                    )}
+                {/* View toggle intentionally omitted here — it lives in the filter bar below, */}
+                {/* safely away from the fixed GlobalTopBar dark-mode button.                  */}
+                <div className="flex md:hidden items-center gap-4 overflow-x-auto pb-1 scrollbar-hide">
 
                     {/* Trash toggle */}
                     <button onClick={() => setShowTrash(!showTrash)} title={showTrash ? 'Show Active' : 'Show Trash'}
@@ -663,7 +693,26 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     </div>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                    {/* ── View mode toggle (MOBILE ONLY) — placed here, away from the GlobalTopBar ── */}
+                    {!isProspectVault && (
+                        <div className="flex md:hidden shrink-0 bg-gray-100 dark:bg-white/5 rounded-xl p-1 gap-0.5">
+                            <button onClick={() => setViewMode('list')} title="List View"
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                                <List size={18} />
+                            </button>
+                            <button onClick={() => setViewMode('board')} title="Board View"
+                                className={`p-2.5 rounded-lg transition-all ${viewMode === 'board' ? 'bg-white dark:bg-white/20 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                                <LayoutGrid size={18} />
+                            </button>
+                            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                <button onClick={() => setViewMode('batch')} title="Batch Control"
+                                    className={`p-2.5 rounded-lg transition-all ${viewMode === 'batch' ? 'bg-blue-500 shadow-sm text-white' : 'text-gray-400'}`}>
+                                    <FolderOpen size={18} />
+                                </button>
+                            )}
+                        </div>
+                    )}
                     <button
                         onClick={() => setShowRecentOnly(!showRecentOnly)}
                         className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${showRecentOnly ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/20'}`}

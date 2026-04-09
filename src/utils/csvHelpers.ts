@@ -24,7 +24,7 @@ export interface CSVLead {
 type CanonicalField =
     | 'Name' | 'Email' | 'Phone' | 'Source'
     | 'Budget' | 'MaxBudget' | 'Status'
-    | 'TargetLocation' | 'Notes' | 'Remark';
+    | 'TargetLocation' | 'Notes' | 'Remark' | 'AssignedTo';
 
 const FIELD_MATCHERS: [CanonicalField, (string | RegExp)[]][] = [
     // ── Name ──────────────────────────────────────────────────────────────────
@@ -79,6 +79,13 @@ const FIELD_MATCHERS: [CanonicalField, (string | RegExp)[]][] = [
         'message', 'messages', 'feedback', 'description', 'details',
         'operationalintel', 'intel', 'info', 'additional',
         /remark|comment|note|message|feedback|description|detail|intel/i
+    ]],
+    // ── Assigned To → agent name (caller resolves to ID via team roster) ─────
+    ['AssignedTo', [
+        'assignedto', 'assigned', 'agent', 'agentname', 'assignee',
+        'handledby', 'responsibleagent', 'assignedagent', 'owner',
+        'salesperson', 'salesrep', 'responsiblefor',
+        /assigned.*to|agent.*name|assignee|owner|salesperson|sales.*rep/i
     ]],
 ];
 
@@ -206,7 +213,9 @@ export const transformRow = (rawRow: Record<string, any>): Record<string, any> =
         Status:         normalizeStatus(String(canonical.Status || '')),
         TargetLocation: canonical.TargetLocation || '',
         Notes:          remark || '',   // kept for backwards compatibility
-        _remark:        remark,         // caller uses this to build historyLog entry
+        _remark:        remark,         // caller injects into historyLog + notes textarea
+        // Raw agent name from CSV — caller matches against team roster to get an ID
+        AssignedTo:     (canonical.AssignedTo ? String(canonical.AssignedTo).trim() : ''),
     };
 };
 
