@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/Pagination';
-import { Phone, Plus, Search, Trash2, FileDown, Upload, Download, LayoutGrid, List, Clock, FolderOpen, Users, User, AlertTriangle, CheckSquare, Square, Zap } from 'lucide-react';
+import { Phone, Plus, Search, Trash2, FileDown, Upload, Download, LayoutGrid, List, Clock, FolderOpen, Users, User, AlertTriangle, CheckSquare, Square, Zap, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getVisibleLeads, canDeleteLead } from '../utils/permissions';
@@ -123,6 +123,21 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             autoShuffleStaleLeads();
         }
     }, [user, autoShuffleStaleLeads]);
+
+    // ── Desktop theme toggle (GlobalTopBar is md:hidden, so desktop needs its own control) ──
+    const [isDark, setIsDark] = useState(() => {
+        const saved = localStorage.getItem('theme');
+        return saved ? saved === 'dark' : true;
+    });
+    useEffect(() => {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [isDark]);
 
     const statusTabs = ['All', 'New', 'Contacted', 'Qualified', 'Viewing', 'Negotiation', 'Closed', 'Lost'];
 
@@ -753,8 +768,12 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                     )}
                 </div>
 
-                {/* ── DESKTOP TOOLBAR ROW ────────────────────────────────── */}
-                <div className="hidden md:flex items-center gap-2 flex-wrap">
+                {/* ── DESKTOP TOOLBAR ROW ──────────────────────────────────── */}
+                {/* All buttons in a single flex row — no absolute/fixed positioning.           */}
+                {/* Theme toggle lives here on desktop (GlobalTopBar is md:hidden).              */}
+                <div className="hidden md:flex items-center gap-3">
+
+                    {/* ── Utility actions ─────────────────────────────────────── */}
                     <button onClick={downloadTemplate} title="Download Template" className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors">
                         <FileDown size={20} />
                     </button>
@@ -786,9 +805,16 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         <Zap size={18} /> Smart Scan (Beta)
                         <input type="file" accept="image/*" onChange={handleSmartScan} className="hidden" title="Smart Scan" />
                     </label>
+
+                    {/* ── Separator ─────────────────────────────────────────── */}
+                    <div className="w-px h-6 bg-gray-200 dark:bg-white/10 shrink-0" />
+
+                    {/* ── Primary CTA ───────────────────────────────────────── */}
                     <button onClick={openNew} className="bg-blue-500 dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 dark:hover:bg-gray-200 transition-all shadow-lg shadow-blue-500/20">
                         <Plus size={18} /> Add Lead
                     </button>
+
+                    {/* ── View Toggles ───────────────────────────────────────── */}
                     {!isProspectVault && (
                         <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1">
                             <button onClick={() => setViewMode('list')}
@@ -810,6 +836,21 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                             )}
                         </div>
                     )}
+
+                    {/* ── Separator ─────────────────────────────────────────── */}
+                    <div className="w-px h-6 bg-gray-200 dark:bg-white/10 shrink-0" />
+
+                    {/* ── Theme Toggle (desktop) ───────────────────────────────── */}
+                    <button
+                        onClick={() => setIsDark(!isDark)}
+                        className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-all"
+                        title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                    >
+                        {isDark
+                            ? <Sun size={18} className="text-amber-500" />
+                            : <Moon size={18} className="text-gray-600 dark:text-gray-300" />}
+                    </button>
+
                 </div>
             </div>
 

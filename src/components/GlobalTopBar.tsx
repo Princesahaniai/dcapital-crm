@@ -42,7 +42,7 @@ export const GlobalTopBar: React.FC = () => {
     }, [showNotifs]);
 
     return (
-        <div className="fixed top-0 right-0 z-[90] flex items-center gap-2 p-3 md:p-4">
+        <div className="md:hidden fixed top-0 right-0 z-[90] flex items-center gap-2 p-3">
             {/* Theme Toggle */}
             <button
                 onClick={() => setIsDark(!isDark)}
