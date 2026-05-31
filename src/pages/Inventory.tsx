@@ -683,7 +683,14 @@ _Reach out today to schedule a private viewing!_`;
                                             <button
                                                 onClick={() => {
                                                     toast.success('Generating Premium Brochure...');
-                                                    generatePropertyBrochure(p, user?.name || 'Agent');
+                                                    generatePropertyBrochure(p, {
+                                                        name:  user?.name  || 'D Capital Agent',
+                                                        email: user?.email,
+                                                        phone: user?.phone,
+                                                        role:  user?.role
+                                                            ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+                                                            : 'Licensed Real Estate Agent',
+                                                    });
                                                 }}
                                                 title="Download PDF Brochure"
                                                 className="px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all border border-blue-500/20 flex items-center gap-1.5 text-xs font-bold"
@@ -813,7 +820,14 @@ _Reach out today to schedule a private viewing!_`;
                                                     <button
                                                         onClick={() => {
                                                             toast.success('Generating Premium Brochure...');
-                                                            generatePropertyBrochure(p, user?.name || 'Agent');
+                                                            generatePropertyBrochure(p, {
+                                                                name:  user?.name  || 'D Capital Agent',
+                                                                email: user?.email,
+                                                                phone: user?.phone,
+                                                                role:  user?.role
+                                                                    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+                                                                    : 'Licensed Real Estate Agent',
+                                                            });
                                                         }}
                                                         title="Download PDF Brochure"
                                                         className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"

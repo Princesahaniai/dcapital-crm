@@ -1,6 +1,18 @@
 import { jsPDF } from "jspdf";
 import type { Property, Lead } from "../types";
 
+// ─── Agent shape passed by the caller ─────────────────────────────────────
+export interface BrochureAgent {
+    /** Display name shown on the brochure footer */
+    name:   string;
+    /** Contact email — falls back to company email if absent */
+    email?: string;
+    /** Mobile / direct phone number */
+    phone?: string;
+    /** Role label shown beneath the name, e.g. "Senior Agent", "CEO" */
+    role?:  string;
+}
+
 // ─── Colour Palette ────────────────────────────────────────────────────────
 const C = {
     black:       [10,  10,  10]  as [number, number, number],
@@ -64,7 +76,7 @@ const loadImageAsDataUrl = (url: string): Promise<string | null> =>
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────
 export const generatePropertyBrochure = async (
     property: Property,
-    agentName: string
+    agent: BrochureAgent
 ) => {
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();   // 595.28
@@ -353,25 +365,34 @@ export const generatePropertyBrochure = async (
     doc.text("admin@dcapitalrealestate.com  ·  www.dcapitalrealestate.com", PAD, footerY + 49);
     doc.text("+971 4 XXX XXXX", PAD, footerY + 61);
 
-    // Right: agent card
+    // Right: dynamic agent card ─────────────────────────────────────────────
+    // Resolve display values — never fall back to any hardcoded personal info
+    const agentDisplayName  = agent.name  || "D Capital Agent";
+    const agentDisplayRole  = agent.role  || "Licensed Real Estate Agent";
+    const agentDisplayEmail = agent.email || "admin@dcapitalrealestate.com";
+    const agentDisplayPhone = agent.phone || "";
+
     setFill(doc, [40, 40, 44] as any);
-    roundedRect(doc, PW - PAD - 170, footerY + 10, 170, 68, 6);
+    roundedRect(doc, PW - PAD - 180, footerY + 8, 180, agentDisplayPhone ? 76 : 68, 6);
 
     setColor(doc, C.amberLight);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.text("YOUR DEDICATED AGENT", PW - PAD - 85, footerY + 24, { align: "center" });
+    doc.text("YOUR DEDICATED AGENT", PW - PAD - 90, footerY + 22, { align: "center" });
 
     setColor(doc, C.white);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(agentName, PW - PAD - 85, footerY + 42, { align: "center" });
+    doc.text(agentDisplayName, PW - PAD - 90, footerY + 40, { align: "center" });
 
     setColor(doc, C.lightGray);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.text("Licensed Real Estate Agent", PW - PAD - 85, footerY + 56, { align: "center" });
-    doc.text("D Capital Real Estate L.L.C.", PW - PAD - 85, footerY + 67, { align: "center" });
+    doc.text(agentDisplayRole, PW - PAD - 90, footerY + 53, { align: "center" });
+    doc.text(agentDisplayEmail, PW - PAD - 90, footerY + 64, { align: "center" });
+    if (agentDisplayPhone) {
+        doc.text(agentDisplayPhone, PW - PAD - 90, footerY + 75, { align: "center" });
+    }
 
     // ── 9. PAGE NUMBER ────────────────────────────────────────────────────
     setColor(doc, C.lightGray);
