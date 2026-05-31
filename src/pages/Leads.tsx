@@ -79,6 +79,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [viewMode, setViewMode] = useState<'list' | 'board' | 'batch'>('list');
+    const [showAdvancedForm, setShowAdvancedForm] = useState(false);
 
     // Initial Form State
     const initialForm: Partial<Lead> = {
@@ -1221,69 +1222,173 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                 onClose={() => setShowModal(false)}
                 title={isEditing ? 'Lead Protocol Update' : 'Initialize New Lead'}
             >
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Full Name</label>
-                            <input className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.name ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mission Target Name" title="Name" />
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+
+                    {/* ── ALWAYS VISIBLE: 3 core fields ─────────────────── */}
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Full Name <span className="text-red-400">*</span></label>
+                            <input
+                                className={`w-full bg-gray-50 dark:bg-white/5 border ${
+                                    formErrors.name ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30'
+                                } p-4 rounded-2xl text-gray-900 dark:text-white outline-none transition-all placeholder:text-gray-400`}
+                                value={form.name}
+                                onChange={e => setForm({ ...form, name: e.target.value })}
+                                placeholder="Lead's full name"
+                                title="Name"
+                            />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Contact Phone</label>
-                            <input className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.phone ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+971..." title="Phone" />
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Contact Phone <span className="text-red-400">*</span></label>
+                            <input
+                                className={`w-full bg-gray-50 dark:bg-white/5 border ${
+                                    formErrors.phone ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30'
+                                } p-4 rounded-2xl text-gray-900 dark:text-white outline-none transition-all placeholder:text-gray-400`}
+                                value={form.phone}
+                                onChange={e => setForm({ ...form, phone: e.target.value })}
+                                placeholder="+971 5X XXX XXXX"
+                                title="Phone"
+                            />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Current Value (AED)</label>
-                            <input type="text" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.budget ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.budget} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setForm({ ...form, budget: val === '' ? ('' as any) : Number(val) }); }} placeholder="Target Value (AED)" title="Budget" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Max Budget (AED)</label>
-                            <input type="text" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.maxBudget} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setForm({ ...form, maxBudget: val === '' ? ('' as any) : Number(val) }); }} placeholder="Maximum Match Budget (AED)" title="Max Budget" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Target Location</label>
-                            <select title="Target Location" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={showCustomLocation ? 'Other' : (form.targetLocation || '')} onChange={e => {
-                                if (e.target.value === 'Other') {
-                                    setShowCustomLocation(true);
-                                    setForm({ ...form, targetLocation: '' });
-                                } else {
-                                    setShowCustomLocation(false);
-                                    setForm({ ...form, targetLocation: e.target.value });
-                                }
-                            }}>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Target Location</label>
+                            <select
+                                title="Target Location"
+                                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
+                                value={showCustomLocation ? 'Other' : (form.targetLocation || '')}
+                                onChange={e => {
+                                    if (e.target.value === 'Other') {
+                                        setShowCustomLocation(true);
+                                        setForm({ ...form, targetLocation: '' });
+                                    } else {
+                                        setShowCustomLocation(false);
+                                        setForm({ ...form, targetLocation: e.target.value });
+                                    }
+                                }}
+                            >
                                 <option value="">Select Location</option>
                                 {STANDARD_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                                 <option value="Other">Other (Specify)</option>
                             </select>
                             {showCustomLocation && (
-                                <input 
-                                    type="text" 
-                                    className="w-full mt-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" 
-                                    placeholder="Type custom location..." 
-                                    value={form.targetLocation || ''} 
-                                    onChange={e => setForm({ ...form, targetLocation: e.target.value })} 
+                                <input
+                                    type="text"
+                                    className="w-full mt-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                                    placeholder="Type custom location..."
+                                    value={form.targetLocation || ''}
+                                    onChange={e => setForm({ ...form, targetLocation: e.target.value })}
                                 />
                             )}
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Pipeline State</label>
-                            <select title="Status" className={`w-full bg-gray-50 dark:bg-white/5 border ${formErrors.status ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'} p-4 rounded-2xl text-gray-900 dark:text-white outline-none`} value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}>
-                                {statusTabs.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div className="space-y-1 md:col-span-2">
-                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Assigned Agent</label>
-                            <select title="Assignee" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
-                                {team.map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
-                            </select>
-                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Operational Intel</label>
-                        <textarea className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-4 rounded-2xl text-gray-900 dark:text-white outline-none focus:border-blue-500 min-h-[100px]" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Target notes and details..." title="Notes" />
+
+                    {/* ── ADVANCED DETAILS ACCORDION ─────────────────────── */}
+                    <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/10 overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvancedForm(v => !v)}
+                            className="w-full flex items-center justify-between px-5 py-3.5 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-left"
+                        >
+                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                                <span className="text-lg leading-none">{showAdvancedForm ? '−' : '+'}</span>
+                                {showAdvancedForm ? 'Hide Advanced Details' : 'Show Advanced Details'}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Budget · Pipeline · Agent · Notes</span>
+                        </button>
+
+                        <AnimatePresence>
+                            {showAdvancedForm && (
+                                <motion.div
+                                    key="advanced-fields"
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="p-5 space-y-4 border-t border-gray-100 dark:border-white/10">
+
+                                        {/* Budget row */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Budget (AED)</label>
+                                                <input
+                                                    type="text"
+                                                    className={`w-full bg-gray-50 dark:bg-white/5 border ${
+                                                        formErrors.budget ? 'border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'
+                                                    } p-3.5 rounded-xl text-gray-900 dark:text-white outline-none transition-all`}
+                                                    value={form.budget}
+                                                    onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setForm({ ...form, budget: val === '' ? ('' as any) : Number(val) }); }}
+                                                    placeholder="e.g. 2500000"
+                                                    title="Budget"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Max Budget (AED)</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-3.5 rounded-xl text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                                                    value={form.maxBudget}
+                                                    onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setForm({ ...form, maxBudget: val === '' ? ('' as any) : Number(val) }); }}
+                                                    placeholder="e.g. 3500000"
+                                                    title="Max Budget"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Pipeline + Agent row */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Pipeline State</label>
+                                                <select
+                                                    title="Status"
+                                                    className={`w-full bg-gray-50 dark:bg-white/5 border ${
+                                                        formErrors.status ? 'border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'
+                                                    } p-3.5 rounded-xl text-gray-900 dark:text-white outline-none transition-all`}
+                                                    value={form.status}
+                                                    onChange={e => setForm({ ...form, status: e.target.value as any })}
+                                                >
+                                                    {statusTabs.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Assigned Agent</label>
+                                                <select
+                                                    title="Assignee"
+                                                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-3.5 rounded-xl text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                                                    value={form.assignedTo}
+                                                    onChange={e => setForm({ ...form, assignedTo: e.target.value })}
+                                                >
+                                                    {team.map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Notes */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Operational Intel</label>
+                                            <textarea
+                                                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-3.5 rounded-xl text-gray-900 dark:text-white outline-none focus:border-blue-500 min-h-[90px] resize-none transition-all"
+                                                value={form.notes}
+                                                onChange={e => setForm({ ...form, notes: e.target.value })}
+                                                placeholder="Source, remarks, property interest, notes..."
+                                                title="Notes"
+                                            />
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
-                    <div className="flex gap-4 pt-4 sticky bottom-0 bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/5">
-                        <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl transition-all">Abort</button>
-                        <button type="submit" className="flex-1 py-4 bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all">Deploy Lead</button>
+
+                    {/* ── ACTIONS ──────────────────────────────────────────── */}
+                    <div className="flex gap-3 pt-2 sticky bottom-0 bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/5 -mx-6 px-6 pb-1 pt-4">
+                        <button type="button" onClick={() => { setShowModal(false); setShowAdvancedForm(false); }} className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-white/10 transition-all">Cancel</button>
+                        <button type="submit" className="flex-1 py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all">
+                            {isEditing ? 'Update Lead' : '+ Add Lead'}
+                        </button>
                     </div>
                 </form>
             </Modal>
