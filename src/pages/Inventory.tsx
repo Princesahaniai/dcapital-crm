@@ -2,8 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/Pagination';
-import { Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square, LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check, Link, Map, FileText } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+    Search, Plus, Trash2, Edit, MapPin, BedDouble, Bath, Square,
+    LayoutGrid, List, BarChart2, Building2, Share2, Copy, Check,
+    Link, Map, FileText, ChevronDown, Shield, Calendar,
+    CreditCard, Eye, Home, Layers
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/Modal';
 import { doc, setDoc } from 'firebase/firestore';
@@ -13,6 +18,13 @@ import type { Property } from '../types';
 import { PropertyMap } from '../components/PropertyMap';
 import { generatePropertyBrochure } from '../utils/pdfGenerator';
 
+// ─── WhatsApp Icon (inline SVG) ────────────────────────────────────────────
+const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+);
+
 export const Inventory = () => {
     const { isDataLoading, properties, addProperty, updateProperty, deleteProperty, user } = useStore();
     const [search, setSearch] = useState('');
@@ -21,6 +33,9 @@ export const Inventory = () => {
     const [filterType, setFilterType] = useState('All');
     const [filterStatus, setFilterStatus] = useState('All');
     const [sortBy, setSortBy] = useState<'price' | 'date'>('date');
+
+    // ── UPGRADE 1: Direct vs Indirect Inventory Tab ──────────────────────────
+    const [inventoryTab, setInventoryTab] = useState<'All' | 'Direct' | 'Indirect'>('All');
 
     // Comparison State
     const [compareList, setCompareList] = useState<string[]>([]);
@@ -39,6 +54,9 @@ export const Inventory = () => {
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
+    // ── UPGRADE 2: Advanced Details Section State ─────────────────────────────
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
     // Initial Form
     const initialForm: Partial<Property> = {
         id: '',
@@ -54,7 +72,17 @@ export const Inventory = () => {
         agentId: user?.id,
         bedrooms: 1,
         bathrooms: 1,
-        sqft: 0
+        sqft: 0,
+        inventoryType: 'Direct',
+        // Advanced fields default to empty/undefined
+        bua: undefined,
+        plotSize: undefined,
+        view: '',
+        furnishing: undefined,
+        handoverDate: '',
+        projectStatus: undefined,
+        paymentPlan: '',
+        reraPermit: '',
     };
     const [form, setForm] = useState<Partial<Property>>(initialForm);
     const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
@@ -80,7 +108,12 @@ export const Inventory = () => {
                     sqft: 1500,
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
-                    agentId: user?.id
+                    agentId: user?.id,
+                    inventoryType: 'Direct',
+                    projectStatus: 'Ready',
+                    furnishing: 'Furnished',
+                    view: 'Marina View',
+                    reraPermit: 'RERA-DM-2024-001',
                 },
                 {
                     id: 'binghatti-1',
@@ -98,7 +131,13 @@ export const Inventory = () => {
                     sqft: 3200,
                     createdAt: Date.now() - 86400000,
                     updatedAt: Date.now(),
-                    agentId: user?.id
+                    agentId: user?.id,
+                    inventoryType: 'Direct',
+                    projectStatus: 'Off-Plan',
+                    handoverDate: 'Q4 2026',
+                    paymentPlan: '60/40',
+                    view: 'Burj Khalifa View',
+                    reraPermit: 'RERA-BB-2024-089',
                 },
                 {
                     id: 'sobha-1',
@@ -116,7 +155,12 @@ export const Inventory = () => {
                     sqft: 5000,
                     createdAt: Date.now() - 172800000,
                     updatedAt: Date.now(),
-                    agentId: user?.id
+                    agentId: user?.id,
+                    inventoryType: 'Indirect',
+                    projectStatus: 'Ready',
+                    furnishing: 'Unfurnished',
+                    view: 'Park View',
+                    plotSize: 6200,
                 }
             ];
             seedProperties.forEach(p => addProperty(p));
@@ -128,7 +172,7 @@ export const Inventory = () => {
         setImagePreview(form.imageUrl || '');
     }, [form.imageUrl]);
 
-    // Filtering and Sorting
+    // Filtering and Sorting (UPGRADE 1: add inventoryType filter)
     const filteredProps = properties
         .filter(p => {
             const matchesSearch = (p.name || '').toLowerCase().includes((search || '').toLowerCase()) ||
@@ -136,7 +180,11 @@ export const Inventory = () => {
             const matchesDev = filterDev === 'All' || p.developer === filterDev;
             const matchesType = filterType === 'All' || p.type === filterType;
             const matchesStatus = filterStatus === 'All' || p.status === filterStatus;
-            return matchesSearch && matchesDev && matchesType && matchesStatus;
+            const matchesInventoryTab =
+                inventoryTab === 'All' ||
+                (inventoryTab === 'Direct' && (p.inventoryType === 'Direct' || !p.inventoryType)) ||
+                (inventoryTab === 'Indirect' && p.inventoryType === 'Indirect');
+            return matchesSearch && matchesDev && matchesType && matchesStatus && matchesInventoryTab;
         })
         .sort((a, b) => {
             if (sortBy === 'price') return b.price - a.price;
@@ -164,7 +212,6 @@ export const Inventory = () => {
         }
         setFormErrors({});
 
-        // Ensure image has a value or default
         const finalImageUrl = form.imageUrl || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b91d?auto=format&fit=crop&q=80';
 
         if (isEditing && form.id) {
@@ -181,6 +228,7 @@ export const Inventory = () => {
             toast.success('✅ Property Added to Inventory');
         }
         setShowModal(false);
+        setShowAdvanced(false);
         setForm(initialForm);
     };
 
@@ -195,12 +243,14 @@ export const Inventory = () => {
         setForm(p);
         setIsEditing(true);
         setShowModal(true);
+        setShowAdvanced(false);
     };
 
     const openNew = () => {
         setForm({ ...initialForm, agentId: user?.id });
         setIsEditing(false);
         setShowModal(true);
+        setShowAdvanced(false);
     };
 
     // Comparison Logic
@@ -248,6 +298,34 @@ export const Inventory = () => {
         setTimeout(() => setLinkCopied(false), 2000);
     };
 
+    // ── UPGRADE 3: WhatsApp One-Click Share ────────────────────────────────
+    const handleWhatsAppShare = (p: Property) => {
+        const price = `AED ${(p.price || 0).toLocaleString()}`;
+        const rera = p.reraPermit ? `\n🏛️ RERA Permit: ${p.reraPermit}` : '';
+        const projectStatus = p.projectStatus ? `\n📋 Status: ${p.projectStatus}` : '';
+        const furnishing = p.furnishing ? `\n🛋️ Furnishing: ${p.furnishing}` : '';
+        const view = p.view ? `\n🌅 View: ${p.view}` : '';
+        const payPlan = p.paymentPlan ? `\n💳 Payment Plan: ${p.paymentPlan}` : '';
+        const handover = p.handoverDate ? `\n📅 Handover: ${p.handoverDate}` : '';
+
+        const text = `🏙️ *${p.name}*
+━━━━━━━━━━━━━━━━
+💰 *Price:* ${price}
+📍 *Location:* ${p.location}
+🏗️ *Developer:* ${p.developer}
+🏠 *Type:* ${p.type}
+🛏️ *Bedrooms:* ${p.bedrooms} | 🚿 *Baths:* ${p.bathrooms}
+📐 *Area:* ${(p.sqft || 0).toLocaleString()} sqft${view}${furnishing}${projectStatus}${payPlan}${handover}${rera}
+━━━━━━━━━━━━━━━━
+📞 *D Capital Real Estate*
+✉️ admin@dcapitalrealestate.com
+
+_Reach out today to schedule a private viewing!_`;
+
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    };
+
     // Developer badge styling
     const getDeveloperBadge = (developer: string) => {
         const styles: Record<string, string> = {
@@ -259,13 +337,44 @@ export const Inventory = () => {
         return styles[developer] || 'bg-gray-600 text-white';
     };
 
+    // Inventory tab config
+    const inventoryTabs = [
+        {
+            id: 'All' as const,
+            label: 'All Properties',
+            icon: <Layers size={15} />,
+            count: properties.length,
+            activeClass: 'bg-white text-gray-900 shadow-md',
+            inactiveClass: 'text-gray-400 hover:text-white',
+        },
+        {
+            id: 'Direct' as const,
+            label: 'Direct Inventory',
+            sublabel: 'Exclusive / Developer',
+            icon: <Shield size={15} />,
+            count: properties.filter(p => p.inventoryType === 'Direct' || !p.inventoryType).length,
+            activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/30',
+            inactiveClass: 'text-gray-400 hover:text-amber-400',
+        },
+        {
+            id: 'Indirect' as const,
+            label: 'Indirect Inventory',
+            sublabel: 'Secondary / Network',
+            icon: <Share2 size={15} />,
+            count: properties.filter(p => p.inventoryType === 'Indirect').length,
+            activeClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30',
+            inactiveClass: 'text-gray-400 hover:text-blue-400',
+        },
+    ];
+
     return (
         <div className="p-4 md:p-8 pt-16 md:pt-8 bg-gray-50 dark:bg-black w-full overflow-x-hidden">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                    <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
+                    <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-1">
                         INVENTORY <span className="text-blue-500 text-sm font-medium tracking-widest uppercase ml-2 px-2 py-1 bg-blue-500/10 rounded-full">Properties</span>
                     </h1>
+                    <p className="text-gray-500 text-sm">Bayut-Style Advanced Listing Engine · D Capital Real Estate</p>
                 </motion.div>
                 <div className="flex gap-2 flex-wrap">
                     {compareList.length > 0 && (
@@ -294,8 +403,46 @@ export const Inventory = () => {
                 </div>
             </div>
 
+            {/* ── UPGRADE 1: DIRECT / INDIRECT MASTER TABS ─────────────────── */}
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6"
+            >
+                <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-1.5 flex gap-1 w-full md:w-auto md:inline-flex shadow-xl">
+                    {inventoryTabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setInventoryTab(tab.id)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 ${
+                                inventoryTab === tab.id ? tab.activeClass : tab.inactiveClass
+                            }`}
+                        >
+                            {tab.icon}
+                            <span className="hidden sm:inline">{tab.label}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${
+                                inventoryTab === tab.id ? 'bg-black/20' : 'bg-white/10 text-gray-500'
+                            }`}>
+                                {tab.count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+                {inventoryTab !== 'All' && (
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-xs text-gray-500 mt-2 ml-1"
+                    >
+                        {inventoryTab === 'Direct'
+                            ? '🔒 Exclusive & Developer listings — directly controlled by your agency'
+                            : '🔗 Secondary market & network listings — sourced from external agents'}
+                    </motion.p>
+                )}
+            </motion.div>
+
             {/* FILTERS & SEARCH */}
-            <div className="bg-[#1C1C1E] apple-glass p-5 rounded-3xl border border-white/10 space-y-4 shadow-lg">
+            <div className="bg-[#1C1C1E] apple-glass p-5 rounded-3xl border border-white/10 space-y-4 shadow-lg mb-6">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="relative flex-1">
                         <Search className="absolute left-4 top-4 text-gray-400" size={24} />
@@ -442,12 +589,31 @@ export const Inventory = () => {
                                         <div className={`absolute top-4 left-4 ${getDeveloperBadge(p.developer)} text-xs font-bold px-3 py-1.5 rounded-full shadow-lg`}>
                                             {p.developer}
                                         </div>
+                                        {/* Inventory Type Badge */}
+                                        <div className={`absolute top-4 left-[calc(50%-30px)] text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1 ${
+                                            p.inventoryType === 'Indirect'
+                                                ? 'bg-blue-600/90 text-white'
+                                                : 'bg-amber-500/90 text-black'
+                                        }`}>
+                                            {p.inventoryType === 'Indirect' ? <Share2 size={9} /> : <Shield size={9} />}
+                                            {p.inventoryType || 'Direct'}
+                                        </div>
                                         <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg ${p.status === 'Available' ? 'bg-green-500 text-black' :
                                             p.status === 'Sold' ? 'bg-red-500 text-white' :
                                                 'bg-amber-500 text-black'
                                             }`}>
                                             {p.status}
                                         </div>
+                                        {/* Project Status pill */}
+                                        {p.projectStatus && (
+                                            <div className={`absolute bottom-4 left-4 text-[10px] font-bold px-2 py-1 rounded-full ${
+                                                p.projectStatus === 'Off-Plan'
+                                                    ? 'bg-purple-500/90 text-white'
+                                                    : 'bg-green-500/90 text-black'
+                                            }`}>
+                                                {p.projectStatus}
+                                            </div>
+                                        )}
                                         <button
                                             onClick={() => toggleCompare(p.id)}
                                             title="Compare Property"
@@ -466,8 +632,36 @@ export const Inventory = () => {
                                                 AED {(p.price || 0).toLocaleString()}
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-gray-400 text-sm mb-4">
+                                        <div className="flex items-center gap-1.5 text-gray-400 text-sm mb-3">
                                             <MapPin size={14} className="text-amber-500" /> {p.location}
+                                        </div>
+                                        {/* Advanced fields preview row */}
+                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                            {p.view && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 flex items-center gap-1">
+                                                    <Eye size={9} /> {p.view}
+                                                </span>
+                                            )}
+                                            {p.furnishing && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400">
+                                                    {p.furnishing}
+                                                </span>
+                                            )}
+                                            {p.paymentPlan && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 flex items-center gap-1">
+                                                    <CreditCard size={9} /> {p.paymentPlan}
+                                                </span>
+                                            )}
+                                            {p.handoverDate && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 flex items-center gap-1">
+                                                    <Calendar size={9} /> {p.handoverDate}
+                                                </span>
+                                            )}
+                                            {p.reraPermit && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 flex items-center gap-1">
+                                                    <Shield size={9} /> RERA ✓
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="grid grid-cols-3 gap-3 py-4 border-t border-white/10">
                                             <div className="flex flex-col items-center gap-1.5">
@@ -483,16 +677,26 @@ export const Inventory = () => {
                                                 <span className="text-xs text-gray-300 font-medium">{(p.sqft || 0).toLocaleString()} sqft</span>
                                             </div>
                                         </div>
+                                        {/* Action buttons row */}
                                         <div className="flex gap-2 mt-4">
+                                            {/* PDF Brochure */}
                                             <button
                                                 onClick={() => {
-                                                    toast.success('Generating Brochure...');
+                                                    toast.success('Generating Premium Brochure...');
                                                     generatePropertyBrochure(p, user?.name || 'Agent');
                                                 }}
                                                 title="Download PDF Brochure"
-                                                className="px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all border border-blue-500/20"
+                                                className="px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all border border-blue-500/20 flex items-center gap-1.5 text-xs font-bold"
                                             >
-                                                <FileText size={16} />
+                                                <FileText size={14} /> PDF
+                                            </button>
+                                            {/* WhatsApp Share */}
+                                            <button
+                                                onClick={() => handleWhatsAppShare(p)}
+                                                title="Share on WhatsApp"
+                                                className="px-3 py-2.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-400 transition-all border border-green-500/20 flex items-center gap-1.5 text-xs font-bold"
+                                            >
+                                                <WhatsAppIcon size={14} /> WA
                                             </button>
                                             <button
                                                 onClick={() => openEdit(p)}
@@ -504,7 +708,7 @@ export const Inventory = () => {
                                             <button
                                                 onClick={() => handleDelete(p.id)}
                                                 title="Delete Property"
-                                                className="px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
+                                                className="px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -521,7 +725,7 @@ export const Inventory = () => {
                     {viewMode === 'table' && filteredProps.length > 0 && (
                         <>
                         <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-3xl overflow-x-auto shadow-sm">
-                            <table className="w-full text-left min-w-[1000px]">
+                            <table className="w-full text-left min-w-[1100px]">
                                 <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold">
                                     <tr>
                                         <th className="p-6">Property</th>
@@ -529,6 +733,7 @@ export const Inventory = () => {
                                         <th className="p-6">Type</th>
                                         <th className="p-6">Price</th>
                                         <th className="p-6">Status</th>
+                                        <th className="p-6">Inventory</th>
                                         <th className="p-6">Features</th>
                                         <th className="p-6 text-right">Actions</th>
                                     </tr>
@@ -544,6 +749,11 @@ export const Inventory = () => {
                                                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                                                             <MapPin size={12} /> {p.location}
                                                         </p>
+                                                        {p.reraPermit && (
+                                                            <p className="text-[10px] text-green-400 mt-0.5 flex items-center gap-1">
+                                                                <Shield size={9} /> {p.reraPermit}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -562,8 +772,25 @@ export const Inventory = () => {
                                                     {p.status}
                                                 </span>
                                             </td>
+                                            <td className="p-6">
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit ${
+                                                    p.inventoryType === 'Indirect'
+                                                        ? 'bg-blue-500/15 text-blue-400'
+                                                        : 'bg-amber-500/15 text-amber-400'
+                                                }`}>
+                                                    {p.inventoryType === 'Indirect' ? <Share2 size={9} /> : <Shield size={9} />}
+                                                    {p.inventoryType || 'Direct'}
+                                                </span>
+                                            </td>
                                             <td className="p-6 text-gray-400 text-sm">
                                                 {p.bedrooms} Bed · {p.bathrooms} Bath · {(p.sqft || 0).toLocaleString()} sqft
+                                                {p.projectStatus && (
+                                                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                                        p.projectStatus === 'Off-Plan' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400'
+                                                    }`}>
+                                                        {p.projectStatus}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="p-6 text-right">
                                                 <div className="flex justify-end gap-2">
@@ -575,9 +802,17 @@ export const Inventory = () => {
                                                     >
                                                         <BarChart2 size={16} />
                                                     </button>
+                                                    {/* WhatsApp */}
+                                                    <button
+                                                        onClick={() => handleWhatsAppShare(p)}
+                                                        title="Share on WhatsApp"
+                                                        className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-all"
+                                                    >
+                                                        <WhatsAppIcon size={16} />
+                                                    </button>
                                                     <button
                                                         onClick={() => {
-                                                            toast.success('Generating Brochure...');
+                                                            toast.success('Generating Premium Brochure...');
                                                             generatePropertyBrochure(p, user?.name || 'Agent');
                                                         }}
                                                         title="Download PDF Brochure"
@@ -611,6 +846,8 @@ export const Inventory = () => {
                     )}
                 </>
             )}
+
+            {/* COMPARE MODAL */}
             <Modal
                 isOpen={showCompare}
                 onClose={() => setShowCompare(false)}
@@ -627,40 +864,28 @@ export const Inventory = () => {
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">{p.name}</h3>
                                 <p className="text-amber-500 text-2xl font-mono font-bold">AED {(p.price || 0).toLocaleString()}</p>
                                 <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Developer</span>
-                                        <span className={`${getDeveloperBadge(p.developer)} text-xs px-2 py-0.5 rounded-full`}>
-                                            {p.developer}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Location</span> <span className="text-gray-900 dark:text-white">{p.location}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Type</span> <span className="text-gray-900 dark:text-white">{p.type}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Status</span>
-                                        <span className={
-                                            p.status === 'Available' ? 'text-green-500' :
-                                                p.status === 'Sold' ? 'text-red-500' :
-                                                    'text-amber-500'
-                                        }>
-                                            {p.status}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Bedrooms</span> <span className="text-gray-900 dark:text-white">{p.bedrooms}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Bathrooms</span> <span className="text-gray-900 dark:text-white">{p.bathrooms}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
-                                        <span>Area</span> <span className="text-gray-900 dark:text-white">{(p.sqft || 0).toLocaleString()} sqft</span>
-                                    </div>
-                                    <div className="flex justify-between py-2">
-                                        <span>Commission</span> <span className="text-amber-500 font-bold">{p.commissionRate}%</span>
-                                    </div>
+                                    {[
+                                        ['Developer', <span className={`${getDeveloperBadge(p.developer)} text-xs px-2 py-0.5 rounded-full`}>{p.developer}</span>],
+                                        ['Inventory', p.inventoryType || 'Direct'],
+                                        ['Location', p.location],
+                                        ['Type', p.type],
+                                        ['Status', p.status],
+                                        ['Bedrooms', p.bedrooms],
+                                        ['Bathrooms', p.bathrooms],
+                                        ['Area (sqft)', (p.sqft || 0).toLocaleString()],
+                                        ['Project Status', p.projectStatus || '—'],
+                                        ['View', p.view || '—'],
+                                        ['Furnishing', p.furnishing || '—'],
+                                        ['Payment Plan', p.paymentPlan || '—'],
+                                        ['Handover', p.handoverDate || '—'],
+                                        ['RERA Permit', p.reraPermit || '—'],
+                                        ['Commission', `${p.commissionRate}%`],
+                                    ].map(([label, val], i) => (
+                                        <div key={i} className="flex justify-between border-b border-gray-100 dark:border-white/5 py-2">
+                                            <span>{label as string}</span>
+                                            <span className="text-gray-900 dark:text-white font-medium">{val as any}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )
@@ -668,16 +893,17 @@ export const Inventory = () => {
                 </div>
             </Modal>
 
-            {/* ADD/EDIT MODAL */}
+            {/* ── ADD/EDIT MODAL ─────────────────────────────────────────────── */}
             <Modal
                 isOpen={showModal}
-                onClose={() => setShowModal(false)}
+                onClose={() => { setShowModal(false); setShowAdvanced(false); }}
                 title={isEditing ? 'Edit Property' : 'New Property'}
             >
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* ── CORE FIELDS ─── */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Property Name</label>
+                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Property Name *</label>
                             <input
                                 className={`w-full border ${formErrors.name ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-gray-200 dark:border-white/10 focus:border-amber-500'} rounded-xl p-4 outline-none transition-all font-sans bg-gray-50 dark:bg-black/50 text-gray-900 dark:text-white`}
                                 value={form.name}
@@ -685,6 +911,31 @@ export const Inventory = () => {
                                 placeholder="e.g. Penthouse 88"
                                 title="Property Name"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Inventory Type</label>
+                            <div className="flex gap-2">
+                                {(['Direct', 'Indirect'] as const).map(type => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => setForm({ ...form, inventoryType: type })}
+                                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all border flex items-center justify-center gap-2 ${
+                                            form.inventoryType === type
+                                                ? type === 'Direct'
+                                                    ? 'bg-amber-500 border-amber-500 text-black'
+                                                    : 'bg-blue-600 border-blue-600 text-white'
+                                                : 'bg-black/20 border-white/10 text-gray-400 hover:border-white/30'
+                                        }`}
+                                    >
+                                        {type === 'Direct' ? <Shield size={14} /> : <Share2 size={14} />}
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                                {form.inventoryType === 'Indirect' ? 'Secondary market / external network listing' : 'Exclusive / developer direct listing'}
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Type</label>
@@ -698,11 +949,12 @@ export const Inventory = () => {
                                 <option>Villa</option>
                                 <option>Penthouse</option>
                                 <option>Townhouse</option>
+                                <option>Studio</option>
                                 <option>Plot</option>
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Price (AED)</label>
+                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Price (AED) *</label>
                             <input
                                 title="Price in AED"
                                 type="number"
@@ -742,6 +994,24 @@ export const Inventory = () => {
                                     onChange={e => setForm({ ...form, sqft: Number(e.target.value) })}
                                 />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Developer</label>
+                            <select
+                                title="Developer"
+                                className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-amber-500 transition-all cursor-pointer font-sans"
+                                value={form.developer}
+                                onChange={e => setForm({ ...form, developer: e.target.value })}
+                            >
+                                <option>Damac</option>
+                                <option>Emaar</option>
+                                <option>Binghatti</option>
+                                <option>Sobha</option>
+                                <option>Meraas</option>
+                                <option>Nakheel</option>
+                                <option>Aldar</option>
+                                <option>Other</option>
+                            </select>
                         </div>
                     </div>
 
@@ -802,10 +1072,161 @@ export const Inventory = () => {
                         />
                     </div>
 
+                    {/* ── UPGRADE 2: ADVANCED DETAILS COLLAPSIBLE SECTION ── */}
+                    <div className="rounded-2xl border border-dashed border-white/20 overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="w-full flex items-center justify-between p-4 bg-white/3 hover:bg-white/5 transition-all text-left"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                                    <Layers size={16} className="text-white" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-white text-sm">Advanced Details</p>
+                                    <p className="text-[10px] text-gray-500">BUA · Plot Size · View · Furnishing · Off-Plan · RERA</p>
+                                </div>
+                            </div>
+                            <div className={`text-gray-400 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}>
+                                <ChevronDown size={20} />
+                            </div>
+                        </button>
+
+                        <AnimatePresence>
+                            {showAdvanced && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="p-5 space-y-5 bg-black/20">
+                                        {/* Section: Core Specs */}
+                                        <div>
+                                            <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                <Home size={10} /> Core Specifications
+                                            </p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Built-Up Area (BUA sqft)</label>
+                                                    <input
+                                                        type="number"
+                                                        title="Built-Up Area"
+                                                        placeholder="e.g. 1200"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500 transition-all text-sm font-sans"
+                                                        value={form.bua || ''}
+                                                        onChange={e => setForm({ ...form, bua: e.target.value ? Number(e.target.value) : undefined })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Plot Size (sqft)</label>
+                                                    <input
+                                                        type="number"
+                                                        title="Plot Size"
+                                                        placeholder="e.g. 5000"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500 transition-all text-sm font-sans"
+                                                        value={form.plotSize || ''}
+                                                        onChange={e => setForm({ ...form, plotSize: e.target.value ? Number(e.target.value) : undefined })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><Eye size={9} /> Property View</label>
+                                                    <input
+                                                        title="Property View"
+                                                        placeholder="e.g. Marina View, Burj View, Park View"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500 transition-all text-sm font-sans"
+                                                        value={form.view || ''}
+                                                        onChange={e => setForm({ ...form, view: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Furnishing Status</label>
+                                                    <select
+                                                        title="Furnishing Status"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500 transition-all text-sm font-sans cursor-pointer"
+                                                        value={form.furnishing || ''}
+                                                        onChange={e => setForm({ ...form, furnishing: e.target.value as any || undefined })}
+                                                    >
+                                                        <option value="">Not Specified</option>
+                                                        <option>Furnished</option>
+                                                        <option>Unfurnished</option>
+                                                        <option>Semi-Furnished</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Section: Off-Plan / Financials */}
+                                        <div>
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                <Calendar size={10} /> Off-Plan & Financials
+                                            </p>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Project Status</label>
+                                                    <select
+                                                        title="Project Status"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all text-sm font-sans cursor-pointer"
+                                                        value={form.projectStatus || ''}
+                                                        onChange={e => setForm({ ...form, projectStatus: e.target.value as any || undefined })}
+                                                    >
+                                                        <option value="">Not Specified</option>
+                                                        <option>Ready</option>
+                                                        <option>Off-Plan</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Handover Date</label>
+                                                    <input
+                                                        title="Handover Date"
+                                                        placeholder="e.g. Q4 2026"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all text-sm font-sans"
+                                                        value={form.handoverDate || ''}
+                                                        onChange={e => setForm({ ...form, handoverDate: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><CreditCard size={9} /> Payment Plan</label>
+                                                    <input
+                                                        title="Payment Plan"
+                                                        placeholder="e.g. 60/40, 70/30, Post-Handover"
+                                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all text-sm font-sans"
+                                                        value={form.paymentPlan || ''}
+                                                        onChange={e => setForm({ ...form, paymentPlan: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Section: Compliance */}
+                                        <div>
+                                            <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                <Shield size={10} /> Compliance & RERA
+                                            </p>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">RERA Permit Number</label>
+                                                <input
+                                                    title="RERA Permit Number"
+                                                    placeholder="e.g. RERA-DXB-2024-00123"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-green-500 transition-all text-sm font-sans"
+                                                    value={form.reraPermit || ''}
+                                                    onChange={e => setForm({ ...form, reraPermit: e.target.value })}
+                                                />
+                                                <p className="text-[9px] text-gray-600">Required for legal compliance in Dubai real estate listings</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
                     <div className="flex flex-col md:flex-row gap-4 pt-4 sticky bottom-0 bg-white dark:bg-[#1C1C1E] pb-2">
                         <button
                             type="button"
-                            onClick={() => setShowModal(false)}
+                            onClick={() => { setShowModal(false); setShowAdvanced(false); }}
                             className="flex-1 py-4 bg-gray-100 dark:bg-white/5 hover:bg-white/10 rounded-xl text-gray-900 dark:text-white font-bold transition-all border border-gray-200 dark:border-white/10 touch-target"
                         >
                             Cancel

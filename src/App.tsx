@@ -75,7 +75,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
                     <p className="text-zinc-600 text-xs mt-2">Verifying your session</p>
                 </div>
                 <div className="w-48 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '60%', animation: 'loading 1.5s ease-in-out infinite' }} />
+                    <div className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full w-[60%] animate-[loading_1.5s_ease-in-out_infinite]" />
                 </div>
             </div>
         );

@@ -88,9 +88,7 @@ export const BottomNav = () => {
                 The parent page wrapper uses pb-[calc(80px+env(safe-area-inset-bottom))]
                 to avoid content being hidden behind this bar.
             */}
-            <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-black/95 backdrop-blur-xl border-t border-white/10 flex items-stretch md:hidden"
-                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-            >
+            <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-black/95 backdrop-blur-xl border-t border-white/10 flex items-stretch md:hidden pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center w-full h-[60px] px-1">
                     {/* Nav items */}
                     {navItems.map((item) => {

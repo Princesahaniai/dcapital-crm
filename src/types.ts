@@ -116,6 +116,17 @@ export interface Property {
     gallery?: string[];
     features?: string[];
     companyId?: string;
+    // Inventory Classification
+    inventoryType?: 'Direct' | 'Indirect';
+    // Advanced Bayut-Style Fields
+    bua?: number;             // Built-Up Area (sq ft)
+    plotSize?: number;        // Plot Size (sq ft)
+    view?: string;            // e.g. "Marina View", "Park View"
+    furnishing?: 'Furnished' | 'Unfurnished' | 'Semi-Furnished';
+    handoverDate?: string;    // e.g. "Q4 2025"
+    projectStatus?: 'Ready' | 'Off-Plan';
+    paymentPlan?: string;     // e.g. "60/40", "Post-Handover"
+    reraPermit?: string;      // RERA Permit Number
 }
 
 export interface Activity {
