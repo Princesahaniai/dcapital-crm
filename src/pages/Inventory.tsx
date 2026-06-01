@@ -26,7 +26,20 @@ const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
 );
 
 export const Inventory = () => {
-    const { isDataLoading, properties, addProperty, updateProperty, deleteProperty, user } = useStore();
+    const { isDataLoading, properties, leads, addProperty, updateProperty, deleteProperty, user } = useStore();
+
+    const getMatches = (p: Property) => {
+        return leads.filter(l => {
+            if (l.status === 'Closed' || l.status === 'Lost' || l.status === 'Trash') return false;
+            if (!l.targetLocation || !l.maxBudget) return false;
+            
+            const locationMatch = p.location.toLowerCase().includes(l.targetLocation.toLowerCase()) || l.targetLocation.toLowerCase().includes(p.location.toLowerCase());
+            const priceMatch = p.price <= l.maxBudget * 1.15 && p.price >= l.maxBudget * 0.5;
+            const bedMatch = !l.targetBedrooms || p.bedrooms === l.targetBedrooms;
+            
+            return locationMatch && priceMatch && bedMatch;
+        });
+    };
     const [search, setSearch] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'table' | 'map'>('grid');
     const [filterDev, setFilterDev] = useState('All');
@@ -35,7 +48,8 @@ export const Inventory = () => {
     const [sortBy, setSortBy] = useState<'price' | 'date'>('date');
 
     // ── UPGRADE 1: Direct vs Indirect Inventory Tab ──────────────────────────
-    const [inventoryTab, setInventoryTab] = useState<'All' | 'Direct' | 'Indirect'>('All');
+    const [inventoryTab, setInventoryTab] = useState<'All' | 'Direct' | 'Indirect' | 'Trash'>('All');
+    const [projectTypeFilter, setProjectTypeFilter] = useState<'All' | 'Off-Plan Project' | 'Secondary Project'>('All');
 
     // Comparison State
     const [compareList, setCompareList] = useState<string[]>([]);
@@ -175,6 +189,9 @@ export const Inventory = () => {
     // Filtering and Sorting (UPGRADE 1: add inventoryType filter)
     const filteredProps = properties
         .filter(p => {
+            if (inventoryTab === 'Trash') return p.isDeleted === true;
+            if (p.isDeleted === true) return false;
+
             const matchesSearch = (p.name || '').toLowerCase().includes((search || '').toLowerCase()) ||
                 (p.location || '').toLowerCase().includes((search || '').toLowerCase());
             const matchesDev = filterDev === 'All' || p.developer === filterDev;
@@ -184,7 +201,9 @@ export const Inventory = () => {
                 inventoryTab === 'All' ||
                 (inventoryTab === 'Direct' && (p.inventoryType === 'Direct' || !p.inventoryType)) ||
                 (inventoryTab === 'Indirect' && p.inventoryType === 'Indirect');
-            return matchesSearch && matchesDev && matchesType && matchesStatus && matchesInventoryTab;
+            const matchesProjectType = projectTypeFilter === 'All' || p.projectType === projectTypeFilter;
+            
+            return matchesSearch && matchesDev && matchesType && matchesStatus && matchesInventoryTab && matchesProjectType;
         })
         .sort((a, b) => {
             if (sortBy === 'price') return b.price - a.price;
@@ -233,9 +252,9 @@ export const Inventory = () => {
     };
 
     const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this property?')) {
-            deleteProperty(id);
-            toast.success('🗑️ Property Deleted');
+        if (confirm('Are you sure you want to move this property to the trash?')) {
+            updateProperty(id, { isDeleted: true } as any);
+            toast.success('🗑️ Property Moved to Trash');
         }
     };
 
@@ -343,7 +362,7 @@ _Reach out today to schedule a private viewing!_`;
             id: 'All' as const,
             label: 'All Properties',
             icon: <Layers size={15} />,
-            count: properties.length,
+            count: properties.filter(p => !p.isDeleted).length,
             activeClass: 'bg-white text-gray-900 shadow-md',
             inactiveClass: 'text-gray-400 hover:text-white',
         },
@@ -352,7 +371,7 @@ _Reach out today to schedule a private viewing!_`;
             label: 'Direct Inventory',
             sublabel: 'Exclusive / Developer',
             icon: <Shield size={15} />,
-            count: properties.filter(p => p.inventoryType === 'Direct' || !p.inventoryType).length,
+            count: properties.filter(p => (p.inventoryType === 'Direct' || !p.inventoryType) && !p.isDeleted).length,
             activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/30',
             inactiveClass: 'text-gray-400 hover:text-amber-400',
         },
@@ -361,9 +380,18 @@ _Reach out today to schedule a private viewing!_`;
             label: 'Indirect Inventory',
             sublabel: 'Secondary / Network',
             icon: <Share2 size={15} />,
-            count: properties.filter(p => p.inventoryType === 'Indirect').length,
+            count: properties.filter(p => p.inventoryType === 'Indirect' && !p.isDeleted).length,
             activeClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30',
             inactiveClass: 'text-gray-400 hover:text-blue-400',
+        },
+        {
+            id: 'Trash' as const,
+            label: 'Trash Bin',
+            sublabel: 'Soft-deleted',
+            icon: <Trash2 size={15} />,
+            count: properties.filter(p => p.isDeleted).length,
+            activeClass: 'bg-red-500 text-white shadow-lg shadow-red-500/30',
+            inactiveClass: 'text-gray-400 hover:text-red-400',
         },
     ];
 
@@ -440,6 +468,21 @@ _Reach out today to schedule a private viewing!_`;
                     </motion.p>
                 )}
             </motion.div>
+
+            {/* UPGRADE 2: PROJECT TYPE FILTER */}
+            {inventoryTab !== 'Trash' && (
+                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2 mb-6">
+                    {(['All', 'Off-Plan Project', 'Secondary Project'] as const).map(pt => (
+                        <button
+                            key={pt}
+                            onClick={() => setProjectTypeFilter(pt)}
+                            className={`px-4 py-2 rounded-full text-sm font-bold transition-all shadow-md ${projectTypeFilter === pt ? 'bg-white text-black' : 'bg-[#1C1C1E] border border-white/10 text-gray-400 hover:text-white'}`}
+                        >
+                            {pt === 'All' ? 'All Project Types' : pt}
+                        </button>
+                    ))}
+                </motion.div>
+            )}
 
             {/* FILTERS & SEARCH */}
             <div className="bg-[#1C1C1E] apple-glass p-5 rounded-3xl border border-white/10 space-y-4 shadow-lg mb-6">
@@ -679,47 +722,83 @@ _Reach out today to schedule a private viewing!_`;
                                         </div>
                                         {/* Action buttons row */}
                                         <div className="flex gap-2 mt-4">
-                                            {/* PDF Brochure */}
-                                            <button
-                                                onClick={() => {
-                                                    toast.success('Generating Premium Brochure...');
-                                                    generatePropertyBrochure(p, {
-                                                        name:  user?.name  || 'D Capital Agent',
-                                                        email: user?.email,
-                                                        phone: user?.phone,
-                                                        role:  user?.role
-                                                            ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-                                                            : 'Licensed Real Estate Agent',
-                                                    });
-                                                }}
-                                                title="Download PDF Brochure"
-                                                className="px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all border border-blue-500/20 flex items-center gap-1.5 text-xs font-bold"
-                                            >
-                                                <FileText size={14} /> PDF
-                                            </button>
-                                            {/* WhatsApp Share */}
-                                            <button
-                                                onClick={() => handleWhatsAppShare(p)}
-                                                title="Share on WhatsApp"
-                                                className="px-3 py-2.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-400 transition-all border border-green-500/20 flex items-center gap-1.5 text-xs font-bold"
-                                            >
-                                                <WhatsAppIcon size={14} /> WA
-                                            </button>
-                                            <button
-                                                onClick={() => openEdit(p)}
-                                                title="Edit Property"
-                                                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-all border border-white/10"
-                                            >
-                                                <Edit size={14} className="inline mr-1" /> Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(p.id)}
-                                                title="Delete Property"
-                                                className="px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {p.isDeleted ? (
+                                                <button
+                                                    onClick={() => updateProperty(p.id, { isDeleted: false } as any)}
+                                                    className="flex-1 py-2.5 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500/20 font-bold transition-all border border-green-500/20 flex items-center justify-center gap-2"
+                                                >
+                                                    <Check size={16} /> Restore Property
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    {/* PDF Brochure */}
+                                                    <button
+                                                        onClick={() => {
+                                                            toast.success('Generating Premium Brochure...');
+                                                            generatePropertyBrochure(p, {
+                                                                name:  user?.name  || 'D Capital Agent',
+                                                                email: user?.email,
+                                                                phone: user?.phone,
+                                                                role:  user?.role
+                                                                    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+                                                                    : 'Licensed Real Estate Agent',
+                                                            });
+                                                        }}
+                                                        title="Download PDF Brochure"
+                                                        className="px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all border border-blue-500/20 flex items-center gap-1.5 text-xs font-bold"
+                                                    >
+                                                        <FileText size={14} /> PDF
+                                                    </button>
+                                                    {/* WhatsApp Share */}
+                                                    <button
+                                                        onClick={() => handleWhatsAppShare(p)}
+                                                        title="Share on WhatsApp"
+                                                        className="px-3 py-2.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-400 transition-all border border-green-500/20 flex items-center gap-1.5 text-xs font-bold"
+                                                    >
+                                                        <WhatsAppIcon size={14} /> WA
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEdit(p)}
+                                                        title="Edit Property"
+                                                        className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-all border border-white/10"
+                                                    >
+                                                        <Edit size={14} className="inline mr-1" /> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(p.id)}
+                                                        title="Delete Property"
+                                                        className="px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
+                                        {/* MATCHES BADGE */}
+                                        {!p.isDeleted && (() => {
+                                            const matches = getMatches(p);
+                                            if (matches.length > 0) {
+                                                return (
+                                                    <div className="mt-4 p-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-xl border border-orange-500/20 group/match relative cursor-pointer">
+                                                        <p className="text-orange-500 font-bold text-xs flex items-center gap-1">
+                                                            🔥 Matches {matches.length} Client Requirements
+                                                        </p>
+                                                        <div className="hidden group-hover/match:block absolute bottom-full left-0 mb-2 w-64 p-3 bg-black border border-white/10 rounded-xl shadow-2xl z-50">
+                                                            <p className="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider">Matching Leads</p>
+                                                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                                {matches.map(m => (
+                                                                    <div key={m.id} className="text-xs text-white flex justify-between">
+                                                                        <span>{m.name}</span>
+                                                                        <span className="text-gray-500">{m.assignedName || 'Unassigned'}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </div>
                                 </motion.div>
                             ))}
@@ -801,53 +880,65 @@ _Reach out today to schedule a private viewing!_`;
                                             </td>
                                             <td className="p-6 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <button
-                                                        onClick={() => toggleCompare(p.id)}
-                                                        title="Compare Property"
-                                                        className={`p-2 rounded-lg transition-all ${compareList.includes(p.id) ? 'text-amber-500 bg-amber-500/10' : 'text-gray-500 hover:bg-white/5'
-                                                            }`}
-                                                    >
-                                                        <BarChart2 size={16} />
-                                                    </button>
-                                                    {/* WhatsApp */}
-                                                    <button
-                                                        onClick={() => handleWhatsAppShare(p)}
-                                                        title="Share on WhatsApp"
-                                                        className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-all"
-                                                    >
-                                                        <WhatsAppIcon size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            toast.success('Generating Premium Brochure...');
-                                                            generatePropertyBrochure(p, {
-                                                                name:  user?.name  || 'D Capital Agent',
-                                                                email: user?.email,
-                                                                phone: user?.phone,
-                                                                role:  user?.role
-                                                                    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-                                                                    : 'Licensed Real Estate Agent',
-                                                            });
-                                                        }}
-                                                        title="Download PDF Brochure"
-                                                        className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"
-                                                    >
-                                                        <FileText size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openEdit(p)}
-                                                        title="Edit Property"
-                                                        className="p-2 rounded-lg text-gray-300 hover:bg-white/10 transition-all"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(p.id)}
-                                                        title="Delete Property"
-                                                        className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-all"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    {p.isDeleted ? (
+                                                        <button
+                                                            onClick={() => updateProperty(p.id, { isDeleted: false } as any)}
+                                                            className="p-2 rounded-lg text-green-500 hover:bg-green-500/10 transition-all"
+                                                            title="Restore Property"
+                                                        >
+                                                            <Check size={16} />
+                                                        </button>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                onClick={() => toggleCompare(p.id)}
+                                                                title="Compare Property"
+                                                                className={`p-2 rounded-lg transition-all ${compareList.includes(p.id) ? 'text-amber-500 bg-amber-500/10' : 'text-gray-500 hover:bg-white/5'
+                                                                    }`}
+                                                            >
+                                                                <BarChart2 size={16} />
+                                                            </button>
+                                                            {/* WhatsApp */}
+                                                            <button
+                                                                onClick={() => handleWhatsAppShare(p)}
+                                                                title="Share on WhatsApp"
+                                                                className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-all"
+                                                            >
+                                                                <WhatsAppIcon size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    toast.success('Generating Premium Brochure...');
+                                                                    generatePropertyBrochure(p, {
+                                                                        name:  user?.name  || 'D Capital Agent',
+                                                                        email: user?.email,
+                                                                        phone: user?.phone,
+                                                                        role:  user?.role
+                                                                            ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+                                                                            : 'Licensed Real Estate Agent',
+                                                                    });
+                                                                }}
+                                                                title="Download PDF Brochure"
+                                                                className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10 transition-all"
+                                                            >
+                                                                <FileText size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openEdit(p)}
+                                                                title="Edit Property"
+                                                                className="p-2 rounded-lg text-gray-300 hover:bg-white/10 transition-all"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(p.id)}
+                                                                title="Delete Property"
+                                                                className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-all"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -965,6 +1056,20 @@ _Reach out today to schedule a private viewing!_`;
                                 <option>Townhouse</option>
                                 <option>Studio</option>
                                 <option>Plot</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-amber-500 uppercase tracking-wider">Project Type *</label>
+                            <select
+                                title="Project Type"
+                                className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white outline-none focus:border-amber-500 transition-all cursor-pointer font-sans"
+                                value={form.projectType || ''}
+                                onChange={e => setForm({ ...form, projectType: e.target.value as any })}
+                                required
+                            >
+                                <option value="" disabled>Select Project Type</option>
+                                <option value="Off-Plan Project">Off-Plan Project</option>
+                                <option value="Secondary Project">Secondary Project</option>
                             </select>
                         </div>
                         <div className="space-y-2">

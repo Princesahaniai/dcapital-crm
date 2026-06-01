@@ -62,6 +62,7 @@ export interface Lead {
     deletedAt?: number;
     targetLocation?: string;
     maxBudget?: number;
+    targetBedrooms?: number;
     // Enterprise Extensions
     history?: any[];
     meetingsDone?: number;
@@ -127,6 +128,8 @@ export interface Property {
     projectStatus?: 'Ready' | 'Off-Plan';
     paymentPlan?: string;     // e.g. "60/40", "Post-Handover"
     reraPermit?: string;      // RERA Permit Number
+    isDeleted?: boolean;
+    projectType?: 'Off-Plan Project' | 'Secondary Project';
 }
 
 export interface Activity {

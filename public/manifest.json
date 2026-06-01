@@ -1,7 +1,7 @@
 {
     "name": "D-Capital Pro CRM",
     "short_name": "D-Capital",
-    "start_url": "/",
+    "start_url": "/inventory",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#D4AF37",
