@@ -835,9 +835,8 @@ export const useStore = create<Store>()(
                         }
 
                         // Fetch the target user's Firestore doc to get their fcmToken
-                        const { getDoc, doc: fsDoc } = await import('firebase/firestore');
-                        const { db: fsDb } = await import('../firebaseConfig');
-                        const userSnap = await getDoc(fsDoc(fsDb, 'users', targetUid));
+                        // db and getDoc are already statically imported at the top of this file
+                        const userSnap = await getDoc(doc(db, 'users', targetUid));
                         const fcmToken = userSnap.data()?.fcmToken as string | undefined;
 
                         if (!fcmToken) {
