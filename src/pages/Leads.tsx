@@ -968,21 +968,24 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
             </div>
 
             {isDataLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20 mt-6 px-4 md:px-0">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                        <div key={n} className="bg-white dark:bg-[#1C1C1E] p-5 rounded-3xl border border-gray-100 dark:border-white/5 h-48 animate-pulse">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-gray-200 dark:bg-white/10 h-6 w-1/2 rounded-xl"></div>
-                                <div className="bg-gray-200 dark:bg-white/10 h-6 w-1/4 rounded-xl"></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div className="bg-gray-100 dark:bg-black/20 h-10 rounded-2xl"></div>
-                                <div className="bg-gray-100 dark:bg-black/20 h-10 rounded-2xl"></div>
-                            </div>
-                            <div className="bg-gray-200 dark:bg-white/10 h-10 w-full rounded-xl mt-auto"></div>
+                <div className="w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#111] shadow-sm mt-4">
+                    <div className="bg-gray-50 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/[0.06] px-4 py-3 flex gap-6">
+                        {['w-36', 'w-28', 'w-24', 'w-20', 'w-28'].map((w, i) => (
+                            <div key={i} className={`${w} h-3 bg-gray-200 dark:bg-white/10 rounded-full animate-pulse`} />
+                        ))}
+                    </div>
+                    {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-white/[0.04] animate-pulse">
+                            <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-white/10 shrink-0" />
+                            <div className="flex-1 h-3 bg-gray-200 dark:bg-white/10 rounded-full max-w-[180px]" />
+                            <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full w-28 hidden sm:block" />
+                            <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full w-24 hidden md:block" />
+                            <div className="h-4 bg-gray-200 dark:bg-white/10 rounded w-16" />
+                            <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full w-20 hidden lg:block ml-auto" />
                         </div>
                     ))}
                 </div>
+
             ) : (
                 <>
                     {/* BATCH CONTROL VIEW */}
@@ -1113,83 +1116,182 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         />
                     )}
 
-                    {/* RESPONSIVE GRID VIEW (List Mode) */}
+                    {/* ── COMPACT ROW TABLE VIEW (List Mode) ───────────────────────────── */}
                     {(viewMode === 'list' || showTrash) && (
                         <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 pb-4">
-                            <AnimatePresence>
-                                {paginatedLeads.map(lead => (
-                                    <div key={lead.id}>
-                                        {/* Mobile Compact List View (< sm) */}
-                                        <div className="sm:hidden">
-                                            <motion.div
-                                                key={lead.id}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className={`bg-white dark:bg-[#1C1C1E] p-3 rounded-2xl shadow-sm border flex items-center justify-between gap-3 relative overflow-hidden ${
-                                                    selectedLeadIds.has(lead.id)
-                                                        ? 'border-red-400 dark:border-red-500 ring-2 ring-red-400/30'
-                                                        : 'border-gray-100 dark:border-white/5'
-                                                }`}
-                                                onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                            >
-                                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                    <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
-                                                        {lead.name.charAt(0)}
-                                                    </div>
-                                                    <div className="truncate min-w-0 flex-1">
-                                                        <h3 className="font-bold text-gray-900 dark:text-white truncate text-sm">{lead.name}</h3>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${lead.status === 'New' ? 'text-blue-500 border-blue-500/20 bg-blue-500/10' : 'text-gray-500 border-gray-200 dark:border-white/10'}`}>
-                                                                {lead.status}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex shrink-0 items-center gap-2">
-                                                   {(user?.role === 'ceo' || user?.role === 'admin') && (
-                                                       <button
-                                                           className="p-2"
-                                                           onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
-                                                       >
-                                                           {selectedLeadIds.has(lead.id)
-                                                               ? <CheckSquare size={16} className="text-red-500" />
-                                                               : <Square size={16} className="text-gray-300 dark:text-gray-600" />}
-                                                       </button>
-                                                   )}
-                                                   <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="p-2 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400">
-                                                       <Phone size={14} />
-                                                   </a>
-                                                </div>
-                                            </motion.div>
-                                        </div>
+                        <div className="w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#111] shadow-sm">
 
-                                        {/* Desktop Card View */}
-                                        <div className="hidden sm:block relative">
-                                            {(user?.role === 'ceo' || user?.role === 'admin') && (
+                            {/* ── Table header ── */}
+                            <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-left">
+                                <thead>
+                                    <tr className="bg-gray-50 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/[0.06]">
+                                        {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                            <th className="w-10 px-3 py-3">
                                                 <button
-                                                    className="absolute top-3 left-3 z-10 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                    title="Select all"
+                                                    onClick={() => {
+                                                        if (selectedLeadIds.size === paginatedLeads.length) {
+                                                            setSelectedLeadIds(new Set());
+                                                        } else {
+                                                            setSelectedLeadIds(new Set(paginatedLeads.map(l => l.id)));
+                                                        }
+                                                    }}
+                                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
                                                 >
-                                                    {selectedLeadIds.has(lead.id)
-                                                        ? <CheckSquare size={18} className="text-red-500 opacity-100" />
-                                                        : <Square size={18} className="text-gray-400" />}
+                                                    {selectedLeadIds.size > 0 && selectedLeadIds.size === paginatedLeads.length
+                                                        ? <CheckSquare size={15} className="text-blue-500" />
+                                                        : <Square size={15} />}
                                                 </button>
-                                            )}
-                                            <div className={selectedLeadIds.has(lead.id) ? 'ring-2 ring-red-400/50 rounded-3xl' : ''}>
-                                                <LeadCard
-                                                    lead={lead}
-                                                    onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                                    onEdit={(e) => { e.stopPropagation(); openEdit(lead); }}
-                                                    onDelete={(e) => { e.stopPropagation(); handleDelete(lead.id); }}
-                                                    onHistory={(e) => { e.stopPropagation(); setHistoryLead(lead); setIsHistoryModalOpen(true); }}
-                                                    agentName={getAgentName(lead.assignedTo)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </AnimatePresence>
+                                            </th>
+                                        )}
+                                        <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 min-w-[160px]">Name</th>
+                                        <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden sm:table-cell">Phone</th>
+                                        <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden md:table-cell">Budget</th>
+                                        <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
+                                        <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden lg:table-cell">Agent</th>
+                                        <th className="w-10 px-3 py-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-white/[0.04]">
+                                    <AnimatePresence>
+                                    {paginatedLeads.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="py-16 text-center">
+                                                <Users className="mx-auto mb-3 text-gray-300 dark:text-gray-700" size={36} />
+                                                <p className="text-sm font-bold text-gray-400 dark:text-gray-600">No leads found</p>
+                                                <p className="text-xs text-gray-400 dark:text-gray-700 mt-1">Try adjusting your filters or adding a new lead</p>
+                                            </td>
+                                        </tr>
+                                    ) : paginatedLeads.map((lead, idx) => {
+                                        const agentName = getAgentName(lead.assignedTo);
+                                        const agentInitial = agentName ? agentName.charAt(0).toUpperCase() : '?';
+                                        const isSelected = selectedLeadIds.has(lead.id);
+
+                                        // Status colour map
+                                        const statusCfg: Record<string, string> = {
+                                            New:         'bg-blue-500/10 text-blue-500 border-blue-500/20',
+                                            Contacted:   'bg-amber-500/10 text-amber-500 border-amber-500/20',
+                                            Qualified:   'bg-teal-500/10 text-teal-500 border-teal-500/20',
+                                            Viewing:     'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+                                            Negotiation: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+                                            Closed:      'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+                                            Lost:        'bg-red-500/10 text-red-400 border-red-500/20',
+                                            Trash:       'bg-gray-500/10 text-gray-400 border-gray-500/20',
+                                        };
+                                        const statusClass = statusCfg[lead.status] || 'bg-gray-100 text-gray-500 border-gray-200';
+
+                                        return (
+                                            <motion.tr
+                                                key={lead.id}
+                                                layout
+                                                initial={{ opacity: 0, y: 6 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.15, delay: idx * 0.012 }}
+                                                onClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                                className={`group cursor-pointer transition-colors duration-100 ${
+                                                    isSelected
+                                                        ? 'bg-blue-50/80 dark:bg-blue-500/[0.07]'
+                                                        : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.025]'
+                                                }`}
+                                            >
+                                                {/* Checkbox */}
+                                                {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                                    <td className="px-3 py-2.5" onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}>
+                                                        {isSelected
+                                                            ? <CheckSquare size={15} className="text-blue-500" />
+                                                            : <Square size={15} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400 transition-colors" />}
+                                                    </td>
+                                                )}
+
+                                                {/* Name + avatar */}
+                                                <td className="px-4 py-2.5">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[11px] font-black shadow-sm">
+                                                            {lead.name.charAt(0)}
+                                                        </div>
+                                                        <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate max-w-[160px] group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
+                                                            {lead.name}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Phone */}
+                                                <td className="px-4 py-2.5 hidden sm:table-cell" onClick={e => e.stopPropagation()}>
+                                                    {lead.phone ? (
+                                                        <a
+                                                            href={`tel:${lead.phone}`}
+                                                            className="flex items-center gap-1.5 text-[12px] font-mono text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                                                        >
+                                                            <Phone size={11} className="shrink-0" />
+                                                            {lead.phone}
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-[11px] text-gray-300 dark:text-gray-600 italic">—</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Budget */}
+                                                <td className="px-4 py-2.5 hidden md:table-cell">
+                                                    {lead.budget ? (
+                                                        <span className="text-[12px] font-bold text-emerald-500">
+                                                            AED {lead.budget.toLocaleString()}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[11px] text-gray-300 dark:text-gray-600 italic">—</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Status badge */}
+                                                <td className="px-4 py-2.5">
+                                                    <span className={`inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border ${statusClass}`}>
+                                                        {lead.status}
+                                                    </span>
+                                                </td>
+
+                                                {/* Agent */}
+                                                <td className="px-4 py-2.5 hidden lg:table-cell">
+                                                    {agentName ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[9px] font-black shrink-0">
+                                                                {agentInitial}
+                                                            </div>
+                                                            <span className="text-[12px] text-gray-600 dark:text-gray-400 truncate max-w-[120px]">{agentName}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] text-gray-300 dark:text-gray-600 italic">Unassigned</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Quick actions */}
+                                                <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => { setHistoryLead(lead); setIsHistoryModalOpen(true); }}
+                                                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+                                                            title="History"
+                                                        >
+                                                            <Clock size={13} />
+                                                        </button>
+                                                        {!showTrash && (
+                                                            <button
+                                                                onClick={() => handleDelete(lead.id)}
+                                                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-colors"
+                                                                title="Move to Trash"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </motion.tr>
+                                        );
+                                    })}
+                                    </AnimatePresence>
+                                </tbody>
+                            </table>
+                            </div>
                         </div>
                         <Pagination
                             currentPage={currentPage}
@@ -1203,6 +1305,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                         />
                         </>
                     )}
+
                 </>
             )}
             <AnimatePresence>

@@ -12,7 +12,7 @@ import { getVisibleLeads } from '../utils/permissions';
  * - CEO/Admin roles see all leads & tasks
  * - Agents/Managers only see documents assigned to them
  * - Notifications are per-user (userId === currentUser.id)
- * - Fires toast notifications when new tasks or leads are assigned
+ * - Fires toast notifications AND native OS desktop notifications when new tasks or leads are assigned
  */
 export function useRealtimeSync() {
     const user = useStore((s) => s.user);
@@ -26,6 +26,19 @@ export function useRealtimeSync() {
     const knownTaskIds = useRef<Set<string>>(new Set());
     const knownNotifIds = useRef<Set<string>>(new Set());
     const isFirstSnapshot = useRef({ leads: true, tasks: true, notifs: true });
+
+    // ── REQUEST BROWSER NOTIFICATION PERMISSION ONCE ON MOUNT ──────────
+    // We request permission as soon as a user is authenticated.
+    // The browser will only show the consent dialog once; subsequent calls
+    // are no-ops if permission was already granted or denied.
+    useEffect(() => {
+        if (!user) return;
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(perm => {
+                console.log(`[NOTIF] Browser notification permission: ${perm}`);
+            });
+        }
+    }, [user?.id]);
 
     useEffect(() => {
         if (!user) return;
@@ -215,7 +228,29 @@ export function useRealtimeSync() {
                                 },
                             });
 
-                            // Premium audio chime
+                            // ── NATIVE OS DESKTOP NOTIFICATION ─────────────────
+                            // Fires even when the browser tab is minimised/hidden.
+                            // Falls back silently if permission was denied.
+                            if ('Notification' in window && Notification.permission === 'granted') {
+                                try {
+                                    const osNotif = new Notification('D-Capital CRM', {
+                                        body: msg,
+                                        icon: '/icon-192.png',  // PWA icon
+                                        tag: change.doc.id,    // Prevents duplicate notifications for the same doc
+                                        silent: false,
+                                    });
+                                    // Auto-close after 8 seconds
+                                    setTimeout(() => osNotif.close(), 8000);
+                                    // Click → focus the tab
+                                    osNotif.onclick = () => {
+                                        window.focus();
+                                        osNotif.close();
+                                    };
+                                } catch (err) {
+                                    console.warn('[NOTIF] Native notification failed:', err);
+                                }
+                            }
+
                             try {
                                 const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
                                 const osc1 = audioCtx.createOscillator();
