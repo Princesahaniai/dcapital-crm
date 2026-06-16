@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Lead, Property, Task, Activity, User, MessageTemplate, ImportFile } from './types';
+import type { Lead, Property, Task, Activity, User, MessageTemplate, ImportFile, AttendanceLog } from './types';
 import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
@@ -44,6 +44,7 @@ interface Store {
     activities: Activity[];
     team: TeamMember[];
     notifications: Notification[];
+    attendanceLogs: AttendanceLog[];
     loginTimestamp: number | null;
     rememberMe: boolean;
     isAuthLoading: boolean;
@@ -95,9 +96,18 @@ interface Store {
     deleteTask: (id: string) => void;
     runDailyTaskSweep: () => Promise<void>;
     markNotificationRead: (id: string) => void;
+    markAllNotificationsRead: () => void;
     clearNotifications: () => void;
     setNotifications: (notifications: Notification[]) => void;
     addFirestoreNotification: (userId: string, text: string) => void;
+    // 🔔 Unified notification logger — writes to 'notifications' collection with targetUserId
+    logNotification: (message: string, targetUserId: string, type?: string) => void;
+
+    // Attendance Actions
+    clockIn: (log: AttendanceLog) => Promise<void>;
+    updateAttendanceLog: (id: string, updates: Partial<AttendanceLog>) => Promise<void>;
+    setAttendanceLogs: (logs: AttendanceLog[]) => void;
+
     importData: (data: any) => void;
     addImportFile: (file: ImportFile) => void;
     deleteBatch: (batchId: string) => Promise<void>;
@@ -146,6 +156,7 @@ export const useStore = create<Store>()(
             activities: [], // Production: Empty state
             team: [], // Production: Empty state - Only CEO and Admin via login
             notifications: [], // Production: Empty state
+            attendanceLogs: [],
             auditLogs: [],
             messageTemplates: [],
             importFiles: [],
@@ -452,6 +463,32 @@ export const useStore = create<Store>()(
             setTeamFromSnapshot: (team) => set({ team }),
             setNotifications: (notifications) => set({ notifications }),
 
+            // --- ATTENDANCE ACTIONS ---
+            setAttendanceLogs: (attendanceLogs) => set({ attendanceLogs }),
+
+            clockIn: async (log) => {
+                try {
+                    const cmpId = get().user?.companyId || 'd-capital-main';
+                    await setDoc(doc(db, 'attendanceLogs', log.id), { ...log, companyId: cmpId });
+                    set({ attendanceLogs: [...get().attendanceLogs, log] });
+                } catch (error) {
+                    console.error('Error clocking in:', error);
+                    toast.error('Failed to save attendance data to server');
+                }
+            },
+
+            updateAttendanceLog: async (id, updates) => {
+                try {
+                    await updateDoc(doc(db, 'attendanceLogs', id), updates as any);
+                    set(state => ({
+                        attendanceLogs: state.attendanceLogs.map(log => log.id === id ? { ...log, ...updates } : log)
+                    }));
+                } catch (error) {
+                    console.error('Error updating attendance:', error);
+                    toast.error('Failed to update attendance record');
+                }
+            },
+
             // Data Actions
             updateProfile: (name, email) => set((s) => ({ user: s.user ? { ...s.user, name, email } : null })),
 
@@ -741,13 +778,43 @@ export const useStore = create<Store>()(
                 const notifDoc: any = {
                     id: notifId,
                     text,
+                    message: text,
                     read: false,
+                    isRead: false,
                     date: new Date().toISOString(),
-                    userId
+                    timestamp: Date.now(),
+                    userId,
+                    targetUserId: userId,
+                    type: 'system'
                 };
                 if (cmpId) notifDoc.companyId = cmpId;
 
                 setDoc(doc(db, 'notifications', notifId), notifDoc).catch(err => console.error('[SYNC] Remote notification write failed:', err));
+            },
+
+            // 🔔 UNIFIED NOTIFICATION LOGGER
+            // Writes to Firestore 'notifications' collection with targetUserId.
+            // The onSnapshot listener in useRealtimeSync picks this up and fires a toast.
+            logNotification: (message, targetUserId, type = 'system') => {
+                const state = get();
+                const notifId = Math.random().toString(36).substr(2, 9);
+                const cmpId = state.user?.companyId || 'd-capital-main';
+                const notifDoc: any = {
+                    id: notifId,
+                    text: message,
+                    message,
+                    read: false,
+                    isRead: false,
+                    date: new Date().toISOString(),
+                    timestamp: Date.now(),
+                    targetUserId,
+                    userId: targetUserId,   // legacy alias
+                    type,
+                    companyId: cmpId,
+                };
+                // Write to Firestore — the onSnapshot listener handles local state
+                setDoc(doc(db, 'notifications', notifId), notifDoc)
+                    .catch(err => console.error('[NOTIF] logNotification write failed:', err));
             },
 
             updateLead: (id, data) => {
@@ -789,6 +856,8 @@ export const useStore = create<Store>()(
                             if (l.id !== id) return l;
                             const newLeadData: any = { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() };
                             if (data.assignedTo && data.assignedTo !== oldLead.assignedTo) {
+                                // ✅ FIX: mirror assignedToId whenever assignedTo changes
+                                newLeadData.assignedToId = data.assignedTo;
                                 newLeadData.delegatedBy = currentUser?.id || 'system';
                             }
                             return newLeadData;
@@ -798,32 +867,48 @@ export const useStore = create<Store>()(
                     };
                 });
                 // Firestore write-through
-                const updatedData = { ...data, updatedAt: Date.now() };
+                const updatedData: any = { ...data, updatedAt: Date.now() };
                 const oldLead = get().leads.find(l => l.id === id);
 
                 // 📝 THE HOME-TO-HOME TRACKER: Log assignment if it changed
                 if (data.assignedTo && data.assignedTo !== oldLead?.assignedTo) {
                     const newAgentName = get().team.find(m => m.id === data.assignedTo)?.name || 'Unknown Agent';
-                    (updatedData as any).historyLog = arrayUnion({
+                    updatedData.historyLog = arrayUnion({
                         date: new Date().toISOString(),
                         action: 'Assigned',
                         fromName: get().user?.name || 'System',
                         toName: newAgentName
                     });
-                    
+                    // ✅ FIX: write assignedToId to Firestore so agent Firestore queries work
+                    updatedData.assignedToId = data.assignedTo;
                     // 🛡️ INSTRUCTION 2: DELEGATION TRACKER LOGIC
-                    (updatedData as any).delegatedBy = get().user?.id || 'system';
+                    updatedData.delegatedBy = get().user?.id || 'system';
                 }
 
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
-                // 🔔 INSTRUCTION 3: If lead is being reassigned, notify the new agent immediately
+                // 🔔 If lead is being reassigned, notify the new agent immediately
                 if (data.assignedTo && data.assignedTo !== oldLead?.assignedTo) {
                     const lead = get().leads.find(l => l.id === id);
-                    get().addFirestoreNotification(
+                    const agentName = get().team.find(m => m.id === data.assignedTo)?.name || 'Agent';
+                    // Notify the newly assigned agent
+                    get().logNotification(
+                        `📋 Lead assigned to you: "${lead?.name || 'Unknown'}" by ${get().user?.name || 'Admin'}`,
                         data.assignedTo,
-                        `📋 You have been assigned a new lead: ${lead?.name || 'Unknown'} by ${get().user?.name || 'Admin'}`
+                        'assignment'
                     );
                 }
+
+                // 🔔 If an agent updates a lead status, notify Admin
+                const actingUser = get().user;
+                if (actingUser?.role === 'agent' && data.status && data.status !== oldLead?.status) {
+                    const lead = get().leads.find(l => l.id === id);
+                    get().logNotification(
+                        `📝 Lead "${lead?.name || 'Unknown'}" updated to ${data.status} by ${actingUser.name}`,
+                        'Admin',
+                        'update'
+                    );
+                }
+
                 get().logAudit('UPDATE_LEAD', undefined, { leadId: id, updates: data });
             },
 
@@ -855,7 +940,10 @@ export const useStore = create<Store>()(
                 set((s) => {
                     const count = leadIds.length;
                     return {
-                        leads: s.leads.map(l => leadIds.includes(l.id) ? { ...l, assignedTo: agentId, assignedName: agentName, delegatedBy: currentUserId, updatedAt: Date.now() } : l),
+                        // ✅ FIX: persist assignedToId (the real Firebase UID) alongside assignedTo
+                        leads: s.leads.map(l => leadIds.includes(l.id)
+                            ? { ...l, assignedTo: agentId, assignedToId: agentId, assignedName: agentName, delegatedBy: currentUserId, updatedAt: Date.now() }
+                            : l),
                         notifications: [{
                             id: Math.random().toString(36).substr(2, 9),
                             text: `📋 ${count} Leads Assigned to ${agentName}`,
@@ -875,8 +963,10 @@ export const useStore = create<Store>()(
                         toName: agentName
                     };
                     const leadRef = doc(db, 'leads', leadId);
+                    // ✅ FIX: write assignedToId so agents can query by their UID
                     batch.update(leadRef, { 
-                        assignedTo: agentId, 
+                        assignedTo: agentId,
+                        assignedToId: agentId,   // ← the field agents query against
                         assignedName: agentName,
                         delegatedBy: currentUserId,
                         updatedAt: Date.now(),
@@ -895,7 +985,15 @@ export const useStore = create<Store>()(
                 });
                 
                 batch.commit().catch(err => console.error('[SYNC] Lead assignment batch failed:', err));
-                
+
+                // 🔔 Log a targeted notification for the assigned agent via logNotification
+                const count = leadIds.length;
+                get().logNotification(
+                    `📋 ${count} new lead${count > 1 ? 's' : ''} assigned to you by ${get().user?.name || 'Admin'}`,
+                    agentId,
+                    'assignment'
+                );
+
                 get().logAudit('ASSIGN_LEADS', agentId, { leadIds, agentName });
             },
 
@@ -936,8 +1034,21 @@ export const useStore = create<Store>()(
             },
 
             markNotificationRead: (id) => {
-                set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) }));
-                updateDoc(doc(db, 'notifications', id), { read: true }).catch(err => console.error('[SYNC] Notification read failed:', err));
+                set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true, isRead: true } : n) }));
+                updateDoc(doc(db, 'notifications', id), { read: true, isRead: true }).catch(err => console.error('[SYNC] Notification read failed:', err));
+            },
+
+            // Mark every unread notification as read in one Firestore batch
+            markAllNotificationsRead: () => {
+                const state = get();
+                const unread = state.notifications.filter(n => !n.read);
+                if (unread.length === 0) return;
+                set(s => ({ notifications: s.notifications.map(n => ({ ...n, read: true, isRead: true })) }));
+                const batch = writeBatch(db);
+                unread.forEach(n => {
+                    batch.update(doc(db, 'notifications', n.id), { read: true, isRead: true });
+                });
+                batch.commit().catch(err => console.error('[SYNC] Mark-all-read batch failed:', err));
             },
 
             clearNotifications: async () => {
@@ -1293,14 +1404,16 @@ export const useStore = create<Store>()(
                 const leadsToUpdate = s.leads.filter(l => l.fileId === batchId);
                 const batch = writeBatch(db);
                 leadsToUpdate.forEach(l => {
-                    batch.update(doc(db, 'leads', l.id), { assignedTo: agentId, assignedName: agentName });
+                    // ✅ FIX: write assignedToId so agents can query by their UID
+                    batch.update(doc(db, 'leads', l.id), { assignedTo: agentId, assignedToId: agentId, assignedName: agentName });
                 });
                 await batch.commit();
                 
                 set({
-                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: agentId, assignedName: agentName } : l)
+                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: agentId, assignedToId: agentId, assignedName: agentName } : l)
                 });
             },
+
 
             resetSystem: async () => {
                 const cmpId = get().user?.companyId;

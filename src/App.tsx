@@ -14,6 +14,7 @@ import { Reports } from './pages/Reports';
 import { Calendar } from './pages/Calendar';
 import { SocialStudio } from './pages/SocialStudio';
 import { BatchManager } from './pages/BatchManager';
+import { Attendance } from './pages/Attendance';
 
 import { Trash } from './pages/Trash';
 import { MarketIntel } from './pages/MarketIntel';
@@ -197,6 +198,7 @@ export default function App() {
                 <Route path="/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
                 <Route path="/admin/social-studio" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
                 <Route path="/social-studio-v2" element={<ProtectedRoute><SocialStudio /></ProtectedRoute>} />
+                <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
 
                 <Route path="/market-intel" element={<ProtectedRoute><MarketIntel /></ProtectedRoute>} />
                 <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />

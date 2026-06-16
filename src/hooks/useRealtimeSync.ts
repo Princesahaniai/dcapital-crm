@@ -160,27 +160,62 @@ export function useRealtimeSync() {
 
         // ─── NOTIFICATIONS LISTENER (Firestore-backed) ─────────
         try {
-            const notifsQuery = query(
+            const isAdminLike = user.role === 'ceo' || user.role === 'admin' || user.role === 'manager';
+
+            // Admins/managers also receive 'Admin'-targeted notifications (e.g. when agents update leads)
+            // We run two parallel queries and merge them client-side because Firestore doesn't support OR on different fields natively.
+            const personalQuery = query(
                 collection(db, 'notifications'),
                 where('companyId', '==', cmpId),
                 where('userId', '==', user.id)
             );
 
-            const unsubNotifs = onSnapshot(notifsQuery, (snapshot) => {
-                const notifs = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() } as any))
-                    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setNotifications(notifs);
+            // Accumulate results from both queries; deduplicate by id
+            const allNotifs = new Map<string, any>();
 
-                // 🔔 Detect genuinely new notifications and fire the audio chime directly
-                if (isFirstSnapshot.current.notifs) {
-                    notifs.forEach((n: any) => knownNotifIds.current.add(n.id));
+            const mergeAndSet = () => {
+                const merged = Array.from(allNotifs.values())
+                    .sort((a: any, b: any) => (b.timestamp || new Date(b.date).getTime()) - (a.timestamp || new Date(a.date).getTime()));
+                setNotifications(merged);
+            };
+
+            const handleSnapshot = (snapshot: any, source: string) => {
+                snapshot.docs.forEach((d: any) => {
+                    allNotifs.set(d.id, { id: d.id, ...d.data() });
+                });
+
+                mergeAndSet();
+
+                // 🔔 Fire toasts for genuinely new notifications (skip first load)
+                if (isFirstSnapshot.current.notifs && source === 'personal') {
+                    // Seed known IDs on first snapshot
+                    snapshot.docs.forEach((d: any) => knownNotifIds.current.add(d.id));
                     isFirstSnapshot.current.notifs = false;
-                } else {
-                    snapshot.docChanges().forEach(change => {
+                } else if (!isFirstSnapshot.current.notifs) {
+                    snapshot.docChanges().forEach((change: any) => {
                         if (change.type === 'added' && !knownNotifIds.current.has(change.doc.id)) {
                             knownNotifIds.current.add(change.doc.id);
-                            // Fire audio chime directly — bypasses the App.tsx length-comparison bug
+                            const data = change.doc.data();
+                            const msg = data.message || data.text || 'New notification';
+                            const nType = data.type || 'system';
+
+                            // Choose icon based on type
+                            const icon = nType === 'assignment' ? '📋' : nType === 'update' ? '📝' : nType === 'alert' ? '⚠️' : '🔔';
+
+                            // Fire the toast
+                            toast(msg, {
+                                icon,
+                                duration: 6000,
+                                style: {
+                                    background: '#1C1C1E',
+                                    color: '#fff',
+                                    border: '1px solid #333',
+                                    fontSize: '13px',
+                                    maxWidth: '380px',
+                                },
+                            });
+
+                            // Premium audio chime
                             try {
                                 const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
                                 const osc1 = audioCtx.createOscillator();
@@ -211,10 +246,24 @@ export function useRealtimeSync() {
                         }
                     });
                 }
-            }, (error) => {
-                console.error('[REALTIME] Notifications listener error:', error);
-            });
-            unsubscribes.push(unsubNotifs);
+            };
+
+            const unsubPersonal = onSnapshot(personalQuery, (snap) => handleSnapshot(snap, 'personal'),
+                (err) => console.error('[REALTIME] Personal notifications error:', err));
+            unsubscribes.push(unsubPersonal);
+
+            // Admin-targeted notifications — only fetched for admin-like roles
+            if (isAdminLike) {
+                const adminQuery = query(
+                    collection(db, 'notifications'),
+                    where('companyId', '==', cmpId),
+                    where('userId', '==', 'Admin')
+                );
+                const unsubAdmin = onSnapshot(adminQuery, (snap) => handleSnapshot(snap, 'admin'),
+                    (err) => console.error('[REALTIME] Admin notifications error:', err));
+                unsubscribes.push(unsubAdmin);
+            }
+
         } catch (err) {
             console.error('[REALTIME] Failed to set up notifications listener:', err);
         }

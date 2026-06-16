@@ -51,6 +51,7 @@ export interface Lead {
     status: 'New' | 'Contacted' | 'Qualified' | 'Viewing' | 'Negotiation' | 'Closed' | 'Lost' | 'Trash';
     notes?: any[] | string;
     assignedTo?: string;
+    assignedToId?: string; // The agent's actual Firebase UID — used for role-based querying
     assignedName?: string;
     createdAt: number;
     updatedAt?: number;
@@ -186,10 +187,21 @@ export interface Task {
 
 export interface Notification {
     id: string;
+    // 'text' is the legacy field name; 'message' is the canonical alias
     text: string;
+    message?: string;       // Alias for 'text' — use whichever is present
     read: boolean;
+    isRead?: boolean;       // Alias for 'read' — both kept for compatibility
     date: string;
-    type?: string;
+    timestamp?: number;     // Unix ms — for real-time sorting
+    type?: 'assignment' | 'update' | 'system' | 'alert' | string;
+    // Who this notification targets:
+    //   - a Firebase UID      → only that user sees it
+    //   - 'Admin'             → visible to all ceo/admin/manager roles
+    targetUserId?: string;
+    userId?: string;        // Legacy alias for targetUserId — kept for backward compat
+    toUser?: string;        // Another legacy alias
+    companyId?: string;
 }
 
 export interface MessageTemplate {

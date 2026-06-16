@@ -1,5 +1,4 @@
 import React from 'react';
-import { Clock, Phone } from 'lucide-react';
 import type { Lead } from '../../types';
 
 interface FollowUpAlertProps {
@@ -8,32 +7,35 @@ interface FollowUpAlertProps {
 }
 
 export const FollowUpAlert: React.FC<FollowUpAlertProps> = ({ lead, compact }) => {
-    if (!lead.lastContact) return null;
-
     const now = Date.now();
-    const hoursSince = Math.floor((now - lead.lastContact) / (1000 * 60 * 60));
+    // Check lastContact OR updatedAt — whichever is more recent
+    const lastActivity = Math.max(lead.lastContact || 0, lead.updatedAt || 0, lead.createdAt || 0);
+    const hoursSince = Math.floor((now - lastActivity) / (1000 * 60 * 60));
 
-    // Only show if > 48 hours for New/Contacted leads
-    const urgentStatuses = ['New', 'Contacted', 'Negotiation'];
+    // Only show for active pipeline stages (not terminal states)
+    const urgentStatuses = ['New', 'Contacted', 'Viewing', 'Negotiation', 'Qualified'];
     if (!urgentStatuses.includes(lead.status)) return null;
 
+    // Only warn after 48 hours of inactivity
     if (hoursSince < 48) return null;
 
     if (compact) {
+        // Tiny pulse dot on the avatar (used in LeadCard)
         return (
-            <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50" title={`No contact for ${hoursSince} hours`} />
+            <div
+                className="absolute top-2 right-2 w-3 h-3 bg-amber-500 rounded-full animate-pulse shadow-lg shadow-amber-500/50"
+                title={`⚠️ No activity for ${hoursSince}h`}
+            />
         );
     }
 
+    // Non-compact: just the ⚠️ icon inline — no bulky block
     return (
-        <div className="mt-3 flex items-center justify-between bg-red-50 dark:bg-red-900/10 p-2.5 rounded-xl border border-red-100 dark:border-red-900/20">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                <Clock size={14} className="animate-pulse" />
-                <span className="text-xs font-bold">No action for {hoursSince}h</span>
-            </div>
-            <button className="text-[10px] bg-white dark:bg-black/20 px-2 py-1 rounded-lg font-bold hover:bg-red-100 transition-colors uppercase tracking-wider text-red-500">
-                Follow Up
-            </button>
-        </div>
+        <span
+            title={`⚠️ No activity for ${hoursSince}h — follow up needed`}
+            className="inline-flex items-center text-amber-500 text-[13px] ml-1 cursor-help"
+        >
+            ⚠️
+        </span>
     );
 };

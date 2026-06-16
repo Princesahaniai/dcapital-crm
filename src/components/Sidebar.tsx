@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database, MapPin, Bell } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const Sidebar = () => {
     const location = useLocation();
-    const { logout, user } = useStore();
+    const { logout, user, notifications } = useStore();
+    const unreadCount = notifications.filter(n => !n.read).length;
     const [mobileOpen, setMobileOpen] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -71,14 +72,34 @@ export const Sidebar = () => {
                             <p className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.2em] mt-1">Pro CRM</p>
                         </div>
                     </div>
-                    {/* Close button — mobile only */}
-                    <button
-                        onClick={() => setMobileOpen(false)}
-                        className="md:hidden w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white hover:border-amber-500/30 transition-colors"
-                        aria-label="Close menu"
-                    >
-                        <X size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {/* Notification Bell — desktop sidebar indicator; click opens GlobalTopBar dropdown */}
+                        <button
+                            id="sidebar-bell-btn"
+                            onClick={() => {
+                                // Trigger the GlobalTopBar bell programmatically
+                                const bellBtn = document.getElementById('notification-bell-btn');
+                                if (bellBtn) bellBtn.click();
+                            }}
+                            className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors hidden md:flex items-center justify-center"
+                            title="Notifications"
+                        >
+                            <Bell size={18} className="text-gray-500 dark:text-gray-400" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-black text-white">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
+                        </button>
+                        {/* Close button — mobile only */}
+                        <button
+                            onClick={() => setMobileOpen(false)}
+                            className="md:hidden w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white hover:border-amber-500/30 transition-colors"
+                            aria-label="Close menu"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* NAVIGATION */}
@@ -116,6 +137,7 @@ export const Sidebar = () => {
                             {user?.role === 'ceo' && (
                                 <NavItem to="/billing" icon={CreditCard} label="Billing & Plans" />
                             )}
+                            <NavItem to="/attendance" icon={MapPin} label="Attendance" />
                             <NavItem to="/trash" icon={Trash2} label="Trash" />
                             {user?.isSuperAdmin && (
                                 <NavItem to="/super-admin" icon={ShieldAlert} label="God Mode" />
