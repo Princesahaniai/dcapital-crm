@@ -6,14 +6,23 @@ import { useStore } from '../store';
 import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VAPID Public Key — generated in Firebase Console → Project Settings →
-// Cloud Messaging → Web Push certificates.
-// This is the PUBLIC key (safe to expose in client code).
+// VAPID Public Key — loaded from the Vite environment variable.
+// Set VITE_FIREBASE_VAPID_KEY in:
+//   • .env.local          (local dev)
+//   • Vercel dashboard    (production) → Settings → Environment Variables
+// Value: Firebase Console → Project Settings → Cloud Messaging →
+//        Web push certificates → Key pair (the long base64url string)
 // ─────────────────────────────────────────────────────────────────────────────
-const VAPID_KEY =
-    'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDkBWseIkuokgq4Ggy4pqXqJwAR5OqDL3q-Y6yFUiEME';
-// ↑ Replace this with your ACTUAL VAPID key from Firebase Console.
-//   Console → Project Settings → Cloud Messaging → Web push certificates → Key pair
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
+
+if (!VAPID_KEY) {
+    console.error(
+        '[FCM] ❌ VITE_FIREBASE_VAPID_KEY is not set.\n' +
+        '  Push notifications will NOT work until this env variable is defined.\n' +
+        '  → Add it to .env.local for dev, and to Vercel Environment Variables for prod.\n' +
+        '  → Get the value from: Firebase Console → Project Settings → Cloud Messaging → Web push certificates'
+    );
+}
 
 /**
  * usePushNotifications
@@ -80,13 +89,37 @@ export const usePushNotifications = () => {
                 }
 
                 // ── 4. Get FCM device token ───────────────────────────────
-                const currentToken = await getToken(fcmInstance, {
-                    vapidKey: VAPID_KEY,
-                    ...(swRegistration ? { serviceWorkerRegistration: swRegistration } : {}),
-                });
+                if (!VAPID_KEY) {
+                    console.error('[FCM] ❌ Cannot call getToken — VITE_FIREBASE_VAPID_KEY is undefined.');
+                    return;
+                }
+
+                let currentToken: string | null = null;
+                try {
+                    currentToken = await getToken(fcmInstance, {
+                        vapidKey: VAPID_KEY,
+                        ...(swRegistration ? { serviceWorkerRegistration: swRegistration } : {}),
+                    });
+                } catch (tokenErr: any) {
+                    console.error(
+                        '[FCM] ❌ getToken() failed — push notifications will not work.\n',
+                        'Error code   :', tokenErr?.code    ?? 'unknown',
+                        '\nError message:', tokenErr?.message ?? String(tokenErr),
+                        '\n\nCommon causes:',
+                        '\n  • VAPID key is wrong or expired (regenerate in Firebase Console)',
+                        '\n  • Service worker failed to register (check SW errors above)',
+                        '\n  • Browser blocked notifications (check site permissions)',
+                        '\n  • Firebase project ID mismatch in firebaseConfig.ts',
+                        '\n\nFull error:', tokenErr
+                    );
+                    return;
+                }
 
                 if (!currentToken) {
-                    console.warn('[FCM] No registration token available. Check VAPID key and SW registration.');
+                    console.error(
+                        '[FCM] ❌ getToken() returned empty — no device token generated.\n' +
+                        '  Check: VAPID key validity, service worker scope, and browser notification permissions.'
+                    );
                     return;
                 }
 
