@@ -793,8 +793,9 @@ export const useStore = create<Store>()(
             },
 
             // 🔔 UNIFIED NOTIFICATION LOGGER
-            // Writes to Firestore 'notifications' collection with targetUserId.
-            // The onSnapshot listener in useRealtimeSync picks this up and fires a toast.
+            // 1. Writes to Firestore 'notifications' collection (in-app bell + onSnapshot toast)
+            // 2. Looks up the target user's FCM device token and POSTs to /api/send-push
+            //    so the OS delivers a background push even when the tab is closed.
             logNotification: (message, targetUserId, type = 'system') => {
                 const state = get();
                 const notifId = Math.random().toString(36).substr(2, 9);
@@ -812,9 +813,65 @@ export const useStore = create<Store>()(
                     type,
                     companyId: cmpId,
                 };
-                // Write to Firestore — the onSnapshot listener handles local state
+
+                // ── Step 1: Write to Firestore (triggers onSnapshot bell) ──
                 setDoc(doc(db, 'notifications', notifId), notifDoc)
                     .catch(err => console.error('[NOTIF] logNotification write failed:', err));
+
+                // ── Step 2: Send FCM push via Vercel Edge Function ────────
+                // Look up the target user's fcmToken from Firestore, then POST
+                // to /api/send-push. This delivers the alert to locked devices.
+                const sendFcmPush = async () => {
+                    try {
+                        // Resolve target user ID: 'Admin' → look up any admin/ceo user token
+                        let targetUid = targetUserId;
+                        if (targetUserId === 'Admin') {
+                            // Find first ceo/admin team member with an fcmToken
+                            const adminMember = get().team.find(
+                                m => (m.role === 'ceo' || m.role === 'admin') && (m as any).fcmToken
+                            );
+                            if (!adminMember) return; // No admins online with a token
+                            targetUid = adminMember.id;
+                        }
+
+                        // Fetch the target user's Firestore doc to get their fcmToken
+                        const { getDoc, doc: fsDoc } = await import('firebase/firestore');
+                        const { db: fsDb } = await import('../firebaseConfig');
+                        const userSnap = await getDoc(fsDoc(fsDb, 'users', targetUid));
+                        const fcmToken = userSnap.data()?.fcmToken as string | undefined;
+
+                        if (!fcmToken) {
+                            console.log(`[FCM] No token for user ${targetUid} — skipping push`);
+                            return;
+                        }
+
+                        // POST to the Vercel Edge Function at /api/send-push
+                        // The edge function calls Firebase Admin SDK to send the push
+                        const res = await fetch('/api/send-push', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                token: fcmToken,
+                                title: 'D-Capital CRM',
+                                body: message,
+                                type,
+                                notifId,
+                            }),
+                        });
+
+                        if (!res.ok) {
+                            const txt = await res.text();
+                            console.warn('[FCM] send-push API responded with error:', txt);
+                        } else {
+                            console.log('[FCM] ✅ Push dispatched to device token');
+                        }
+                    } catch (err) {
+                        // Non-fatal — in-app Firestore listener is always the fallback
+                        console.warn('[FCM] Could not send background push:', err);
+                    }
+                };
+
+                sendFcmPush();
             },
 
             updateLead: (id, data) => {

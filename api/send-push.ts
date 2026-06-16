@@ -1,46 +1,108 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin if it hasn't been initialized yet
+// ─── Firebase Admin SDK init (singleton) ─────────────────────────────────────
+// Credentials come from Vercel environment variables (set in Vercel dashboard):
+//   FIREBASE_PROJECT_ID     → your project ID
+//   FIREBASE_CLIENT_EMAIL   → service account email
+//   FIREBASE_PRIVATE_KEY    → service account private key (with literal \n)
+// ─────────────────────────────────────────────────────────────────────────────
 if (!admin.apps.length) {
     try {
         admin.initializeApp({
             credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
+                projectId:   process.env.FIREBASE_PROJECT_ID,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                // Replace escaped newlines with actual newlines
-                privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+                // Vercel stores multi-line env vars with literal \n — convert back
+                privateKey:  process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
             }),
         });
-    } catch (error) {
-        console.error('Firebase admin initialization error', error);
+        console.log('[send-push] Firebase Admin initialized');
+    } catch (err) {
+        console.error('[send-push] Firebase Admin initialization error:', err);
     }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // ── CORS headers (allow from same origin) ─────────────────────────────
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { token, title, body } = req.body;
+    const { token, title, body, type, notifId } = req.body ?? {};
 
-    if (!token || !title || !body) {
-        return res.status(400).json({ error: 'Missing required fields: token, title, body' });
+    if (!token || !body) {
+        return res.status(400).json({ error: 'Missing required fields: token, body' });
     }
 
     try {
-        const message = {
+        // ── Build FCM message ─────────────────────────────────────────────
+        // - notification block: displayed by OS even when app is closed
+        // - data block: passed to the service worker for custom handling
+        const message: admin.messaging.Message = {
+            token,
             notification: {
-                title,
+                title: title || 'D-Capital CRM',
                 body,
             },
-            token,
+            data: {
+                // Data fields must all be strings
+                type:    type    || 'system',
+                notifId: notifId || '',
+                title:   title   || 'D-Capital CRM',
+                body,
+            },
+            // Android config — high priority to wake screen
+            android: {
+                priority: 'high',
+                notification: {
+                    icon:        'ic_stat_notification',  // must exist in android/app/src/main/res
+                    color:       '#D4AF37',               // D-Capital gold accent
+                    channelId:   'dcapital_default',
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                },
+            },
+            // Apple config
+            apns: {
+                payload: {
+                    aps: {
+                        sound:            'default',
+                        badge:            1,
+                        contentAvailable: true,
+                    },
+                },
+            },
+            // Web push config
+            webpush: {
+                headers: {
+                    Urgency: 'high',
+                },
+                notification: {
+                    title:          title || 'D-Capital CRM',
+                    body,
+                    icon:           '/icon-192x192.png',
+                    badge:          '/icon-192x192.png',
+                    requireInteraction: false,
+                    tag:            notifId || 'dcapital-notif',
+                },
+                fcmOptions: {
+                    link: '/',
+                },
+            },
         };
 
-        const response = await admin.messaging().send(message);
-        return res.status(200).json({ success: true, messageId: response });
-    } catch (error: any) {
-        console.error('Error sending message:', error);
-        return res.status(500).json({ error: error.message || 'Internal server error' });
+        const messageId = await admin.messaging().send(message);
+        console.log('[send-push] ✅ Message sent:', messageId);
+        return res.status(200).json({ success: true, messageId });
+
+    } catch (err: any) {
+        console.error('[send-push] Error sending FCM message:', err);
+        // Return 200 with error detail so client doesn't retry aggressively
+        return res.status(200).json({ success: false, error: err?.message || 'FCM send failed' });
     }
 }
