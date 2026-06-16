@@ -158,15 +158,52 @@ export function useRealtimeSync() {
         }
 
         // ─── TEAM (USERS) LISTENER ──────────────────────────────
+        // Problem: Users created without a companyId field are silently dropped
+        // by a strict where('companyId', '==', cmpId) query.
+        // Fix: Run TWO parallel snapshots — one for users WITH the correct companyId,
+        // and a fallback that catches users whose companyId field is missing/unset.
+        // Both streams are merged and deduplicated so ALL team members appear.
         try {
-            const teamQuery = query(collection(db, 'users'), where('companyId', '==', cmpId));
-            const unsubTeam = onSnapshot(teamQuery, (snapshot) => {
-                const team = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-                setTeamFromSnapshot(team);
+            const teamById = new Map<string, any>();
+
+            const mergeTeam = () => {
+                const merged = Array.from(teamById.values());
+                setTeamFromSnapshot(merged);
+                console.log(`[REALTIME] 👥 Team synced — ${merged.length} member(s) loaded`);
+                if (merged.length === 0) {
+                    console.warn('[REALTIME] ⚠️ Team is EMPTY — check Firestore users collection and companyId values');
+                }
+            };
+
+            // Stream 1: users with matching companyId (the normal case)
+            const teamQueryById = query(collection(db, 'users'), where('companyId', '==', cmpId));
+            const unsubTeamById = onSnapshot(teamQueryById, (snapshot) => {
+                snapshot.docs.forEach(d => teamById.set(d.id, { id: d.id, ...d.data() }));
+                mergeTeam();
             }, (error) => {
-                console.error('[REALTIME] Team listener error:', error);
+                console.error('[REALTIME] Team (by companyId) listener error:', error);
             });
-            unsubscribes.push(unsubTeam);
+            unsubscribes.push(unsubTeamById);
+
+            // Stream 2: fallback — fetch all users in the collection (catches missing companyId)
+            // We filter client-side: keep only users whose companyId is missing, empty,
+            // or matches our company so we don't bleed cross-company data.
+            const teamQueryAll = query(collection(db, 'users'));
+            const unsubTeamAll = onSnapshot(teamQueryAll, (snapshot) => {
+                snapshot.docs.forEach(d => {
+                    const data = d.data();
+                    const userCompany = data.companyId || '';
+                    // Include if: no companyId set (legacy user) OR matches our company
+                    if (!userCompany || userCompany === cmpId) {
+                        teamById.set(d.id, { id: d.id, ...data });
+                    }
+                });
+                mergeTeam();
+            }, (error) => {
+                console.error('[REALTIME] Team (fallback all) listener error:', error);
+            });
+            unsubscribes.push(unsubTeamAll);
+
         } catch (err) {
             console.error('[REALTIME] Failed to set up team listener:', err);
         }

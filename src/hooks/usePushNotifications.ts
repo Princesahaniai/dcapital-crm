@@ -49,10 +49,15 @@ export const usePushNotifications = () => {
 
         const registerPush = async () => {
             try {
-                // ── 1. Request permission ──────────────────────────────────
+                // ── 1. Request permission ─────────────────────────────────
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
-                    console.warn('[FCM] Notification permission denied — push disabled.');
+                    // Visible on-screen error — user can see this without opening DevTools
+                    toast.error(
+                        `⛔ Push Notifications Blocked\nOpen browser Settings → Site Permissions → Notifications → Allow for this site.`,
+                        { duration: 10000, style: { whiteSpace: 'pre-line', maxWidth: '420px' } }
+                    );
+                    console.warn('[FCM] Notification permission denied.');
                     return;
                 }
 
@@ -67,6 +72,7 @@ export const usePushNotifications = () => {
                     fcmInstance = config.messaging;
                 }
                 if (!fcmInstance) {
+                    toast.error('Push Error: Firebase Messaging is not supported in this browser. Use Chrome or Edge on desktop.');
                     console.warn('[FCM] Firebase Messaging not supported in this browser.');
                     return;
                 }
@@ -84,12 +90,14 @@ export const usePushNotifications = () => {
                         console.log('[FCM] Service worker registered:', swRegistration.scope);
                     } catch (swErr) {
                         console.error('[FCM] Service worker registration failed:', swErr);
+                        toast.error('Push Error: Service Worker failed to register. Try refreshing the page or clearing browser cache.');
                         // Continue without SW — foreground-only toasts will still work
                     }
                 }
 
                 // ── 4. Get FCM device token ───────────────────────────────
                 if (!VAPID_KEY) {
+                    toast.error('Push Error: VAPID Key Missing — contact your system administrator to set VITE_FIREBASE_VAPID_KEY in Vercel.');
                     console.error('[FCM] ❌ Cannot call getToken — VITE_FIREBASE_VAPID_KEY is undefined.');
                     return;
                 }
@@ -101,25 +109,30 @@ export const usePushNotifications = () => {
                         ...(swRegistration ? { serviceWorkerRegistration: swRegistration } : {}),
                     });
                 } catch (tokenErr: any) {
-                    console.error(
-                        '[FCM] ❌ getToken() failed — push notifications will not work.\n',
-                        'Error code   :', tokenErr?.code    ?? 'unknown',
-                        '\nError message:', tokenErr?.message ?? String(tokenErr),
-                        '\n\nCommon causes:',
-                        '\n  • VAPID key is wrong or expired (regenerate in Firebase Console)',
-                        '\n  • Service worker failed to register (check SW errors above)',
-                        '\n  • Browser blocked notifications (check site permissions)',
-                        '\n  • Firebase project ID mismatch in firebaseConfig.ts',
-                        '\n\nFull error:', tokenErr
-                    );
+                    // Map Firebase error codes to human-readable on-screen messages
+                    const code: string = tokenErr?.code ?? '';
+                    let friendlyMsg = 'Push Error: Failed to generate device token.';
+
+                    if (code.includes('permission-blocked') || code.includes('permission-denied')) {
+                        friendlyMsg = 'Push Error: Browser Blocked Notifications — enable them in Site Settings and refresh.';
+                    } else if (code.includes('unsupported-browser')) {
+                        friendlyMsg = 'Push Error: This browser does not support push notifications. Use Chrome or Edge.';
+                    } else if (code.includes('installation-id') || code.includes('iid-token')) {
+                        friendlyMsg = 'Push Error: Token fetch failed (IID) — try clearing browser data and refreshing.';
+                    } else if (code.includes('sw-registration')) {
+                        friendlyMsg = 'Push Error: Service Worker not ready — refresh the page and try again.';
+                    } else if (tokenErr?.message) {
+                        friendlyMsg = `Push Error: ${tokenErr.message}`;
+                    }
+
+                    toast.error(friendlyMsg, { duration: 12000, style: { maxWidth: '440px' } });
+                    console.error('[FCM] ❌ getToken() failed:', code, tokenErr);
                     return;
                 }
 
                 if (!currentToken) {
-                    console.error(
-                        '[FCM] ❌ getToken() returned empty — no device token generated.\n' +
-                        '  Check: VAPID key validity, service worker scope, and browser notification permissions.'
-                    );
+                    toast.error('Push Error: Device token is empty — VAPID key may be invalid. Regenerate it in Firebase Console → Project Settings → Cloud Messaging.', { duration: 10000 });
+                    console.error('[FCM] ❌ getToken() returned empty — no device token generated.');
                     return;
                 }
 
@@ -173,7 +186,9 @@ export const usePushNotifications = () => {
                 // Cleanup foreground listener when user changes / unmounts
                 return () => unsubForeground();
 
-            } catch (err) {
+            } catch (err: any) {
+                const msg = err?.message ? `Push Setup Error: ${err.message}` : 'Push Setup Error: Unknown failure during notification registration.';
+                toast.error(msg, { duration: 10000 });
                 console.error('[FCM] Push registration error:', err);
             }
         };
