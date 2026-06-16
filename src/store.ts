@@ -974,16 +974,6 @@ export const useStore = create<Store>()(
                     });
                 });
                 
-                // 🔔 Push a real Firestore notification securely so the agent's bell rings in real-time
-                const count = leadIds.length;
-                const notificationRef = doc(collection(db, `users/${agentId}/notifications`));
-                batch.set(notificationRef, {
-                    text: `📋 ${count} new lead${count > 1 ? 's' : ''} assigned to you by ${get().user?.name || 'Admin'}`,
-                    date: new Date().toISOString(),
-                    read: false,
-                    type: 'assignment'
-                });
-                
                 batch.commit().catch(err => console.error('[SYNC] Lead assignment batch failed:', err));
 
                 // 🔔 Log a targeted notification for the assigned agent via logNotification
@@ -995,6 +985,7 @@ export const useStore = create<Store>()(
                 );
 
                 get().logAudit('ASSIGN_LEADS', agentId, { leadIds, agentName });
+
             },
 
             addQuickNote: (leadId, note) => {
