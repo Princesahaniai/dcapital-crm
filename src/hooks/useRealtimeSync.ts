@@ -73,7 +73,6 @@ export function useRealtimeSync() {
                 // Agent (or any unknown role): strictly only their own assigned leads
                 leadsQuery = query(
                     collection(db, 'leads'),
-                    where('companyId', '==', cmpId),
                     where('assignedTo', '==', user.id)
                 );
             }

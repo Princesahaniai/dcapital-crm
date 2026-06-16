@@ -800,6 +800,11 @@ export const useStore = create<Store>()(
                 const state = get();
                 const notifId = Math.random().toString(36).substr(2, 9);
                 const cmpId = state.user?.companyId || 'd-capital-main';
+                
+                // Find target user from state team
+                const targetUser = state.team.find(m => m.id === targetUserId || m.uid === targetUserId);
+                const resolvedTargetUid = targetUser?.uid || targetUser?.id || targetUserId;
+
                 const notifDoc: any = {
                     id: notifId,
                     text: message,
@@ -808,8 +813,8 @@ export const useStore = create<Store>()(
                     isRead: false,
                     date: new Date().toISOString(),
                     timestamp: Date.now(),
-                    targetUserId,
-                    userId: targetUserId,   // legacy alias
+                    targetUserId: resolvedTargetUid,
+                    userId: resolvedTargetUid,   // legacy alias
                     type,
                     companyId: cmpId,
                 };
@@ -821,26 +826,26 @@ export const useStore = create<Store>()(
                 // ── Step 2: Send FCM push via Vercel Edge Function ────────
                 // Look up the target user's fcmToken from Firestore, then POST
                 // to /api/send-push. This delivers the alert to locked devices.
-                const sendFcmPush = async () => {
+                const sendFcmPush = async (targetUid: string) => {
                     try {
                         // Resolve target user ID: 'Admin' → look up any admin/ceo user token
-                        let targetUid = targetUserId;
-                        if (targetUserId === 'Admin') {
+                        let finalTargetUid = targetUid;
+                        if (targetUid === 'Admin') {
                             // Find first ceo/admin team member with an fcmToken
                             const adminMember = get().team.find(
                                 m => (m.role === 'ceo' || m.role === 'admin') && (m as any).fcmToken
                             );
                             if (!adminMember) return; // No admins online with a token
-                            targetUid = adminMember.id;
+                            finalTargetUid = adminMember.uid || adminMember.id;
                         }
 
                         // Fetch the target user's Firestore doc to get their fcmToken
                         // db and getDoc are already statically imported at the top of this file
-                        const userSnap = await getDoc(doc(db, 'users', targetUid));
+                        const userSnap = await getDoc(doc(db, 'users', finalTargetUid));
                         const fcmToken = userSnap.data()?.fcmToken as string | undefined;
 
                         if (!fcmToken) {
-                            console.log(`[FCM] No token for user ${targetUid} — skipping push`);
+                            console.log(`[FCM] No token for user ${finalTargetUid} — skipping push`);
                             return;
                         }
 
@@ -870,11 +875,19 @@ export const useStore = create<Store>()(
                     }
                 };
 
-                sendFcmPush();
+                sendFcmPush(resolvedTargetUid);
             },
 
             updateLead: (id, data) => {
                 const currentUser = get().user;
+                let exactAgentUid = data.assignedTo;
+                if (data.assignedTo) {
+                    const agentUser = get().team.find(m => m.id === data.assignedTo || m.uid === data.assignedTo);
+                    if (agentUser) {
+                        exactAgentUid = agentUser.uid || agentUser.id;
+                    }
+                }
+
                 set((s) => {
                     const oldLead = s.leads.find(l => l.id === id);
                     if (!oldLead) return s;
@@ -890,7 +903,7 @@ export const useStore = create<Store>()(
                         commissionUpdate = { commission, commissionPaid: false };
 
                         if (oldLead.assignedTo) {
-                            newTeam = s.team.map(m => m.id === oldLead.assignedTo
+                            newTeam = s.team.map(m => (m.id === oldLead.assignedTo || m.uid === oldLead.assignedTo)
                                 ? { ...m, totalSales: (m.totalSales || 0) + budget, commissionEarned: (m.commissionEarned || 0) + commission }
                                 : m
                             );
@@ -911,9 +924,12 @@ export const useStore = create<Store>()(
                         leads: s.leads.map(l => {
                             if (l.id !== id) return l;
                             const newLeadData: any = { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() };
-                            if (data.assignedTo && data.assignedTo !== oldLead.assignedTo) {
+                            if (exactAgentUid) {
+                                newLeadData.assignedTo = exactAgentUid;
+                            }
+                            if (exactAgentUid && exactAgentUid !== oldLead.assignedTo) {
                                 // ✅ FIX: mirror assignedToId whenever assignedTo changes
-                                newLeadData.assignedToId = data.assignedTo;
+                                newLeadData.assignedToId = exactAgentUid;
                                 newLeadData.delegatedBy = currentUser?.id || 'system';
                             }
                             return newLeadData;
@@ -924,11 +940,14 @@ export const useStore = create<Store>()(
                 });
                 // Firestore write-through
                 const updatedData: any = { ...data, updatedAt: Date.now() };
+                if (exactAgentUid) {
+                    updatedData.assignedTo = exactAgentUid;
+                }
                 const oldLead = get().leads.find(l => l.id === id);
 
                 // 📝 THE HOME-TO-HOME TRACKER: Log assignment if it changed
-                if (data.assignedTo && data.assignedTo !== oldLead?.assignedTo) {
-                    const newAgentName = get().team.find(m => m.id === data.assignedTo)?.name || 'Unknown Agent';
+                if (exactAgentUid && exactAgentUid !== oldLead?.assignedTo) {
+                    const newAgentName = get().team.find(m => m.id === exactAgentUid || m.uid === exactAgentUid)?.name || 'Unknown Agent';
                     updatedData.historyLog = arrayUnion({
                         date: new Date().toISOString(),
                         action: 'Assigned',
@@ -936,25 +955,23 @@ export const useStore = create<Store>()(
                         toName: newAgentName
                     });
                     // ✅ FIX: write assignedToId to Firestore so agent Firestore queries work
-                    updatedData.assignedToId = data.assignedTo;
+                    updatedData.assignedToId = exactAgentUid;
                     // 🛡️ INSTRUCTION 2: DELEGATION TRACKER LOGIC
                     updatedData.delegatedBy = get().user?.id || 'system';
                 }
 
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
                 // 🔔 If lead is being reassigned, notify the new agent immediately
-                if (data.assignedTo && data.assignedTo !== oldLead?.assignedTo) {
+                if (exactAgentUid && exactAgentUid !== oldLead?.assignedTo) {
                     const lead = get().leads.find(l => l.id === id);
-                    const agentName = get().team.find(m => m.id === data.assignedTo)?.name || 'Agent';
                     // Notify the newly assigned agent
                     get().logNotification(
                         `📋 Lead assigned to you: "${lead?.name || 'Unknown'}" by ${get().user?.name || 'Admin'}`,
-                        data.assignedTo,
+                        exactAgentUid,
                         'assignment'
                     );
                 }
 
-                // 🔔 If an agent updates a lead status, notify Admin
                 const actingUser = get().user;
                 if (actingUser?.role === 'agent' && data.status && data.status !== oldLead?.status) {
                     const lead = get().leads.find(l => l.id === id);
@@ -993,12 +1010,15 @@ export const useStore = create<Store>()(
 
             assignLeads: (leadIds, agentId, agentName) => {
                 const currentUserId = get().user?.id || 'system';
+                const agentUser = get().team.find(m => m.id === agentId || m.uid === agentId);
+                const exactAgentUid = agentUser?.uid || agentUser?.id || agentId;
+
                 set((s) => {
                     const count = leadIds.length;
                     return {
                         // ✅ FIX: persist assignedToId (the real Firebase UID) alongside assignedTo
                         leads: s.leads.map(l => leadIds.includes(l.id)
-                            ? { ...l, assignedTo: agentId, assignedToId: agentId, assignedName: agentName, delegatedBy: currentUserId, updatedAt: Date.now() }
+                            ? { ...l, assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName, delegatedBy: currentUserId, updatedAt: Date.now() }
                             : l),
                         notifications: [{
                             id: Math.random().toString(36).substr(2, 9),
@@ -1021,8 +1041,8 @@ export const useStore = create<Store>()(
                     const leadRef = doc(db, 'leads', leadId);
                     // ✅ FIX: write assignedToId so agents can query by their UID
                     batch.update(leadRef, { 
-                        assignedTo: agentId,
-                        assignedToId: agentId,   // ← the field agents query against
+                        assignedTo: exactAgentUid,
+                        assignedToId: exactAgentUid,   // ← the field agents query against
                         assignedName: agentName,
                         delegatedBy: currentUserId,
                         updatedAt: Date.now(),
@@ -1036,12 +1056,11 @@ export const useStore = create<Store>()(
                 const count = leadIds.length;
                 get().logNotification(
                     `📋 ${count} new lead${count > 1 ? 's' : ''} assigned to you by ${get().user?.name || 'Admin'}`,
-                    agentId,
+                    exactAgentUid,
                     'assignment'
                 );
 
-                get().logAudit('ASSIGN_LEADS', agentId, { leadIds, agentName });
-
+                get().logAudit('ASSIGN_LEADS', exactAgentUid, { leadIds, agentName });
             },
 
             addQuickNote: (leadId, note) => {
@@ -1448,16 +1467,19 @@ export const useStore = create<Store>()(
             
             bulkAssignFile: async (batchId, agentId, agentName) => {
                 const s = get();
+                const agentUser = s.team.find(m => m.id === agentId || m.uid === agentId);
+                const exactAgentUid = agentUser?.uid || agentUser?.id || agentId;
+
                 const leadsToUpdate = s.leads.filter(l => l.fileId === batchId);
                 const batch = writeBatch(db);
                 leadsToUpdate.forEach(l => {
                     // ✅ FIX: write assignedToId so agents can query by their UID
-                    batch.update(doc(db, 'leads', l.id), { assignedTo: agentId, assignedToId: agentId, assignedName: agentName });
+                    batch.update(doc(db, 'leads', l.id), { assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName });
                 });
                 await batch.commit();
                 
                 set({
-                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: agentId, assignedToId: agentId, assignedName: agentName } : l)
+                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName } : l)
                 });
             },
 
