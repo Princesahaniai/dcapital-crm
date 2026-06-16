@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { IncomingMessage, ServerResponse } from 'http';
 import * as admin from 'firebase-admin';
 
 // ─── Firebase Admin SDK init (singleton) ─────────────────────────────────────
@@ -23,8 +23,8 @@ if (!admin.apps.length) {
     }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // ── CORS headers (allow from same origin) ─────────────────────────────
+export default async function handler(req: IncomingMessage & { body?: any }, res: ServerResponse & { status: (c: number) => any; json: (d: any) => any; setHeader: (k: string, v: string) => any; end: () => any }) {
+    // ── CORS headers ──────────────────────────────────────────────────────
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -34,7 +34,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { token, title, body, type, notifId } = req.body ?? {};
+    // Parse JSON body (Vercel auto-parses, but handle raw stream as fallback)
+    let parsedBody: any = req.body;
+    if (!parsedBody) {
+        parsedBody = await new Promise((resolve, reject) => {
+            let raw = '';
+            req.on('data', chunk => { raw += chunk; });
+            req.on('end', () => {
+                try { resolve(JSON.parse(raw)); } catch { resolve({}); }
+            });
+            req.on('error', reject);
+        });
+    }
+
+    const { token, title, body, type, notifId } = parsedBody ?? {};
 
     if (!token || !body) {
         return res.status(400).json({ error: 'Missing required fields: token, body' });

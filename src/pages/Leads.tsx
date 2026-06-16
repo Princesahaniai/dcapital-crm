@@ -15,6 +15,7 @@ import { LeadCard } from '../components/leads/LeadCard';
 import { HistoryModal } from '../components/leads/HistoryModal';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { KanbanBoard } from '../components/leads/KanbanBoard';
+import { LeadTableRow } from '../components/leads/LeadTableRow';
 import { doc, getDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { parseCSV, parseCSVRaw, validateLead, transformRow } from '../utils/csvHelpers';
@@ -1150,7 +1151,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                         <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden md:table-cell">Budget</th>
                                         <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
                                         <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden lg:table-cell">Agent</th>
-                                        <th className="w-10 px-3 py-3"></th>
+                                        <th className="px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden xl:table-cell">Note</th>
+                                        <th className="w-28 px-3 py-3"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-white/[0.04]">
@@ -1167,8 +1169,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                         const agentName = getAgentName(lead.assignedTo);
                                         const agentInitial = agentName ? agentName.charAt(0).toUpperCase() : '?';
                                         const isSelected = selectedLeadIds.has(lead.id);
+                                        const isPrivileged = user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager';
 
-                                        // Status colour map
                                         const statusCfg: Record<string, string> = {
                                             New:         'bg-blue-500/10 text-blue-500 border-blue-500/20',
                                             Contacted:   'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -1182,110 +1184,22 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                         const statusClass = statusCfg[lead.status] || 'bg-gray-100 text-gray-500 border-gray-200';
 
                                         return (
-                                            <motion.tr
+                                            <LeadTableRow
                                                 key={lead.id}
-                                                layout
-                                                initial={{ opacity: 0, y: 6 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.15, delay: idx * 0.012 }}
-                                                onClick={() => { setSelectedLead(lead); openEdit(lead); }}
-                                                className={`group cursor-pointer transition-colors duration-100 ${
-                                                    isSelected
-                                                        ? 'bg-blue-50/80 dark:bg-blue-500/[0.07]'
-                                                        : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.025]'
-                                                }`}
-                                            >
-                                                {/* Checkbox */}
-                                                {(user?.role === 'ceo' || user?.role === 'admin') && (
-                                                    <td className="px-3 py-2.5" onClick={e => { e.stopPropagation(); toggleLeadSelection(lead.id); }}>
-                                                        {isSelected
-                                                            ? <CheckSquare size={15} className="text-blue-500" />
-                                                            : <Square size={15} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400 transition-colors" />}
-                                                    </td>
-                                                )}
-
-                                                {/* Name + avatar */}
-                                                <td className="px-4 py-2.5">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[11px] font-black shadow-sm">
-                                                            {lead.name.charAt(0)}
-                                                        </div>
-                                                        <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate max-w-[160px] group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
-                                                            {lead.name}
-                                                        </span>
-                                                    </div>
-                                                </td>
-
-                                                {/* Phone */}
-                                                <td className="px-4 py-2.5 hidden sm:table-cell" onClick={e => e.stopPropagation()}>
-                                                    {lead.phone ? (
-                                                        <a
-                                                            href={`tel:${lead.phone}`}
-                                                            className="flex items-center gap-1.5 text-[12px] font-mono text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                                                        >
-                                                            <Phone size={11} className="shrink-0" />
-                                                            {lead.phone}
-                                                        </a>
-                                                    ) : (
-                                                        <span className="text-[11px] text-gray-300 dark:text-gray-600 italic">—</span>
-                                                    )}
-                                                </td>
-
-                                                {/* Budget */}
-                                                <td className="px-4 py-2.5 hidden md:table-cell">
-                                                    {lead.budget ? (
-                                                        <span className="text-[12px] font-bold text-emerald-500">
-                                                            AED {lead.budget.toLocaleString()}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[11px] text-gray-300 dark:text-gray-600 italic">—</span>
-                                                    )}
-                                                </td>
-
-                                                {/* Status badge */}
-                                                <td className="px-4 py-2.5">
-                                                    <span className={`inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border ${statusClass}`}>
-                                                        {lead.status}
-                                                    </span>
-                                                </td>
-
-                                                {/* Agent */}
-                                                <td className="px-4 py-2.5 hidden lg:table-cell">
-                                                    {agentName ? (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[9px] font-black shrink-0">
-                                                                {agentInitial}
-                                                            </div>
-                                                            <span className="text-[12px] text-gray-600 dark:text-gray-400 truncate max-w-[120px]">{agentName}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-[11px] text-gray-300 dark:text-gray-600 italic">Unassigned</span>
-                                                    )}
-                                                </td>
-
-                                                {/* Quick actions */}
-                                                <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => { setHistoryLead(lead); setIsHistoryModalOpen(true); }}
-                                                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
-                                                            title="History"
-                                                        >
-                                                            <Clock size={13} />
-                                                        </button>
-                                                        {!showTrash && (
-                                                            <button
-                                                                onClick={() => handleDelete(lead.id)}
-                                                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-colors"
-                                                                title="Move to Trash"
-                                                            >
-                                                                <Trash2 size={13} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </motion.tr>
+                                                lead={lead}
+                                                idx={idx}
+                                                isSelected={isSelected}
+                                                isPrivileged={isPrivileged}
+                                                statusClass={statusClass}
+                                                agentName={agentName}
+                                                agentInitial={agentInitial}
+                                                showTrash={showTrash}
+                                                user={user}
+                                                onRowClick={() => { setSelectedLead(lead); openEdit(lead); }}
+                                                onToggleSelect={() => toggleLeadSelection(lead.id)}
+                                                onHistory={() => { setHistoryLead(lead); setIsHistoryModalOpen(true); }}
+                                                onDelete={() => handleDelete(lead.id)}
+                                            />
                                         );
                                     })}
                                     </AnimatePresence>
