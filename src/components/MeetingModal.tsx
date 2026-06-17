@@ -8,12 +8,20 @@ import toast from 'react-hot-toast';
 interface MeetingModalProps {
     leadId?: string;
     isOpen: boolean;
+    initialDate?: Date;
     onClose: () => void;
 }
 
-export const MeetingModal: React.FC<MeetingModalProps> = ({ leadId, isOpen, onClose }) => {
+export const MeetingModal: React.FC<MeetingModalProps> = ({ leadId, isOpen, initialDate, onClose }) => {
+    const formatDateForInput = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [title, setTitle] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(initialDate ? formatDateForInput(initialDate) : formatDateForInput(new Date()));
     const [time, setTime] = useState('12:00');
     const [location, setLocation] = useState('');
     const [type, setType] = useState<'in-person' | 'video' | 'call'>('in-person');

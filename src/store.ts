@@ -1269,7 +1269,7 @@ export const useStore = create<Store>()(
 
             addTask: (t) => {
                 const s = get();
-                const cmpId = s.user?.companyId;
+                const cmpId = s.user?.companyId || 'd-capital-main';
 
                 const newTask: any = {
                     ...t,

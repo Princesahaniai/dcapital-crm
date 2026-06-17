@@ -94,7 +94,14 @@ export const Calendar = () => {
                         const isToday = new Date().toDateString() === date.toDateString();
 
                         return (
-                            <div key={date.toISOString()} className="h-32 border-b border-r border-gray-100 dark:border-white/5 p-2 space-y-1 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors relative group">
+                            <div 
+                                key={date.toISOString()} 
+                                className="h-32 border-b border-r border-gray-100 dark:border-white/5 p-2 space-y-1 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors relative group cursor-pointer"
+                                onClick={() => {
+                                    setSelectedDate(date);
+                                    setIsModalOpen(true);
+                                }}
+                            >
                                 <div className="flex justify-between items-start">
                                     <span className={`text-sm font-bold ${isToday ? 'bg-blue-500 text-white w-7 h-7 flex items-center justify-center rounded-lg shadow-lg' : 'text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'}`}>
                                         {date.getDate()}
@@ -115,6 +122,8 @@ export const Calendar = () => {
 
             {isModalOpen && (
                 <MeetingModal
+                    isOpen={isModalOpen}
+                    initialDate={selectedDate}
                     onClose={() => setIsModalOpen(false)}
                 />
             )}
