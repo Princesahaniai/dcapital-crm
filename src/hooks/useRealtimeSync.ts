@@ -43,6 +43,7 @@ export function useRealtimeSync() {
     useEffect(() => {
         if (!user) return;
 
+        const currentUser = { ...user, uid: (user as any).uid || user.id };
         const unsubscribes: Unsubscribe[] = [];
         // 🛡️ Fallback: always provide a company ID so imports & sync never block
         const cmpId = user.companyId || 'd-capital-main';
@@ -73,7 +74,7 @@ export function useRealtimeSync() {
                 // Agent (or any unknown role): strictly only their own assigned leads
                 leadsQuery = query(
                     collection(db, 'leads'),
-                    where('assignedTo', '==', user.id)
+                    where('assignedTo', '==', currentUser.uid)
                 );
             }
 

@@ -120,7 +120,8 @@ export const getVisibleLeads = (user: User | null, allLeads: Lead[], teamMembers
 
     // Agents see only their own leads
     if (user.role === 'agent') {
-        return allLeads.filter(lead => lead.assignedTo === user.id);
+        const uid = (user as any).uid || user.id;
+        return allLeads.filter(lead => lead.assignedTo === user.id || lead.assignedTo === uid);
     }
 
     return [];

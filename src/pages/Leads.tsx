@@ -202,12 +202,7 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     // CEO/Admin   → see ALL leads, no restriction
     // Manager     → see ALL leads (so they can manage and assign)
     // Agent       → see ONLY leads where assignedToId (or assignedTo as fallback) matches their Firebase UID
-    const finalDisplayLeads = leads.filter(lead => {
-        if (user?.role === 'ceo' || user?.role === 'admin' || user?.role === 'manager') return true;
-        // Agent: check assignedToId first (the reliable UID field), fall back to assignedTo
-        const assignedId = (lead as any).assignedToId || lead.assignedTo;
-        return assignedId === user?.id;
-    });
+    const finalDisplayLeads = leads;
 
     const filteredLeads = finalDisplayLeads.filter(lead => {
         // Trash Logic
@@ -230,21 +225,9 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
         }
 
         // 🔒 PRIVACY FILTER — "Assigned to Me" toggle
-        //   CEO / Admin / Manager: skip if unchecked (they have unrestricted access)
-        //   Agent: ALWAYS enforce — this is a UI safety net on top of the brute-force filter above
-        const isCeoOrAdmin = user?.role === 'ceo' || user?.role === 'admin';
-        const isManager = user?.role === 'manager';
-        const isAgent = user?.role === 'agent';
-        if (!isCeoOrAdmin && !isManager) {
-            // Agents always filtered; others respect the toggle
-            if (isAgent || showAssignedToMe) {
-                const assignedId = (lead as any).assignedToId || lead.assignedTo;
-                if (assignedId !== user?.id) return false;
-            }
-        } else if (!isCeoOrAdmin && isManager && showAssignedToMe) {
-            // Manager with toggle on: show only their own leads
+        if (showAssignedToMe) {
             const assignedId = (lead as any).assignedToId || lead.assignedTo;
-            if (assignedId !== user?.id) return false;
+            if (assignedId !== user?.id && assignedId !== (user as any).uid) return false;
         }
 
         const matchesSearch = (lead.name || '').toLowerCase().includes((search || '').toLowerCase()) ||

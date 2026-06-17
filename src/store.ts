@@ -256,6 +256,7 @@ export const useStore = create<Store>()(
                         set({
                             user: {
                                 id: user.uid,
+                                uid: user.uid,
                                 email: user.email || '',
                                 name: userProfile.name || user.displayName || 'User',
                                 role: userProfile.role || 'agent',
@@ -272,7 +273,7 @@ export const useStore = create<Store>()(
                         if (normalizedEmail === 'princesahani.work@gmail.com' || normalizedEmail === 'ajay@dcapitalrealestate.com') {
                             console.log('[AUTH] Master Admin Fallback Triggered');
                             set({
-                                user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
+                                user: { id: user.uid, uid: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo' } as any,
                                 loginTimestamp: Date.now(),
                                 rememberMe
                             });
@@ -414,6 +415,7 @@ export const useStore = create<Store>()(
                                 set({
                                     user: {
                                         id: user.uid,
+                                        uid: user.uid,
                                         email: user.email || '',
                                         name: userProfile.name || user.displayName || 'User',
                                         role: userProfile.role || 'agent',
@@ -430,7 +432,7 @@ export const useStore = create<Store>()(
                                 // Allow Master Admins specifically
                                 if (user.email === 'princesahani.work@gmail.com' || user.email === 'ajay@dcapitalrealestate.com') {
                                     set({
-                                        user: { id: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo', companyId: 'd-capital-main' } as any,
+                                        user: { id: user.uid, uid: user.uid, email: user.email || '', name: 'Master Admin', role: 'ceo', companyId: 'd-capital-main' } as any,
                                         loginTimestamp: Date.now(),
                                         rememberMe: true,
                                         isAuthLoading: false
@@ -1010,8 +1012,8 @@ export const useStore = create<Store>()(
 
             assignLeads: (leadIds, agentId, agentName) => {
                 const currentUserId = get().user?.id || 'system';
-                const agentUser = get().team.find(m => m.id === agentId || m.uid === agentId);
-                const exactAgentUid = agentUser?.uid || agentUser?.id || agentId;
+                const user = get().team.find(m => m.id === agentId || (m as any).uid === agentId);
+                const exactAgentUid = user && typeof (user as any).uid === 'string' ? (user as any).uid : String(user?.id || agentId);
 
                 set((s) => {
                     const count = leadIds.length;
