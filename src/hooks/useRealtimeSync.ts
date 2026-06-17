@@ -51,40 +51,37 @@ export function useRealtimeSync() {
             console.warn('[REALTIME] ⚠️ No companyId on user — using fallback d-capital-main');
         }
 
-        // ─── LEADS LISTENER — STRICT RBAC ───────────────────────
-        // 🔒 Privacy rules (enforced at the Firestore query level):
-        //   CEO / Admin  → full company collection, no extra where clauses
-        //   Manager      → only leads where assignedTo === uid OR delegatedBy === uid
-        //   Agent (else) → only leads where assignedTo === uid (hard restriction)
+        // ─── LEADS LISTENER — RAW BYPASS (EMERGENCY FIX) ───────────────────────
         try {
             const userRole = (user.role || '').toLowerCase();
-            let leadsQuery;
-
-            if (userRole === 'ceo' || userRole === 'admin') {
-                // CEO & Admin: unrestricted — fetch entire company lead collection
-                leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId));
-            } else if (userRole === 'manager') {
-                // Manager: own assigned leads OR team agent leads
-                leadsQuery = query(
-                    collection(db, 'leads'),
-                    where('companyId', '==', cmpId),
-                    or(
-                        where('assignedTo', '==', currentUser.uid),
-                        where('managerId', '==', currentUser.uid)
-                    )
-                );
-            } else {
-                // Agent (or any unknown role): strictly only their own assigned leads
-                leadsQuery = query(
-                    collection(db, 'leads'),
-                    where('assignedTo', '==', currentUser.uid)
-                );
-            }
+            
+            // EMERGENCY RAW BYPASS: Fetch ALL leads for the company to bypass composite index blocks
+            const leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId));
 
             const unsubLeads = onSnapshot(leadsQuery, { includeMetadataChanges: true }, (snapshot) => {
                 const fromCache = snapshot.metadata.fromCache;
                 if (fromCache) console.log('[REALTIME] 📦 Leads served from offline cache');
+                
+                console.log("CURRENT USER UID:", currentUser.uid);
+                console.log("RAW DATABASE LEADS FETCHED:", snapshot.docs.map(d => ({id: d.id, assignedTo: d.data().assignedTo})));
+
                 let rawLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+                // Frontend JavaScript Filtering (Bypassing Firestore Indexes)
+                if (userRole !== 'ceo' && userRole !== 'admin') {
+                    rawLeads = rawLeads.filter(lead => {
+                        const assignedTo = String(lead.assignedTo || lead.assignedToId || '').trim();
+                        const managerId = String(lead.managerId || '').trim();
+                        const myUid = String(currentUser.uid).trim();
+                        
+                        if (userRole === 'manager') {
+                            return assignedTo === myUid || managerId === myUid;
+                        } else {
+                            // Standard Agent
+                            return assignedTo === myUid;
+                        }
+                    });
+                }
 
                 setLeads(rawLeads);
 

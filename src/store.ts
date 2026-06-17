@@ -901,13 +901,13 @@ export const useStore = create<Store>()(
                 const oldLead = get().leads.find(l => l.id === id);
                 if (!oldLead) return;
 
-                let exactAgentUid = data.assignedTo;
-                let managerId = data.managerId || oldLead.managerId || '';
+                let exactAgentUid = data.assignedTo ? String(data.assignedTo).trim() : data.assignedTo;
+                let managerId = String(data.managerId || oldLead.managerId || '').trim();
                 if (data.assignedTo) {
                     const agentUser = get().team.find(m => m.id === data.assignedTo || m.uid === data.assignedTo);
                     if (agentUser) {
-                        exactAgentUid = agentUser.uid || agentUser.id;
-                        managerId = (agentUser as any).managerId || '';
+                        exactAgentUid = String(agentUser.uid || agentUser.id).trim();
+                        managerId = String((agentUser as any).managerId || '').trim();
                     }
                 }
 
@@ -1068,8 +1068,9 @@ export const useStore = create<Store>()(
             assignLeads: (leadIds, agentId, agentName) => {
                 const currentUserId = get().user?.id || 'system';
                 const user = get().team.find(m => m.id === agentId || (m as any).uid === agentId);
-                const exactAgentUid = user && typeof (user as any).uid === 'string' ? (user as any).uid : String(user?.id || agentId);
-                const managerId = (user as any)?.managerId || '';
+                const rawAgentUid = user && typeof (user as any).uid === 'string' ? (user as any).uid : String(user?.id || agentId);
+                const exactAgentUid = String(rawAgentUid).trim();
+                const managerId = String((user as any)?.managerId || '').trim();
 
                 set((s) => {
                     const count = leadIds.length;
@@ -1539,8 +1540,9 @@ export const useStore = create<Store>()(
             bulkAssignFile: async (batchId, agentId, agentName) => {
                 const s = get();
                 const agentUser = s.team.find(m => m.id === agentId || m.uid === agentId);
-                const exactAgentUid = agentUser?.uid || agentUser?.id || agentId;
-                const managerId = (agentUser as any)?.managerId || '';
+                const rawAgentUid = agentUser?.uid || agentUser?.id || agentId;
+                const exactAgentUid = String(rawAgentUid).trim();
+                const managerId = String((agentUser as any)?.managerId || '').trim();
 
                 const leadsToUpdate = s.leads.filter(l => l.fileId === batchId);
                 const batch = writeBatch(db);
