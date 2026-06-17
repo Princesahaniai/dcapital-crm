@@ -146,8 +146,8 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
     const [showTrash, setShowTrash] = useState(false);
     const [showRecentOnly, setShowRecentOnly] = useState(false);
     const [showDelegatedOnly, setShowDelegatedOnly] = useState(false);
-    // Default ON: every user sees only their own leads when they first log in
-    const [showAssignedToMe, setShowAssignedToMe] = useState(true);
+    // Default OFF: shows all synced leads on load so managers/admins see their team/company data immediately
+    const [showAssignedToMe, setShowAssignedToMe] = useState(false);
     const [showCustomLocation, setShowCustomLocation] = useState(false);
     
     const STANDARD_LOCATIONS = ["Downtown Dubai", "Dubai Marina", "Palm Jumeirah", "Jumeirah Village Circle (JVC)", "Business Bay", "Dubai Creek Harbour", "Dubai Hills Estate", "Emaar Beachfront", "Bluewaters Island"];

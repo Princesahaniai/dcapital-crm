@@ -86,15 +86,11 @@ export function useRealtimeSync() {
                 if (fromCache) console.log('[REALTIME] 📦 Leads served from offline cache');
                 let rawLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
-                // STRICT RBAC ENFORCEMENT
-                const team = useStore.getState().team;
-                const leads = getVisibleLeads(user, rawLeads, team);
-
-                setLeads(leads);
+                setLeads(rawLeads);
 
                 // Detect new leads assigned to current user (skip first snapshot)
                 if (isFirstSnapshot.current.leads) {
-                    leads.forEach(l => knownLeadIds.current.add(l.id));
+                    rawLeads.forEach(l => knownLeadIds.current.add(l.id));
                     isFirstSnapshot.current.leads = false;
                     useStore.setState({ isDataLoading: false });
                 } else {
