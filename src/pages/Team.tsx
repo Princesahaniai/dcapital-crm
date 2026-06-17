@@ -344,7 +344,7 @@ export const Team = () => {
                                 </button>
                             </div>
                         ) : (
-                            <InviteForm onInvite={handleInvite} onClose={() => setShowInviteModal(false)} isManager={user?.role === 'manager'} />
+                            <InviteForm onInvite={handleInvite} onClose={() => setShowInviteModal(false)} isManager={user?.role === 'manager'} team={team} />
                         )}
                     </motion.div>
                 </div>
@@ -435,8 +435,8 @@ export const Team = () => {
     );
 };
 
-const InviteForm = ({ onInvite, onClose, isManager }: any) => {
-    const [form, setForm] = useState({ name: '', email: '', role: 'agent', designation: '', phone: '' });
+const InviteForm = ({ onInvite, onClose, isManager, team = [] }: any) => {
+    const [form, setForm] = useState({ name: '', email: '', role: 'agent', designation: '', phone: '', managerId: '' });
 
     return (
         <>
@@ -491,6 +491,23 @@ const InviteForm = ({ onInvite, onClose, isManager }: any) => {
                         />
                     </div>
                 </div>
+
+                {form.role === 'agent' && !isManager && (
+                    <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">Assign Manager</label>
+                        <select
+                            title="Assign Manager"
+                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white focus:border-[#D4AF37] outline-none transition-colors"
+                            value={form.managerId}
+                            onChange={e => setForm({ ...form, managerId: e.target.value })}
+                        >
+                            <option value="">No Manager</option>
+                            {team.filter((m: any) => m.role === 'manager').map((m: any) => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 <div className="pt-4 flex gap-4">
                     <button onClick={onClose} className="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold hover:bg-zinc-700 transition-colors">

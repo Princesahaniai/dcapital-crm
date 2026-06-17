@@ -149,9 +149,9 @@ export const LeadTableRow: React.FC<Props> = ({
                     )}
                 </td>
 
-                {/* ── Actions: History | Quick Note | WhatsApp (mobile) | Trash ── */}
+                {/* ── Actions: History | Quick Note | WhatsApp | Trash ── */}
                 <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
 
                         {/* Tracking History — every role */}
                         <button
@@ -175,8 +175,8 @@ export const LeadTableRow: React.FC<Props> = ({
                             <MessageSquareShare size={13} />
                         </button>
 
-                        {/* WhatsApp — shown on mobile (sm:hidden) where phone cell is collapsed */}
-                        <span className="sm:hidden" onClick={e => e.stopPropagation()}>
+                        {/* WhatsApp — shown on all screens */}
+                        <span onClick={e => e.stopPropagation()}>
                             {lead.phone && (
                                 <WhatsAppButton phone={lead.phone} name={lead.name} leadId={lead.id} compact />
                             )}

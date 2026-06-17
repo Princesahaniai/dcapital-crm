@@ -1371,7 +1371,19 @@ export const Leads = ({ isProspectVault = false }: { isProspectVault?: boolean }
                                                     value={form.assignedTo}
                                                     onChange={e => setForm({ ...form, assignedTo: e.target.value })}
                                                 >
-                                                    {team.map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
+                                                    {(() => {
+                                                        const isManager = user?.role === 'manager';
+                                                        const isAdmin = user?.role === 'ceo' || user?.role === 'admin';
+                                                        const filteredTeam = team.filter(m => {
+                                                            if (isAdmin) return true;
+                                                            if (isManager) {
+                                                                const myUid = (user as any).uid || user?.id;
+                                                                return m.id === myUid || (m as any).uid === myUid || m.managerId === myUid;
+                                                            }
+                                                            return m.id === user?.id || (m as any).uid === (user as any).uid;
+                                                        });
+                                                        return filteredTeam.map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>);
+                                                    })()}
                                                 </select>
                                             </div>
                                         </div>

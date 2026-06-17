@@ -497,7 +497,14 @@ export const useStore = create<Store>()(
             addLead: (l) => {
                 // 🛡️ INSTRUCTION 5: Always use fallback companyId
                 const cmpId = get().user?.companyId || 'd-capital-main';
-                const leadWithCompany = { ...l, companyId: cmpId };
+                let managerId = l.managerId || '';
+                if (l.assignedTo) {
+                    const agentUser = get().team.find(m => m.id === l.assignedTo || m.uid === l.assignedTo);
+                    if (agentUser) {
+                        managerId = (agentUser as any).managerId || '';
+                    }
+                }
+                const leadWithCompany = { ...l, companyId: cmpId, managerId };
 
                 // 🛡️ DEDUPLICATION ENGINE
                 const state = get();
@@ -552,7 +559,15 @@ export const useStore = create<Store>()(
                         seenPhonesInBatch.add(incomingPhone);
                     }
                     
-                    validLeads.push({ ...l, companyId: cmpId });
+                    let managerId = l.managerId || '';
+                    if (l.assignedTo) {
+                        const agentUser = state.team.find(m => m.id === l.assignedTo || m.uid === l.assignedTo);
+                        if (agentUser) {
+                            managerId = (agentUser as any).managerId || '';
+                        }
+                    }
+                    
+                    validLeads.push({ ...l, companyId: cmpId, managerId });
                 });
 
                 set((s) => ({ leads: [...validLeads, ...s.leads] }));
@@ -675,6 +690,7 @@ export const useStore = create<Store>()(
                         designation: member.designation || '',
                         phone: member.phone || '',
                         department: member.department || '',
+                        managerId: (member as any).managerId || '',
                         companyId: adminCompanyId, // ✅ CRITICAL: Ensures the team onSnapshot query finds this user
                         status: 'Active', // Active immediately - they can login right away
                         tempPassword: tempPassword, // Store for reference
@@ -882,18 +898,59 @@ export const useStore = create<Store>()(
 
             updateLead: (id, data) => {
                 const currentUser = get().user;
+                const oldLead = get().leads.find(l => l.id === id);
+                if (!oldLead) return;
+
                 let exactAgentUid = data.assignedTo;
+                let managerId = data.managerId || oldLead.managerId || '';
                 if (data.assignedTo) {
                     const agentUser = get().team.find(m => m.id === data.assignedTo || m.uid === data.assignedTo);
                     if (agentUser) {
                         exactAgentUid = agentUser.uid || agentUser.id;
+                        managerId = (agentUser as any).managerId || '';
                     }
                 }
 
-                set((s) => {
-                    const oldLead = s.leads.find(l => l.id === id);
-                    if (!oldLead) return s;
+                // Compile changes
+                const changes: string[] = [];
+                if (data.status && data.status !== oldLead.status) {
+                    changes.push(`status from "${oldLead.status || 'None'}" to "${data.status}"`);
+                }
+                if (data.budget !== undefined && data.budget !== oldLead.budget) {
+                    changes.push(`budget from "${oldLead.budget || 0}" to "${data.budget}"`);
+                }
+                if (data.assignedTo && data.assignedTo !== oldLead.assignedTo) {
+                    const oldAgentName = get().team.find(m => m.id === oldLead.assignedTo || m.uid === oldLead.assignedTo)?.name || 'Unassigned';
+                    const newAgentName = get().team.find(m => m.id === exactAgentUid || m.uid === exactAgentUid)?.name || 'Unknown Agent';
+                    changes.push(`agent from "${oldAgentName}" to "${newAgentName}"`);
+                }
+                if (data.phone && data.phone !== oldLead.phone) {
+                    changes.push(`phone to "${data.phone}"`);
+                }
+                if (data.name && data.name !== oldLead.name) {
+                    changes.push(`name from "${oldLead.name}" to "${data.name}"`);
+                }
 
+                const historyEntries: any[] = [];
+                if (exactAgentUid && exactAgentUid !== oldLead.assignedTo) {
+                    const newAgentName = get().team.find(m => m.id === exactAgentUid || m.uid === exactAgentUid)?.name || 'Unknown Agent';
+                    historyEntries.push({
+                        date: new Date().toISOString(),
+                        action: 'Assigned',
+                        fromName: currentUser?.name || 'System',
+                        toName: newAgentName
+                    });
+                }
+                if (changes.length > 0) {
+                    historyEntries.push({
+                        date: new Date().toISOString(),
+                        action: 'Updated',
+                        fromName: currentUser?.name || 'System',
+                        toName: changes.join(', ')
+                    });
+                }
+
+                set((s) => {
                     // Commission Logic: If status changes to 'Closed', add commission
                     let commissionUpdate = {};
                     let newTeam = s.team;
@@ -928,11 +985,14 @@ export const useStore = create<Store>()(
                             const newLeadData: any = { ...l, ...data, ...commissionUpdate, updatedAt: Date.now() };
                             if (exactAgentUid) {
                                 newLeadData.assignedTo = exactAgentUid;
+                                newLeadData.managerId = managerId;
                             }
                             if (exactAgentUid && exactAgentUid !== oldLead.assignedTo) {
-                                // ✅ FIX: mirror assignedToId whenever assignedTo changes
                                 newLeadData.assignedToId = exactAgentUid;
                                 newLeadData.delegatedBy = currentUser?.id || 'system';
+                            }
+                            if (historyEntries.length > 0) {
+                                newLeadData.historyLog = [...(l.historyLog || []), ...historyEntries];
                             }
                             return newLeadData;
                         }),
@@ -940,48 +1000,43 @@ export const useStore = create<Store>()(
                         notifications: newNotifications
                     };
                 });
+
                 // Firestore write-through
                 const updatedData: any = { ...data, updatedAt: Date.now() };
                 if (exactAgentUid) {
                     updatedData.assignedTo = exactAgentUid;
+                    updatedData.managerId = managerId;
                 }
-                const oldLead = get().leads.find(l => l.id === id);
-
-                // 📝 THE HOME-TO-HOME TRACKER: Log assignment if it changed
-                if (exactAgentUid && exactAgentUid !== oldLead?.assignedTo) {
-                    const newAgentName = get().team.find(m => m.id === exactAgentUid || m.uid === exactAgentUid)?.name || 'Unknown Agent';
-                    updatedData.historyLog = arrayUnion({
-                        date: new Date().toISOString(),
-                        action: 'Assigned',
-                        fromName: get().user?.name || 'System',
-                        toName: newAgentName
-                    });
-                    // ✅ FIX: write assignedToId to Firestore so agent Firestore queries work
+                if (exactAgentUid && exactAgentUid !== oldLead.assignedTo) {
                     updatedData.assignedToId = exactAgentUid;
-                    // 🛡️ INSTRUCTION 2: DELEGATION TRACKER LOGIC
-                    updatedData.delegatedBy = get().user?.id || 'system';
+                    updatedData.delegatedBy = currentUser?.id || 'system';
+                }
+                if (historyEntries.length > 0) {
+                    updatedData.historyLog = arrayUnion(...historyEntries);
                 }
 
                 updateDoc(doc(db, 'leads', id), updatedData).catch(err => console.error('[SYNC] Lead update failed:', err));
-                // 🔔 If lead is being reassigned, notify the new agent immediately
-                if (exactAgentUid && exactAgentUid !== oldLead?.assignedTo) {
-                    const lead = get().leads.find(l => l.id === id);
-                    // Notify the newly assigned agent
-                    get().logNotification(
-                        `📋 Lead assigned to you: "${lead?.name || 'Unknown'}" by ${get().user?.name || 'Admin'}`,
-                        exactAgentUid,
-                        'assignment'
-                    );
-                }
 
-                const actingUser = get().user;
-                if (actingUser?.role === 'agent' && data.status && data.status !== oldLead?.status) {
-                    const lead = get().leads.find(l => l.id === id);
-                    get().logNotification(
-                        `📝 Lead "${lead?.name || 'Unknown'}" updated to ${data.status} by ${actingUser.name}`,
-                        'Admin',
-                        'update'
-                    );
+                // Notifications
+                if (changes.length > 0) {
+                    const leadName = data.name || oldLead.name || 'Unknown';
+                    // 1. Notify the newly assigned/current agent if someone else updated it
+                    const notifyUid = exactAgentUid || oldLead.assignedTo;
+                    if (notifyUid && notifyUid !== currentUser?.id) {
+                        get().logNotification(
+                            `📝 Lead "${leadName}" updated: ${changes.join(', ')}`,
+                            notifyUid,
+                            'update'
+                        );
+                    }
+                    // 2. If updated by an agent, notify Admin
+                    if (currentUser?.role === 'agent') {
+                        get().logNotification(
+                            `📝 Lead "${leadName}" updated: ${changes.join(', ')} by ${currentUser.name}`,
+                            'Admin',
+                            'update'
+                        );
+                    }
                 }
 
                 get().logAudit('UPDATE_LEAD', undefined, { leadId: id, updates: data });
@@ -1014,13 +1069,14 @@ export const useStore = create<Store>()(
                 const currentUserId = get().user?.id || 'system';
                 const user = get().team.find(m => m.id === agentId || (m as any).uid === agentId);
                 const exactAgentUid = user && typeof (user as any).uid === 'string' ? (user as any).uid : String(user?.id || agentId);
+                const managerId = (user as any)?.managerId || '';
 
                 set((s) => {
                     const count = leadIds.length;
                     return {
                         // ✅ FIX: persist assignedToId (the real Firebase UID) alongside assignedTo
                         leads: s.leads.map(l => leadIds.includes(l.id)
-                            ? { ...l, assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName, delegatedBy: currentUserId, updatedAt: Date.now() }
+                            ? { ...l, assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName, managerId, delegatedBy: currentUserId, updatedAt: Date.now() }
                             : l),
                         notifications: [{
                             id: Math.random().toString(36).substr(2, 9),
@@ -1046,6 +1102,7 @@ export const useStore = create<Store>()(
                         assignedTo: exactAgentUid,
                         assignedToId: exactAgentUid,   // ← the field agents query against
                         assignedName: agentName,
+                        managerId,
                         delegatedBy: currentUserId,
                         updatedAt: Date.now(),
                         historyLog: arrayUnion(historyEntry)
@@ -1238,9 +1295,9 @@ export const useStore = create<Store>()(
                 } else {
                     console.error('[SYNC] Blocked: No Company ID found for Task');
                 }
-                // If assigned to another user, write a Firestore notification for them
+                // If assigned to another user, write a notification and FCM push
                 if (newTask.assignedTo && newTask.assignedTo !== s.user?.id) {
-                    get().addFirestoreNotification(newTask.assignedTo, `📌 New Task Assigned: ${newTask.title}`);
+                    get().logNotification(`📌 New Task Assigned: ${newTask.title}`, newTask.assignedTo, 'task');
                 }
                 get().logAudit('CREATE_TASK', undefined, { taskId: newTask.id, title: newTask.title });
             },
@@ -1266,6 +1323,10 @@ export const useStore = create<Store>()(
                 if (updatedTask) {
                     setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task status update failed:', err));
                     get().logAudit(`UPDATE_TASK_${status.toUpperCase().replace(' ', '_')}`, undefined, { taskId: id, note });
+                    
+                    if (updatedTask.assignedTo && updatedTask.assignedTo !== s.user?.id) {
+                        get().logNotification(`📌 Task "${updatedTask.title}" status updated to "${status}" by ${s.user?.name || 'System'}`, updatedTask.assignedTo, 'task');
+                    }
                 }
             },
 
@@ -1293,6 +1354,10 @@ export const useStore = create<Store>()(
                 if (updatedTask) {
                     setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task comment write failed:', err));
                     get().logAudit('ADD_TASK_COMMENT', undefined, { taskId: id, text });
+                    
+                    if (updatedTask.assignedTo && updatedTask.assignedTo !== s.user?.id) {
+                        get().logNotification(`💬 New comment on task "${updatedTask.title}" by ${s.user?.name || 'System'}`, updatedTask.assignedTo, 'task');
+                    }
                 }
             },
 
@@ -1319,6 +1384,10 @@ export const useStore = create<Store>()(
                 if (updatedTask) {
                     setDoc(doc(db, 'tasks', id), { ...updatedTask }, { merge: true }).catch(err => console.error('[SYNC] Task toggle failed:', err));
                     get().logAudit(`TOGGLE_TASK_${newStatus.toUpperCase()}`, undefined, { taskId: id });
+                    
+                    if (updatedTask.assignedTo && updatedTask.assignedTo !== s.user?.id) {
+                        get().logNotification(`📌 Task "${updatedTask.title}" marked as ${newStatus} by ${s.user?.name || 'System'}`, updatedTask.assignedTo, 'task');
+                    }
                 }
             },
 
@@ -1471,17 +1540,18 @@ export const useStore = create<Store>()(
                 const s = get();
                 const agentUser = s.team.find(m => m.id === agentId || m.uid === agentId);
                 const exactAgentUid = agentUser?.uid || agentUser?.id || agentId;
+                const managerId = (agentUser as any)?.managerId || '';
 
                 const leadsToUpdate = s.leads.filter(l => l.fileId === batchId);
                 const batch = writeBatch(db);
                 leadsToUpdate.forEach(l => {
                     // ✅ FIX: write assignedToId so agents can query by their UID
-                    batch.update(doc(db, 'leads', l.id), { assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName });
+                    batch.update(doc(db, 'leads', l.id), { assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName, managerId });
                 });
                 await batch.commit();
                 
                 set({
-                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName } : l)
+                    leads: s.leads.map(l => l.fileId === batchId ? { ...l, assignedTo: exactAgentUid, assignedToId: exactAgentUid, assignedName: agentName, managerId } : l)
                 });
             },
 

@@ -64,11 +64,14 @@ export function useRealtimeSync() {
                 // CEO & Admin: unrestricted — fetch entire company lead collection
                 leadsQuery = query(collection(db, 'leads'), where('companyId', '==', cmpId));
             } else if (userRole === 'manager') {
-                // Manager: own assigned leads UNION leads they delegated out
+                // Manager: own assigned leads OR team agent leads
                 leadsQuery = query(
                     collection(db, 'leads'),
                     where('companyId', '==', cmpId),
-                    or(where('assignedTo', '==', user.id), where('delegatedBy', '==', user.id))
+                    or(
+                        where('assignedTo', '==', currentUser.uid),
+                        where('managerId', '==', currentUser.uid)
+                    )
                 );
             } else {
                 // Agent (or any unknown role): strictly only their own assigned leads

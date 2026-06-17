@@ -113,14 +113,27 @@ export const getVisibleTeamMembers = (user: User | null, allMembers: User[]): Us
 export const getVisibleLeads = (user: User | null, allLeads: Lead[], teamMembers: User[] = []): Lead[] => {
     if (!user) return [];
 
-    // CEO, Admin, and Manager see all leads
-    if (user.role === 'ceo' || user.role === 'admin' || user.role === 'manager') {
+    // CEO and Admin see all leads
+    if (user.role === 'ceo' || user.role === 'admin') {
         return allLeads;
+    }
+
+    const uid = (user as any).uid || user.id;
+
+    // Managers see only their own leads PLUS the leads of any agents assigned to their specific team
+    if (user.role === 'manager') {
+        const myAgentIds = teamMembers
+            .filter(m => m.managerId === uid)
+            .map(m => m.id || (m as any).uid);
+
+        return allLeads.filter(lead => {
+            const assignedId = lead.assignedToId || lead.assignedTo;
+            return assignedId === uid || (assignedId && myAgentIds.includes(assignedId)) || lead.managerId === uid;
+        });
     }
 
     // Agents see only their own leads
     if (user.role === 'agent') {
-        const uid = (user as any).uid || user.id;
         return allLeads.filter(lead => lead.assignedTo === user.id || lead.assignedTo === uid);
     }
 
@@ -157,4 +170,18 @@ export const canAccessRoute = (user: User | null, route: string): boolean => {
         default:
             return true;
     }
+};
+
+/**
+ * Check if a user can assign leads to a target user
+ */
+export const canAssignLeadTo = (user: User | null, targetUser: User | null): boolean => {
+    if (!user || !targetUser) return false;
+    if (user.role === 'ceo' || user.role === 'admin') return true;
+    if (user.role === 'manager') {
+        const myUid = (user as any).uid || user.id;
+        const targetUid = (targetUser as any).uid || targetUser.id;
+        return targetUid === myUid || targetUser.managerId === myUid;
+    }
+    return false;
 };
