@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database, MapPin, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database, MapPin, Bell, Search, FileText } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
