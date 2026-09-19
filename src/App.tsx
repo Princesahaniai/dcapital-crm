@@ -22,6 +22,7 @@ import { ClientPortal } from './pages/ClientPortal';
 import { SetPassword } from './pages/SetPassword';
 import { AuthDiagnostic } from './pages/AuthDiagnostic';
 import { GlobalTopBar } from './components/GlobalTopBar';
+import { AICopilotWidget } from './components/AICopilotWidget';
 import { useStore } from './store';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import toast, { Toaster } from 'react-hot-toast';
@@ -95,6 +96,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             <div className="flex-1 relative h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-black">
                 <GlobalTopBar />
                 <CommandPalette />
+                <AICopilotWidget />
                 <main className="flex-1 overflow-y-auto pb-32 md:pb-6 relative scrollbar-hide">
                     {children}
                 </main>

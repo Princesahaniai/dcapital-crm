@@ -6,8 +6,9 @@ import { ActivityTimeline } from './ActivityTimeline';
 import { DocumentVault } from './DocumentVault';
 import type { Lead, Task, Activity } from '../../types';
 import { useStore } from '../../store';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
+import ReactMarkdown from 'react-markdown';
 
 interface LeadProfileProps {
     lead: Lead;
@@ -15,11 +16,62 @@ interface LeadProfileProps {
     onEdit: () => void;
 }
 
-type Tab = 'overview' | 'history' | 'documents' | 'tasks' | 'notes';
+type Tab = 'overview' | 'history' | 'documents' | 'tasks' | 'notes' | 'ai-history';
 
 import { useLeadScore } from '../../hooks/useLeadScore';
 import { generateLeadBrief } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
+
+const AiHistoryTab: React.FC<{ leadId: string }> = ({ leadId }) => {
+    const [history, setHistory] = useState<any[]>([]);
+    
+    React.useEffect(() => {
+        const q = query(
+            collection(db, 'leads', leadId, 'copilot_history'),
+            orderBy('timestamp', 'desc')
+        );
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setHistory(data);
+        });
+        return () => unsubscribe();
+    }, [leadId]);
+
+    if (history.length === 0) {
+        return (
+            <div className="text-center py-16 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                <Sparkles size={24} className="text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No AI Match History</h3>
+                <p className="text-sm text-gray-500">Use the AI Co-Pilot widget and link it to this lead to view history here.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {history.map((item) => (
+                <div key={item.id} className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl p-5">
+                    <div className="flex justify-between items-start mb-4 pb-4 border-b border-gray-200 dark:border-white/10">
+                        <div>
+                            <p className="text-xs text-amber-500 font-bold uppercase tracking-wider mb-1">User Query</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">"{item.query}"</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-gray-400">{item.timestamp?.toDate ? item.timestamp.toDate().toLocaleString() : new Date().toLocaleString()}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">by {item.agentName || 'System'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-xs text-purple-500 font-bold uppercase tracking-wider mb-2">AI Response</p>
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 bg-white dark:bg-black/20 p-4 rounded-xl border border-gray-200 dark:border-white/5">
+                            <ReactMarkdown>{item.response}</ReactMarkdown>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
 
 const QuickNotes: React.FC<{ lead: Lead }> = ({ lead }) => {
     const [newNote, setNewNote] = useState('');
@@ -131,6 +183,7 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
         { id: 'documents', label: 'Documents', icon: Paperclip },
         { id: 'tasks', label: 'Tasks', icon: CheckSquare },
         { id: 'notes', label: 'Notes', icon: FileText },
+        { id: 'ai-history', label: 'AI Matches', icon: Sparkles },
     ];
 
     return (
@@ -468,6 +521,10 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
 
                                 {activeTab === 'notes' && (
                                     <QuickNotes lead={lead} />
+                                )}
+
+                                {activeTab === 'ai-history' && (
+                                    <AiHistoryTab leadId={lead.id} />
                                 )}
                             </motion.div>
                         </AnimatePresence>

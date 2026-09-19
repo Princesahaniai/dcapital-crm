@@ -1207,7 +1207,16 @@ export const useStore = create<Store>()(
 
                 // Firestore write
                 if (cmpId) {
-                    setDoc(doc(db, 'properties', newProperty.id), newProperty).catch(err => console.error('[SYNC] Property write failed:', err));
+                    setDoc(doc(db, 'properties', newProperty.id), newProperty)
+                        .then(() => {
+                            // Call Copilot Embed API
+                            fetch('/api/copilot-embed', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ property: newProperty })
+                            }).catch(err => console.error('[SYNC] Copilot Embed failed:', err));
+                        })
+                        .catch(err => console.error('[SYNC] Property write failed:', err));
                 } else {
                     console.error('[SYNC] Blocked: No Company ID found for Property');
                 }
@@ -1259,8 +1268,22 @@ export const useStore = create<Store>()(
                     }
                 }
 
+                const updatedProperty = { ...oldProp, ...data, updatedAt: Date.now() };
+                
+                // Fix missing Firestore sync
+                updateDoc(doc(db, 'properties', id), updatedProperty)
+                    .then(() => {
+                        // Call Copilot Embed API on update
+                        fetch('/api/copilot-embed', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ property: updatedProperty })
+                        }).catch(err => console.error('[SYNC] Copilot Embed failed:', err));
+                    })
+                    .catch(err => console.error('[SYNC] Property update failed:', err));
+
                 return {
-                    properties: s.properties.map(p => p.id === id ? { ...p, ...data, updatedAt: Date.now() } : p),
+                    properties: s.properties.map(p => p.id === id ? updatedProperty : p),
                     team: newTeam
                 };
             }),
