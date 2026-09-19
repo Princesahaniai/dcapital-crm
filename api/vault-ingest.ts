@@ -42,18 +42,42 @@ export default async function handler(req: any, res: any) {
         // Use OpenAI to extract property details
         const systemPrompt = `You are a strict data extraction AI for D Capital Real Estate.
 You will be provided with raw text extracted from a document (PDF, CSV, etc.).
-Your task is to identify and extract all real estate properties mentioned in the text.
+Your task is to identify and extract all real estate properties mentioned in the text into a structured JSON format.
+
+CRITICAL ZERO HALLUCINATION RULE: 
+- If a specific field is NOT explicitly mentioned in the source text, you MUST omit it or set it to null/undefined/"" as appropriate. 
+- Do NOT invent, assume, or guess any information (e.g., do not guess the view, floor, handover date, developer, or original price if not stated).
+
 Return the result strictly as a JSON object containing an array of properties under the key "properties".
-Each property object should have the following fields:
-- "projectName": string
-- "location": string
-- "type": string (e.g., "4 Bedroom Villa")
-- "size": number (numeric value in sq ft)
-- "price": number (numeric value in AED)
-- "status": string (must be "Active", "Sold", or "Off-Market")
-- "ownerName": string (if available, otherwise "")
-- "contactInfo": string (if available, otherwise "")
-- "specs": string (any additional details, handover date, etc.)
+Each property object should map to this schema (omit keys if data is missing):
+- "name": string (Property title or unit name)
+- "location": string (Full location or area)
+- "community": string
+- "developer": string
+- "type": string (e.g., "Apartment", "Villa", "Townhouse", "Penthouse", "Studio", "Office", "Retail", "Plot")
+- "bedrooms": number
+- "bathrooms": number
+- "sqft": number (Total area in sq ft)
+- "bua": number (Built-up area)
+- "plotSize": number
+- "price": number (Current selling or asking price in AED)
+- "originalPrice": number
+- "amountPaid": number
+- "amountRemaining": number
+- "paymentPlan": string
+- "status": string (Must map to "Available", "Sold", "Reserved", "Active", or "Off-Market". Default to "Active" if it appears available for sale/rent)
+- "projectStatus": string ("Ready", "Off-Plan", "Under Construction")
+- "handoverDate": string
+- "occupancyStatus": string ("Vacant", "Rented", "Owner Occupied")
+- "currentRent": number
+- "view": string
+- "furnishing": string ("Furnished", "Unfurnished", "Semi-Furnished")
+- "ownerName": string
+- "ownerPhone": string
+- "ownerEmail": string
+- "unitNumber": string
+- "tower": string
+- "floor": string
 
 If no properties are found, return { "properties": [] }. Do not include markdown formatting like \`\`\`json.`;
 

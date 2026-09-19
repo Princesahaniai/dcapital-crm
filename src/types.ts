@@ -100,37 +100,122 @@ export interface ImportFile {
 
 export interface Property {
     id: string;
+    // --- Basic Information ---
     name: string;
     developer: string;
-    type: 'Studio' | 'Apartment' | 'Villa' | 'Penthouse' | 'Townhouse';
-    price: number;
-    status: 'Available' | 'Sold' | 'Reserved' | 'Active' | 'Off-Market';
-    commissionRate: number;
-    location: string;
-    imageUrl: string;
-    description?: string;
-    agentId?: string;
+    type: 'Studio' | 'Apartment' | 'Villa' | 'Penthouse' | 'Townhouse' | 'Office' | 'Retail' | 'Plot' | 'Other';
     bedrooms: number;
     bathrooms: number;
+    maidsRoom?: boolean;
+    studyRoom?: boolean;
+    floor?: string;
+    tower?: string;
+    unitNumber?: string;
     sqft: number;
+    bua?: number;
+    plotSize?: number;
+    balconyTerrace?: boolean;
+    parkingSpaces?: number;
+    
+    // --- Location ---
+    location: string;
+    emirate?: string;
+    area?: string;
+    community?: string;
+    exactLocation?: string;
+    googleMapsLink?: string;
+
+    // --- Financial Information ---
+    price: number; // Current Selling / Asking Price
+    originalPrice?: number;
+    marketPrice?: number;
+    previousPrice?: number;
+    discount?: number;
+    amountPaid?: number;
+    amountRemaining?: number;
+    paymentPlan?: string;
+    postHandoverPlan?: string;
+    dldInfo?: string;
+    commissionRate: number;
+    serviceCharge?: number;
+
+    // --- Status & Handover ---
+    status: 'Available' | 'Sold' | 'Reserved' | 'Active' | 'Off-Market';
+    projectStatus?: 'Ready' | 'Off-Plan' | 'Under Construction';
+    handoverDate?: string;
+    occupancyStatus?: 'Vacant' | 'Rented' | 'Owner Occupied';
+    fullyPaid?: boolean;
+
+    // --- Rental Information ---
+    currentRent?: number;
+    rentalFrequency?: 'Monthly' | 'Quarterly' | 'Yearly';
+    tenancyStartDate?: string;
+    tenancyExpiryDate?: string;
+    shortTermRentalInfo?: string;
+    longTermRentalInfo?: string;
+
+    // --- Features & Specs ---
+    view?: string;
+    furnishing?: 'Furnished' | 'Unfurnished' | 'Semi-Furnished';
+    condition?: string;
+    cornerUnit?: boolean;
+    floorLevel?: 'High' | 'Mid' | 'Low';
+    waterfront?: boolean;
+    beachAccess?: boolean;
+    pool?: boolean;
+    garden?: boolean;
+    terrace?: boolean;
+    features?: string[];
+
+    // --- Media & Links ---
+    imageUrl: string;
+    gallery?: string[];
+    videos?: string[];
+    brochures?: string[];
+    floorPlans?: string[];
+    propertyLinks?: string[];
+    documents?: string[]; // Drive links etc
+
+    // --- Owner Information (Restricted) ---
+    ownerName?: string;
+    ownerPhone?: string;
+    ownerEmail?: string;
+    
+    // --- Internal & Source Tracking ---
+    description?: string; // Internal Notes
+    agentId?: string;
     createdAt: number;
     updatedAt?: number;
-    gallery?: string[];
-    features?: string[];
     companyId?: string;
-    // Inventory Classification
-    inventoryType?: 'Direct' | 'Indirect';
-    // Advanced Bayut-Style Fields
-    bua?: number;             // Built-Up Area (sq ft)
-    plotSize?: number;        // Plot Size (sq ft)
-    view?: string;            // e.g. "Marina View", "Park View"
-    furnishing?: 'Furnished' | 'Unfurnished' | 'Semi-Furnished';
-    handoverDate?: string;    // e.g. "Q4 2025"
-    projectStatus?: 'Ready' | 'Off-Plan';
-    paymentPlan?: string;     // e.g. "60/40", "Post-Handover"
-    reraPermit?: string;      // RERA Permit Number
+    sourceType?: 'PDF' | 'Google Drive' | 'Google Sheet' | 'Excel/CSV' | 'Image' | 'Agent' | 'Owner' | 'WhatsApp' | 'Internal';
+    sourceLink?: string;
+    conflictStatus?: 'Clear' | 'Duplicate' | 'Conflict';
     isDeleted?: boolean;
+
+    // Legacy fields for backward compatibility
+    inventoryType?: 'Direct' | 'Indirect';
+    reraPermit?: string;
     projectType?: 'Off-Plan Project' | 'Secondary Project';
+}
+
+export interface ClientRequirement {
+    id: string;
+    type: 'Client' | 'Agent' | 'Internal';
+    clientName: string;
+    budgetMax: number;
+    location: string;
+    propertyType: string;
+    bedrooms: number;
+    sizeMin?: number;
+    statusRequirement?: 'Ready' | 'Off-Plan' | 'Any';
+    handoverRequirement?: string;
+    view?: string;
+    otherRequirements?: string;
+    dateReceived: number;
+    assignedToId: string; // User ID
+    status: 'Active' | 'Fulfilled' | 'Archived';
+    matchedPropertyIds?: string[];
+    companyId?: string;
 }
 
 export interface Activity {

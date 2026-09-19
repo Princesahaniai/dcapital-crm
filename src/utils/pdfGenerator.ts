@@ -503,3 +503,119 @@ export const generateLeadBrief = async (lead: Lead, assignedAgentName: string) =
 
     doc.save(`Client_Brief_${lead.name.replace(/[^a-z0-9]/gi, "_")}.pdf`);
 };
+
+export const generateMultiPropertyBrochure = async (
+    properties: Property[],
+    agent: BrochureAgent,
+    collectionName: string = "Property Collection"
+) => {
+    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+    const PW = doc.internal.pageSize.getWidth();
+    let curY = 40;
+    const PAD = 36;
+
+    // Header
+    setFill(doc, C.darkGray);
+    doc.rect(0, 0, PW, 70, "F");
+    setColor(doc, C.amber);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("D CAPITAL REAL ESTATE", PAD, 40);
+    
+    setColor(doc, C.white);
+    doc.setFontSize(10);
+    doc.text(collectionName, PW - PAD, 40, { align: "right" });
+
+    curY = 100;
+
+    for (const [index, property] of properties.entries()) {
+        if (curY > 700) {
+            doc.addPage();
+            curY = 40;
+        }
+
+        // Property Card
+        setStroke(doc, C.lightGray);
+        doc.setLineWidth(1);
+        roundedRect(doc, PAD, curY, PW - PAD * 2, 120, 8, "S");
+
+        setColor(doc, C.darkGray);
+        doc.setFontSize(14);
+        doc.text(property.project || property.name, PAD + 15, curY + 25);
+
+        setColor(doc, C.midGray);
+        doc.setFontSize(10);
+        doc.text(`Type: ${property.bedrooms} Bed ${property.type}`, PAD + 15, curY + 45);
+        doc.text(`Location: ${property.location}`, PAD + 15, curY + 60);
+        
+        setColor(doc, C.amber);
+        doc.setFontSize(12);
+        doc.text(`AED ${(property.price || 0).toLocaleString()}`, PW - PAD - 15, curY + 25, { align: "right" });
+
+        // Agent details per card
+        setColor(doc, C.lightGray);
+        doc.setFontSize(8);
+        doc.text(`Presented by: ${agent.name} (${agent.phone || ''})`, PAD + 15, curY + 100);
+
+        curY += 140;
+    }
+
+    doc.save(`${collectionName.replace(/[^a-z0-9]/gi, "_")}.pdf`);
+};
+
+export const generateMasterInventoryPDF = async (
+    properties: Property[],
+    includeOwnerData: boolean
+) => {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const PW = doc.internal.pageSize.getWidth();
+    let curY = 40;
+    const PAD = 20;
+
+    setColor(doc, C.darkGray);
+    doc.setFontSize(16);
+    doc.text("Master Inventory Export", PAD, curY);
+    curY += 30;
+
+    doc.setFontSize(8);
+    const headers = ["Project", "Location", "Type", "Beds", "Price", "Status"];
+    if (includeOwnerData) headers.push("Owner Name", "Owner Phone");
+
+    let curX = PAD;
+    const colW = (PW - PAD * 2) / headers.length;
+
+    headers.forEach(h => {
+        doc.text(h, curX, curY);
+        curX += colW;
+    });
+
+    curY += 15;
+
+    properties.forEach(p => {
+        if (curY > 550) {
+            doc.addPage();
+            curY = 40;
+        }
+        curX = PAD;
+        const row = [
+            (p.project || p.name || "").substring(0, 20),
+            (p.location || "").substring(0, 20),
+            p.type || "",
+            String(p.bedrooms || 0),
+            `AED ${(p.price || 0).toLocaleString()}`,
+            p.status || ""
+        ];
+        if (includeOwnerData) {
+            row.push((p.ownerName || "").substring(0, 15));
+            row.push((p.ownerPhone || "").substring(0, 15));
+        }
+
+        row.forEach(cell => {
+            doc.text(cell, curX, curY);
+            curX += colW;
+        });
+        curY += 15;
+    });
+
+    doc.save("Master_Inventory.pdf");
+};

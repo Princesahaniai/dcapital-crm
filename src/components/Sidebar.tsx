@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database, MapPin, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, LogOut, CheckSquare, Settings, Shield, ChevronRight, Menu, X, BarChart3, Calendar, Sparkles, Trash2, ShieldAlert, CreditCard, FolderArchive, Database, MapPin, Bell, Search } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -113,6 +113,7 @@ export const Sidebar = () => {
                             <NavItem to="/prospects" icon={FolderArchive} label="Prospect Vault" />
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />
                             <NavItem to="/vault" icon={FileText} label="AI Vault" />
+                            <NavItem to="/requirements" icon={Search} label="AI Copilot Match" />
                             <NavItem to="/tasks" icon={CheckSquare} label="Mission Control" />
                             <NavItem to="/calendar" icon={Calendar} label="Calendar" />
                             <NavItem to="/social-studio" icon={Sparkles} label="Social Studio" />

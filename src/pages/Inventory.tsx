@@ -97,6 +97,9 @@ export const Inventory = () => {
         projectStatus: undefined,
         paymentPlan: '',
         reraPermit: '',
+        ownerName: '',
+        ownerPhone: '',
+        ownerEmail: '',
     };
     const [form, setForm] = useState<Partial<Property>>(initialForm);
     const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
@@ -1336,6 +1339,47 @@ _Reach out today to schedule a private viewing!_`;
                                                 <p className="text-[9px] text-gray-600">Required for legal compliance in Dubai real estate listings</p>
                                             </div>
                                         </div>
+
+                                        {/* Section: Owner & Source Details (RBAC) */}
+                                        {(user?.role === 'ceo' || user?.role === 'admin') && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                    <Shield size={10} /> Owner & Source Details (Admin Only)
+                                                </p>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Owner Name</label>
+                                                        <input
+                                                            title="Owner Name"
+                                                            placeholder="e.g. John Doe"
+                                                            className="w-full bg-black/40 border border-amber-500/30 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all text-sm font-sans"
+                                                            value={form.ownerName || ''}
+                                                            onChange={e => setForm({ ...form, ownerName: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Owner Phone</label>
+                                                        <input
+                                                            title="Owner Phone"
+                                                            placeholder="e.g. +971 50 123 4567"
+                                                            className="w-full bg-black/40 border border-amber-500/30 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all text-sm font-sans"
+                                                            value={form.ownerPhone || ''}
+                                                            onChange={e => setForm({ ...form, ownerPhone: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Owner Email</label>
+                                                        <input
+                                                            title="Owner Email"
+                                                            placeholder="e.g. john@example.com"
+                                                            className="w-full bg-black/40 border border-amber-500/30 rounded-xl p-3 text-white outline-none focus:border-amber-500 transition-all text-sm font-sans"
+                                                            value={form.ownerEmail || ''}
+                                                            onChange={e => setForm({ ...form, ownerEmail: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             )}

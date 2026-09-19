@@ -10,6 +10,7 @@ export const Vault = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [extractedData, setExtractedData] = useState<any[]>([]);
     const properties = useStore(s => s.properties);
+    const user = useStore(s => s.user);
     const addProperty = useStore(s => s.addProperty);
     const updateProperty = useStore(s => s.updateProperty);
 
@@ -65,7 +66,10 @@ export const Vault = () => {
             bathrooms: 1,
             sqft: item.size || 0,
             projectStatus: 'Ready',
-            description: `Owner: ${item.ownerName || 'N/A'}\nContact: ${item.contactInfo || 'N/A'}\nSpecs: ${item.specs || ''}`
+            ownerName: item.ownerName || '',
+            ownerPhone: item.ownerPhone || '',
+            ownerEmail: item.ownerEmail || '',
+            description: `Extracted Details:\nSpecs: ${item.specs || ''}`
         };
         addProperty(newProperty);
         setExtractedData(prev => prev.filter((_, i) => i !== index));
@@ -229,7 +233,16 @@ export const Vault = () => {
                                             </td>
                                             <td className="px-6 py-4 text-emerald-400 font-medium">AED {p.price?.toLocaleString()}</td>
                                             <td className="px-6 py-4 text-sm text-slate-300">
-                                                {p.description?.includes('Owner:') ? p.description : 'Confidential'}
+                                                {(user?.role === 'ceo' || user?.role === 'admin') ? (
+                                                    <div>
+                                                        {p.ownerName && <div><span className="font-bold">Name:</span> {p.ownerName}</div>}
+                                                        {p.ownerPhone && <div><span className="font-bold">Phone:</span> {p.ownerPhone}</div>}
+                                                        {p.ownerEmail && <div><span className="font-bold">Email:</span> {p.ownerEmail}</div>}
+                                                        {!p.ownerName && !p.ownerPhone && !p.ownerEmail && 'No Owner Data'}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-500 italic">Hidden (Admin Only)</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-center gap-2">

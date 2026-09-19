@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Lead, Property, Task, Activity, User, MessageTemplate, ImportFile, AttendanceLog } from './types';
+import type { Lead, Property, Task, Activity, User, MessageTemplate, ImportFile, AttendanceLog, ClientRequirement } from './types';
 import { auth, db, secondaryAuth } from './firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, setDoc, getDocs, getDoc, query, where, collection, deleteDoc, addDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
@@ -40,6 +40,7 @@ interface Store {
     user: User | null;
     leads: ExtendedLead[];
     properties: Property[];
+    requirements: ClientRequirement[];
     tasks: Task[];
     activities: Activity[];
     team: TeamMember[];
@@ -86,9 +87,16 @@ interface Store {
     permanentDeleteLead: (id: string) => void;
     assignLeads: (leadIds: string[], agentId: string, agentName: string) => void;
     addQuickNote: (leadId: string, note: string) => void;
+    
+    // Property & Inventory Actions
     addProperty: (p: Property) => void;
     updateProperty: (id: string, data: Partial<Property>) => void;
     deleteProperty: (id: string) => void;
+
+    // Requirement Actions
+    addRequirement: (req: ClientRequirement) => void;
+    updateRequirement: (id: string, data: Partial<ClientRequirement>) => void;
+
     addTask: (t: Task | any) => void;
     updateTaskStatus: (id: string, status: Task['status'], note?: string) => void;
     addTaskComment: (id: string, text: string) => void;
@@ -151,8 +159,9 @@ export const useStore = create<Store>()(
             rememberMe: false,
             isAuthLoading: true,
             passwordResetTokens: {},
-            properties: [], // Production: Empty state
-            tasks: [], // Production: Empty state
+            properties: [], 
+            requirements: [],
+            tasks: [],
             activities: [], // Production: Empty state
             team: [], // Production: Empty state - Only CEO and Admin via login
             notifications: [], // Production: Empty state
@@ -1198,28 +1207,42 @@ export const useStore = create<Store>()(
 
             addProperty: (p) => {
                 const s = get();
-                // Ensure ID exists for real-time sync later if needed
-                const cmpId = s.user?.companyId;
-                const newProperty: any = { ...p, id: p.id || Math.random().toString(36).substr(2, 9), createdAt: Date.now() };
-                if (cmpId) newProperty.companyId = cmpId;
+                const cmpId = s.user?.companyId || 'd-capital-main';
+                
+                // --- Deduplication Engine ---
+                const isDuplicate = s.properties.some(existing => {
+                    const sameLocation = existing.location === p.location;
+                    const sameSize = Math.abs(existing.sqft - p.sqft) < 10;
+                    const samePrice = existing.price === p.price;
+                    const sameUnit = p.unitNumber && existing.unitNumber === p.unitNumber;
+                    return sameLocation && ((sameSize && samePrice) || sameUnit);
+                });
+
+                const newProperty: any = { 
+                    ...p, 
+                    id: p.id || Math.random().toString(36).substr(2, 9), 
+                    createdAt: Date.now(),
+                    companyId: cmpId,
+                    conflictStatus: isDuplicate ? 'Conflict' : 'Clear'
+                };
+
+                if (isDuplicate) {
+                    toast.error(`Potential duplicate detected for ${p.name}. Flagged for review.`);
+                }
 
                 set({ properties: [newProperty, ...s.properties] });
 
                 // Firestore write
-                if (cmpId) {
-                    setDoc(doc(db, 'properties', newProperty.id), newProperty)
-                        .then(() => {
-                            // Call Copilot Embed API
-                            fetch('/api/copilot-embed', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ property: newProperty })
-                            }).catch(err => console.error('[SYNC] Copilot Embed failed:', err));
-                        })
-                        .catch(err => console.error('[SYNC] Property write failed:', err));
-                } else {
-                    console.error('[SYNC] Blocked: No Company ID found for Property');
-                }
+                setDoc(doc(db, 'properties', newProperty.id), newProperty)
+                    .then(() => {
+                        // Call Copilot Embed API
+                        fetch('/api/copilot-embed', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ property: newProperty })
+                        }).catch(err => console.error('[SYNC] Copilot Embed failed:', err));
+                    })
+                    .catch(err => console.error('[SYNC] Property write failed:', err));
 
                 // Smart Inventory Match algorithm against A-Grade Leads
                 try {
@@ -1228,12 +1251,10 @@ export const useStore = create<Store>()(
                         const leadLoc = (lead.targetLocation || '').toLowerCase();
                         const propLoc = (newProperty.location || '').toLowerCase();
                         if (leadLoc && propLoc.includes(leadLoc) && lead.maxBudget && newProperty.price <= lead.maxBudget) {
-                            // Match Found!
                             const msg = `🌟 High-Value Match: ${newProperty.name} matches A-Grade client ${lead.name}'s criteria!`;
                             if (lead.assignedTo) {
                                 get().addFirestoreNotification(lead.assignedTo, msg);
                             } else {
-                                // Send to all admins if unassigned
                                 const admins = s.team.filter(m => m.role === 'ceo' || m.role === 'admin');
                                 admins.forEach(admin => {
                                     get().addFirestoreNotification(admin.id, msg);
@@ -1258,7 +1279,6 @@ export const useStore = create<Store>()(
                     const rate = data.commissionRate ?? oldProp.commissionRate ?? 2;
                     const commission = price * (rate / 100);
 
-                    // Assign commission to the agent listed on the property
                     const agentId = data.agentId ?? oldProp.agentId;
                     if (agentId) {
                         newTeam = s.team.map(m => m.id === agentId
@@ -1270,7 +1290,7 @@ export const useStore = create<Store>()(
 
                 const updatedProperty = { ...oldProp, ...data, updatedAt: Date.now() };
                 
-                // Fix missing Firestore sync
+                // Firestore sync
                 updateDoc(doc(db, 'properties', id), updatedProperty)
                     .then(() => {
                         // Call Copilot Embed API on update
@@ -1288,7 +1308,26 @@ export const useStore = create<Store>()(
                 };
             }),
 
-            deleteProperty: (id) => set((s) => ({ properties: s.properties.filter(p => p.id !== id) })),
+            deleteProperty: (id) => {
+                set((s) => ({ properties: s.properties.filter(p => p.id !== id) }));
+                deleteDoc(doc(db, 'properties', id)).catch(err => console.error(err));
+                // TODO: Delete from Pinecone index
+            },
+
+            // Requirements Actions
+            addRequirement: (req) => {
+                const cmpId = get().user?.companyId || 'd-capital-main';
+                const newReq = { ...req, companyId: cmpId };
+                set((s) => ({ requirements: [newReq, ...s.requirements] }));
+                setDoc(doc(db, 'requirements', req.id), newReq, { merge: true }).catch(err => console.error(err));
+            },
+
+            updateRequirement: (id, data) => {
+                set((s) => ({
+                    requirements: s.requirements.map(r => r.id === id ? { ...r, ...data } : r)
+                }));
+                updateDoc(doc(db, 'requirements', id), data).catch(err => console.error(err));
+            },
 
             addTask: (t) => {
                 const s = get();

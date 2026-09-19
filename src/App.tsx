@@ -20,8 +20,8 @@ import { Trash } from './pages/Trash';
 import { MarketIntel } from './pages/MarketIntel';
 import { ClientPortal } from './pages/ClientPortal';
 import { Settings as SettingsPage } from './pages/Settings';
-import { Analytics } from './pages/Analytics';
 import { Vault } from './pages/Vault';
+import { Requirements } from './pages/Requirements';
 import { SetPassword } from './pages/SetPassword';
 import { AuthDiagnostic } from './pages/AuthDiagnostic';
 import { GlobalTopBar } from './components/GlobalTopBar';
@@ -197,7 +197,7 @@ export default function App() {
                 <Route path="/batch-manager" element={<ProtectedRoute><BatchManager /></ProtectedRoute>} />
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/vault" element={<ProtectedRoute><Vault /></ProtectedRoute>} />
-                <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
