@@ -104,7 +104,7 @@ export interface Property {
     developer: string;
     type: 'Studio' | 'Apartment' | 'Villa' | 'Penthouse' | 'Townhouse';
     price: number;
-    status: 'Available' | 'Sold' | 'Reserved';
+    status: 'Available' | 'Sold' | 'Reserved' | 'Active' | 'Off-Market';
     commissionRate: number;
     location: string;
     imageUrl: string;

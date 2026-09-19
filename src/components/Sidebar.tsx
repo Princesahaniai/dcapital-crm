@@ -112,6 +112,7 @@ export const Sidebar = () => {
                             <NavItem to="/leads" icon={Users} label="Leads Engine" />
                             <NavItem to="/prospects" icon={FolderArchive} label="Prospect Vault" />
                             <NavItem to="/inventory" icon={Building2} label="Luxury Inventory" />
+                            <NavItem to="/vault" icon={FileText} label="AI Vault" />
                             <NavItem to="/tasks" icon={CheckSquare} label="Mission Control" />
                             <NavItem to="/calendar" icon={Calendar} label="Calendar" />
                             <NavItem to="/social-studio" icon={Sparkles} label="Social Studio" />
