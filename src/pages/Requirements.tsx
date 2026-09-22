@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sparkles, Copy, Check, MessageSquare, MapPin, Building2, ChevronRight, FileText, Share2, Info } from 'lucide-react';
 import { useStore } from '../store';
 import toast from 'react-hot-toast';
-import { Property } from '../types';
+import type { Property } from '../types';
 
 export const Requirements = () => {
     const [query, setQuery] = useState('');

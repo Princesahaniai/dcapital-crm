@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { useStore } from '../store';
 import { FileUp, Database, Search, FileText, Check, X, ShieldAlert, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Property } from '../types';
+import type { Property } from '../types';
 
 export const Vault = () => {
     const [activeTab, setActiveTab] = useState<'uploads' | 'active' | 'sold' | 'search'>('uploads');
